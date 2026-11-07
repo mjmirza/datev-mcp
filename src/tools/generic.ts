@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildUrl, callOperation, CallError, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { describe, getOperation, products, searchOperations, summarize } from "./catalog.js";
 
@@ -54,20 +54,22 @@ export function registerGenericTools(server: McpServer, deps: () => CallDeps): v
         operation_id: z.string(),
         path_params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
         query: z.record(z.string(), z.union([scalar, z.array(z.union([z.string(), z.number()]))])).optional(),
+        headers: z.record(z.string(), z.string()).optional().describe("Header parameters the operation declares, e.g. Filename"),
         body: z.unknown().optional().describe("JSON body, or a string for text content types"),
         content_type: z.string().optional(),
         confirm: z.boolean().optional().describe("Must be true to run an operation that changes data"),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
     },
-    async ({ operation_id, path_params, query, body, content_type, confirm }) => {
+    async ({ operation_id, path_params, query, headers, body, content_type, confirm }) => {
       const op = getOperation(operation_id);
       if (!op) return fail(`Unknown operation "${operation_id}". Use datev_search_operations first.`);
-      const input = { pathParams: path_params, query: query as Record<string, string>, body, contentType: content_type };
+      const input = { pathParams: path_params, query: query as Record<string, string>, headers, body, contentType: content_type };
       const d = deps();
       try {
         if (op.write && confirm !== true) {
           const url = buildUrl(op, d.env, input);
+          buildHeaders(op, input);
           return text({
             preview: true,
             note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true once they agree.`,

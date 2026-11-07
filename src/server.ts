@@ -4,6 +4,8 @@ import { Session } from "./auth/session.js";
 import { TokenStore } from "./auth/token-store.js";
 import type { Config } from "./config.js";
 import { registerAccountTools } from "./tools/accounts.js";
+import { registerDocumentTools } from "./tools/documents.js";
+import { registerExtfTools } from "./tools/extf.js";
 import { registerGenericTools } from "./tools/generic.js";
 
 export const VERSION = "0.0.1";
@@ -14,6 +16,8 @@ export function createServer(cfg: Config): McpServer {
   const deps = () => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken() });
   registerGenericTools(server, deps);
   registerAccountTools(server, deps);
+  registerExtfTools(server, deps);
+  registerDocumentTools(server, deps);
   return server;
 }
 

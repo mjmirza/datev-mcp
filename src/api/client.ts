@@ -5,8 +5,27 @@ import type { Operation } from "../spec/types.js";
 export interface CallInput {
   pathParams?: Record<string, string | number>;
   query?: Record<string, string | number | boolean | (string | number)[]>;
+  headers?: Record<string, string>;
   body?: unknown;
+  // Files: raw bytes (octet-stream) or a FormData (multipart, fetch sets the boundary).
+  rawBody?: Uint8Array | FormData;
   contentType?: string;
+}
+
+const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secret|host|content-length|cookie)$/i;
+
+export function buildHeaders(op: Operation, input: CallInput): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(input.headers ?? {})) {
+    if (RESERVED_HEADERS.test(k)) throw new CallError(`Header "${k}" is set by the server and cannot be overridden`);
+    if (/[\r\n]/.test(v)) throw new CallError(`Header "${k}" contains a line break`);
+    out[k] = v;
+  }
+  for (const p of op.params.filter((x) => x.in === "header" && x.required)) {
+    const has = Object.keys(out).some((k) => k.toLowerCase() === p.name.toLowerCase());
+    if (!has) throw new CallError(`Missing required header "${p.name}"`);
+  }
+  return out;
 }
 
 export interface CallResult {
@@ -65,7 +84,12 @@ export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
   return url;
 }
 
-function encodeBody(op: Operation, input: CallInput): { body?: string; contentType?: string } {
+function encodeBody(op: Operation, input: CallInput): { body?: string | Uint8Array | FormData; contentType?: string } {
+  if (input.rawBody !== undefined) {
+    if (!op.body) throw new CallError(`${op.id} does not take a request body`);
+    if (input.rawBody instanceof FormData) return { body: input.rawBody };
+    return { body: input.rawBody, contentType: input.contentType ?? op.body.contentTypes[0] ?? "application/octet-stream" };
+  }
   if (input.body === undefined) {
     if (op.body?.required) throw new CallError(`${op.id} requires a request body`);
     return {};
@@ -112,14 +136,16 @@ async function readBody(res: Response, maxChars: number): Promise<{ body: unknow
 interface Prepared {
   op: Operation;
   url: URL;
-  body?: string;
+  body?: string | Uint8Array | FormData;
   contentType?: string;
+  extraHeaders: Record<string, string>;
   deps: CallDeps;
 }
 
 async function attempt(p: Prepared, n: number): Promise<CallResult> {
   const { op, url, deps } = p;
   const headers: Record<string, string> = {
+    ...p.extraHeaders,
     authorization: `Bearer ${await deps.token()}`,
     "X-DATEV-Client-Id": deps.creds.clientId,
     accept: "application/json, */*;q=0.5",
@@ -156,5 +182,5 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
 // async so validation errors surface as a rejected promise, never a synchronous throw.
 export async function callOperation(op: Operation, input: CallInput, deps: CallDeps): Promise<CallResult> {
   const url = buildUrl(op, deps.env, input);
-  return attempt({ op, url, deps, ...encodeBody(op, input) }, 1);
+  return attempt({ op, url, deps, extraHeaders: buildHeaders(op, input), ...encodeBody(op, input) }, 1);
 }
