@@ -10,8 +10,9 @@ datev-property-tax-file-upload-api:2.1.5 b4value-net-smarttransfer-inbound:1.2 b
 traffiqx-invoice:1.0.0"
 for pv in $PRODUCTS; do
   slug=${pv%%:*}; ver=${pv#*:}
+  # A product with one API is saved as "<product>__<version>__1.json" so its operation ids stay stable.
   curl -fsS --max-time 30 "$U/products/$slug/apis?version=$ver" \
-    | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{for(const a of JSON.parse(s))console.log(a.id+" "+a.name+"-v"+a.version)})' \
+    | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const l=JSON.parse(s);for(const a of l)console.log(a.id+" "+(l.length===1?"1":a.name+"-v"+a.version))})' \
     | while read -r id name; do
         out="$DEST/${slug}__${ver}__${name}.json"
         curl -fsS --max-time 60 -o "$out" "$U/apis/$id/document"
