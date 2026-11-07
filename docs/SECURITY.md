@@ -42,10 +42,12 @@ Report a suspected vulnerability privately to the maintainer by email at the add
 - An AI assistant that you allow to confirm writes without reading the preview. The preview is only useful if a person looks at it.
 - DATEV itself. The server trusts that answers from DATEV's hosts are DATEV's.
 - Scope visibility. DATEV does not report which scopes were granted, so a missing product only shows up as a 401 or 403 on first use.
+- A second process, running as you, that swaps a parent folder for a link while a file is being read. Node.js cannot open a file relative to an already checked folder. That process could read the file directly anyway.
+- The session lock is advisory. If two processes ever both hold it, the loser of the refresh never deletes the session and adopts the newer one. The worst case is one request to log in again.
 
 ## Independent review
 
-A second AI model (OpenAI Codex) was asked to attack the code, not to review it, on 2026-11-07. The first pass reported 15 findings, 7 of them high severity. The second pass, on the fixed code, found 19 more, 3 of them high (a lock takeover race, a check-then-open race on file reads, and saves through a symlinked folder). All 34 are fixed. The groups were auth races and refresh token reuse, tool answers that could look empty when they were not, file and upload safety, client limits (time, size, binary, Retry-After), and gaps in the test tooling itself. The third pass and the per pass details are in [VALIDATION.md](VALIDATION.md).
+A second AI model (OpenAI Codex) was asked to attack the code, not to review it, on 2026-11-07. Four passes reported 15, 19, 9 and 5 findings, 15 of them high severity. Later passes also caught regressions introduced by earlier fixes. 46 are fixed with tests. Two are known limits, listed below. The groups were auth races and refresh token reuse, tool answers that could look empty when they were not, file and upload safety, client limits (time, size, binary, Retry-After), and gaps in the test tooling itself. The per pass details are in [VALIDATION.md](VALIDATION.md).
 
 ## Dependencies
 

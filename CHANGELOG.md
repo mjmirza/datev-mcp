@@ -33,6 +33,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 - Binary downloads were cut at the text preview size of about 400 KB. Now binaries have their own budget up to 50 MB.
 - Confirmation codes treated a missing body and a `null` body as the same request, and upload codes did not cover the file name. Both are now part of the signed request.
 - Client lists stopped at DATEV's 100 per request. Now they page. Error-shaped HTTP 200 answers and rows of the wrong shape are rejected, and the postings tool shares one deadline across all its requests and keeps only the rows it returns.
+- Regressions from the fixes above, found by later review passes. A two minute lock age could evict a live holder; it is gone, and a reused process id is now told apart by process start time read in UTC. A refresh that lost a race could delete the newer session; the session file is now never deleted on a rejected refresh, and a recovered session must belong to the same app. A named pipe could hang a file read, a file that grew while being read was cut short, and a failed new save could remove a file of the same name; all three are fixed. Bare fiscal year ids are accepted again but must be real eight digit ids, empty posting rows are refused, long file names and drives without hard links work, and a postings call that runs out of time while reading keeps the rows it already has.
 
 ## [0.0.1] - 2026-11-07
 

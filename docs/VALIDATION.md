@@ -8,12 +8,12 @@ What was checked, how, the numbers from the last run, and how to repeat each che
 | Layer | What it proves | Command | Last result |
 |---|---|---|---|
 | Type check | The code is consistent, strict mode | `npm run typecheck` | Clean |
-| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 92 of 92 passing |
-| Offline scenario run | Every one of the 209 operations against 59 scenario categories, with a fake DATEV | `npm run eval` | 26,462 of 26,462 passing |
+| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 101 of 101 passing |
+| Offline scenario run | Every one of the 209 operations against 60 scenario categories, with a fake DATEV | `npm run eval` | 28,462 of 28,462 passing |
 | Planted bugs | The scenarios catch real defects | see below | 3 of 3 bugs caught |
 | Live DATEV sandbox | The server works against the real DATEV gateway | `npm run test:live`, `npm run sweep` | 71 read operations reached, 38 returned data |
 
-On top of that, a second AI model reviewed the code three times, described under "Independent review".
+On top of that, a second AI model reviewed the code four times, described under "Independent review".
 
 ## Offline scenarios
 
@@ -33,7 +33,7 @@ On top of that, a second AI model reviewed the code three times, described under
 | Body rules | 3 | A required body is enforced, an unexpected body is refused, a file upload cannot be sent as JSON |
 | Writes | 1 | Through the real MCP protocol, a write without confirmation sends nothing and returns a preview |
 | Search | 1 | Each operation is found by its own summary |
-| Properties | 6 | Randomised inputs, 1,000 to 2,000 runs each, for encoding, header safety and parsing |
+| Properties | 7 | Randomised inputs, 1,000 to 2,000 runs each, for encoding, header safety, parsing and fiscal year ids |
 
 The report of every run is written to `test/reports/eval-<time>.md` and `.json`.
 
@@ -72,15 +72,23 @@ The live numbers above were measured earlier on 2026-11-07, before the second ro
 
 ## Independent review
 
-OpenAI Codex was asked three times to find what is wrong with the code, with the instruction to assume the previous fixes were wrong until proven right.
+OpenAI Codex was asked four times to find what is wrong with the code, with the instruction to assume the previous fixes were wrong until proven right.
 
 | Pass | Findings | Outcome |
 |---|---|---|
 | 1 | 15, of which 7 high | All fixed, each with a test |
 | 2 | 19, of which 3 high, on the fixed code | All fixed, each with a test except two that change memory use or the signed fields only (see below) |
-| 3 | Pending at the time of writing | |
+| 3 | 9, of which 4 high, including 4 regressions from pass 2 | 7 fixed with tests, 2 reduced to the known limits below |
+| 4 | 5 new, of which 1 high, plus 3 pass 3 fixes that only partly held | All fixed with tests, apart from the known limits |
 
 Two pass 2 fixes have no test that fails on the old code. Keeping only the requested number of postings rows changes memory use, not the answer. Binding the file name into the upload confirmation code is a one-line change to the signed fields.
+
+## Known limits
+
+Two findings cannot be closed in Node.js and are documented rather than hidden.
+
+- **A parent folder swapped during a file read.** Node.js has no `openat`, so a file cannot be opened relative to a folder that was already checked. A second process running as the same user could swap a parent folder for a link between the check and the open. Such a process could read the file directly anyway, so this adds no new access, but it is a gap.
+- **The session lock is advisory.** Two processes can, in rare timing, both believe they hold it. The damage is now limited: a refresh that loses the race never deletes the session file and uses the newer session if another process saved one. The worst case left is one refused refresh and a request to log in again.
 
 ## What is not proven
 

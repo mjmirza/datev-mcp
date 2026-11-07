@@ -5,8 +5,8 @@ Ask your AI assistant about your DATEV bookkeeping, payroll and documents in pla
 ![Status](https://img.shields.io/badge/status-private%20preview-orange)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
-![Eval](https://img.shields.io/badge/eval%20scenarios-26%2C462%20passing-green)
-![Tests](https://img.shields.io/badge/unit%20tests-92%20passing-green)
+![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C462%20passing-green)
+![Tests](https://img.shields.io/badge/unit%20tests-101%20passing-green)
 
 ## What this is, in plain words
 
@@ -72,11 +72,11 @@ Every number below comes from a real run on 2026-11-07. The method and how to re
 
 | Check | Result |
 |---|---|
-| Offline scenarios across all 209 operations | 26,462 of 26,462 passing |
+| Offline scenarios across all 209 operations | 28,462 of 28,462 passing |
 | Planted bugs the scenarios had to catch | 3 of 3 caught, 440 failing scenarios |
-| Unit and integration tests | 92 of 92 passing |
+| Unit and integration tests | 101 of 101 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
-| Independent review by a second AI model (Codex), three passes | 34 findings in the first two passes, all fixed. Third pass in [VALIDATION.md](docs/VALIDATION.md) |
+| Independent review by a second AI model (Codex), four passes | 46 of 48 findings fixed. Two known limits remain, listed in [SECURITY.md](docs/SECURITY.md) |
 
 Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
