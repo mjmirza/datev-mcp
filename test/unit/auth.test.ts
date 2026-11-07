@@ -129,7 +129,8 @@ test("session asks for login when DATEV rejects the refresh token, and when noth
   store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
   const s = new Session(store, ENDPOINTS.sandbox, creds, { fetch: async () => json(400, { error: "invalid_grant" }), now: () => 10_000_000 });
   await assert.rejects(s.accessToken(), NeedsLoginError);
-  assert.equal(store.read(), undefined);
+  // Kept on purpose: another process may have saved a newer session, and the next login overwrites it.
+  assert.equal(store.read()?.tokens.refreshToken, "R1");
 });
 
 test("session keeps the saved tokens on a network failure (no silent logout)", async () => {
@@ -240,7 +241,7 @@ test("a live holder is never evicted, however long it holds the lock", async () 
   const { execFileSync } = await import("node:child_process");
   const lock = join(dir, "session-sandbox.lock");
   mkdirSync(lock);
-  const started = execFileSync("ps", ["-o", "lstart=", "-p", String(process.ppid)], { encoding: "utf8" }).trim();
+  const started = execFileSync("ps", ["-o", "lstart=", "-p", String(process.ppid)], { encoding: "utf8", env: { ...process.env, TZ: "UTC", LC_ALL: "C" } }).trim();
   writeFileSync(join(lock, "owner"), JSON.stringify({ pid: process.ppid, token: "slow-but-alive", started }));
   utimesSync(lock, new Date(0), new Date(0));
   await assert.rejects(store.withLock(async () => "stolen", { waitMs: 300 }), /Timed out/);
@@ -267,4 +268,18 @@ test("a wrong client secret keeps the saved session instead of logging out", asy
   const s = new Session(store, ENDPOINTS.sandbox, creds, { fetch: async () => json(401, { error: "invalid_client" }), now: () => 10_000_000 });
   await assert.rejects(s.accessToken(), /invalid_client.*kept/);
   assert.equal(store.read()?.tokens.refreshToken, "R1");
+});
+
+test("a recovered session is used only if it belongs to the same DATEV app", async () => {
+  const store = new TokenStore("sandbox", tmp());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
+  const s = new Session(store, ENDPOINTS.sandbox, creds, {
+    fetch: async () => {
+      store.write({ env: "sandbox", clientId: "other-app", tokens: { accessToken: "FOREIGN", refreshToken: "R9", expiresAt: 99_000_000, obtainedAt: 0 } });
+      return json(400, { error: "invalid_grant" });
+    },
+    now: () => 10_000_000,
+  });
+  await assert.rejects(s.accessToken(), NeedsLoginError);
+  assert.equal(store.read()?.clientId, "other-app", "the other app's session is left alone");
 });

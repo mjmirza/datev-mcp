@@ -174,3 +174,14 @@ test("a named pipe is refused at once instead of hanging the server", async () =
   assert.throws(() => readLocalFile(fifo, 1000), /Not a regular file/);
   assert.ok(Date.now() - t0 < 1000);
 });
+
+test("a new file with a long name is saved, the temp name does not grow with it", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { writeLocalFile } = await import("../../src/tools/files.js");
+  const dir = mkdtempSync(join(tmpdir(), "datev-long-"));
+  const target = join(dir, "a".repeat(236) + ".pdf");
+  writeLocalFile(target, new Uint8Array([9]), false);
+  assert.deepEqual([...readFileSync(target)], [9]);
+});

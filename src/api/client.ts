@@ -319,7 +319,10 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
   }
   if (!read) {
-    if (netErr !== undefined) throw new CallError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+    if (netErr !== undefined) {
+      if ((netErr as Error).name === "TimeoutError" || Date.now() >= p.deadline - 100) throw new CallError("Ran out of time while reading DATEV's answer. Try again, or narrow the request.");
+      throw new CallError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+    }
     read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
   }
   const { body, truncated, bytes } = read;

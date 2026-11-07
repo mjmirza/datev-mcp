@@ -101,7 +101,7 @@ export function writeLocalFile(p: string, bytes: Uint8Array, overwrite: boolean)
   if (st && !overwrite) throw new FileError(`${path} already exists. Pass overwrite: true to replace it.`);
   if (st && !st.isFile()) throw new FileError(`${path} is not a regular file`);
   // Always write a fresh, randomly named temp file first, so a cleanup can only ever remove a file this call made.
-  const target = join(dir, `.${basename(path)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`);
+  const target = join(dir, `.datev-${randomBytes(8).toString("hex")}.tmp`); // short, so a long target name still fits
   let fd: number;
   try {
     fd = openSync(target, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
@@ -116,7 +116,18 @@ export function writeLocalFile(p: string, bytes: Uint8Array, overwrite: boolean)
     if (realpathSync(dirname(asked)) !== dir) throw new FileError(`${dirname(asked)} changed while saving`);
     if (st) renameSync(target, path);
     else {
-      linkSync(target, path); // fails if the name appeared meanwhile: a new file never replaces one
+      try {
+        linkSync(target, path); // fails if the name appeared meanwhile: a new file never replaces one
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code === "EEXIST") throw new FileError(`${path} appeared while saving. Pass overwrite: true to replace it.`);
+        // No hard links here (exFAT, some network drives): create the name exclusively and copy instead.
+        const out = openSync(path, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+        try {
+          writeAll(out, bytes);
+        } finally {
+          closeSync(out);
+        }
+      }
       rmSync(target, { force: true });
     }
   } catch (e) {

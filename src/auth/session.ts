@@ -56,11 +56,12 @@ export class Session {
         if (e instanceof TokenError && e.code === "invalid_grant") {
           // If another process already rotated the token, its newer session is valid: keep it, never delete it.
           const now = this.store.read();
-          if (now && now.tokens.refreshToken !== s.tokens.refreshToken) {
+          if (now && now.clientId === this.creds.clientId && now.tokens.refreshToken !== s.tokens.refreshToken) {
             if (now.tokens.expiresAt - SKEW_MS > this.now()) return now.tokens.accessToken;
             throw new Error("Another process refreshed the DATEV session at the same moment. Try the call again");
           }
-          this.store.clear();
+          // The session file is never deleted here: another process may have just saved a newer one,
+          // and a dead session costs only one refused refresh until the next login overwrites it.
           throw new NeedsLoginError(`DATEV no longer accepts the saved session (${e.code})`);
         }
         if (e instanceof TokenError && e.code === "invalid_client") throw new Error("DATEV rejected the app credentials (invalid_client). Check DATEV_CLIENT_ID and DATEV_CLIENT_SECRET. The saved session was kept, so no new login is needed once they are right");

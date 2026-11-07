@@ -224,3 +224,30 @@ test("postings that run out of time on a later page keep the rows read and say w
   assert.equal(out.rows.length, 1);
   assert.match(out.note, /from_page 2/);
 });
+
+test("text that is not a fiscal year id, and empty posting rows, are refused", async () => {
+  const text200 = await client(async () => new Response("Backend broken", { headers: { "content-type": "text/plain" } }));
+  assert.equal(((await text200.callTool({ name: "datev_list_fiscal_years", arguments: { client_id: "455148-1" } })) as { isError?: boolean }).isError, true);
+  const empty = await client(async (u, init) => {
+    const p = new URL(String(u)).pathname;
+    if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (p.endsWith("/state")) return json(200, { jobState: "COMPLETED" });
+    return json(200, [{}], { "x-total-pages": "1" });
+  });
+  assert.equal(((await empty.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101" } })) as { isError?: boolean }).isError, true);
+});
+
+test("a page whose body stalls until the deadline still keeps the rows already read", async () => {
+  const c = await client(async (u, init) => {
+    const url = new URL(String(u));
+    if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (url.pathname.endsWith("/state")) return json(200, { jobState: "COMPLETED" });
+    if (url.searchParams.get("page") === "1") return json(200, [{ accountNumber: 1200 }], { "x-total-pages": "2" });
+    const signal = (init as RequestInit).signal;
+    const body = new ReadableStream({ start: (ctl) => signal?.addEventListener("abort", () => ctl.error(new DOMException("aborted", "AbortError"))) });
+    return new Response(body, { headers: { "content-type": "application/json", "x-total-pages": "2" } });
+  });
+  const out = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", max_wait_seconds: 5 } })));
+  assert.equal(out.complete, false);
+  assert.equal(out.rows.length, 1);
+});

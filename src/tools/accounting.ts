@@ -49,7 +49,7 @@ function asList(body: unknown, id: string): Record<string, unknown>[] {
 // Every row must look like what the endpoint promises; one stray row means the whole answer is not trusted.
 function rowsOf(body: unknown, id: string, valid: (row: Record<string, unknown>) => boolean, what: string): Record<string, unknown>[] {
   const rows = asList(body, id);
-  const bad = rows.findIndex((r) => !r || typeof r !== "object" || Array.isArray(r) || errorOnly(r) || !valid(r));
+  const bad = rows.findIndex((r) => !r || typeof r !== "object" || Array.isArray(r) || Object.keys(r).length === 0 || errorOnly(r) || !valid(r));
   if (bad >= 0) throw new CallError(`DATEV answered ${id} with a row that is not ${what} (row ${bad + 1}: ${JSON.stringify(rows[bad]).slice(0, 150)})`);
   return rows;
 }
@@ -81,7 +81,9 @@ export function fiscalYearIds(body: unknown): string[] {
   const items = Array.isArray(body) ? body : body === undefined || body === null || body === "" ? [] : [body];
   return items.map((x, i) => {
     const id = x && typeof x === "object" ? (x as Record<string, unknown>).id : x;
-    if (typeof id !== "string" && typeof id !== "number") throw new CallError(`DATEV sent a fiscal year without an id (entry ${i + 1}: ${JSON.stringify(x).slice(0, 150)})`);
+    // DATEV fiscal year ids are dates as eight digits, e.g. 20230701.
+    if ((typeof id !== "string" && typeof id !== "number") || !/^(199[2-9]|20[0-9][0-9])[0-9]{4}$/.test(String(id)))
+      throw new CallError(`DATEV sent something that is not a fiscal year id (entry ${i + 1}: ${JSON.stringify(x).slice(0, 150)})`);
     return String(id);
   });
 }

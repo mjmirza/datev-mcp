@@ -21,7 +21,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // A process's start time tells a live holder apart from an unrelated process that reused its pid.
 function startedAt(pid: number): string | undefined {
   try {
-    return execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"] }).trim() || undefined;
+    return execFileSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8", timeout: 2000, stdio: ["ignore", "pipe", "ignore"], env: { ...process.env, TZ: "UTC", LC_ALL: "C" } }).trim() || undefined;
   } catch {
     return undefined;
   }
