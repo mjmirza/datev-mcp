@@ -19,7 +19,7 @@ export async function login(cfg: Config, log: (s: string) => void = (s) => proce
   const state = randomToken();
   const nonce = randomToken();
   const pkce = newPkce();
-  const cb = await startCallbackServer(state);
+  const cb = await startCallbackServer(state, { timeoutMs: 600_000 });
   const url = buildAuthorizeUrl(cfg.endpoints, {
     clientId: cfg.creds.clientId,
     redirectUri: cb.redirectUri,
