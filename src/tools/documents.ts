@@ -80,7 +80,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         if (note) metadata.note = note;
         if (category && folder && register) Object.assign(metadata, { category, folder, register });
         const d = deps(extra.signal);
-        const fingerprint = { tool: "datev_upload_document", env: d.env, client_id, file: file.path, sha256: createHash("sha256").update(file.bytes).digest("hex"), metadata };
+        const fingerprint = { tool: "datev_upload_document", env: d.env, client_id, file: file.path, name: file.name, content_type: contentType, sha256: createHash("sha256").update(file.bytes).digest("hex"), metadata };
         if (confirm !== true) {
           return ok({
             preview: true,

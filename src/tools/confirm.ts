@@ -7,7 +7,9 @@ const TTL_MS = 15 * 60_000;
 function canonical(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
   if (v && typeof v === "object") return `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(",")}}`;
-  return JSON.stringify(v ?? null);
+  // Missing and null are different requests (no body versus a JSON null body), so they never share a token.
+  if (v === undefined) return "~undefined";
+  return JSON.stringify(v);
 }
 
 const sign = (payload: unknown, issued: number) => createHmac("sha256", KEY).update(`${issued}|${canonical(payload)}`).digest("base64url");

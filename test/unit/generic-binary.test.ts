@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -29,7 +29,7 @@ test("a binary download is saved byte for byte, or returned as exact base64", as
   const dir = mkdtempSync(join(tmpdir(), "datev-bin-"));
   const target = join(dir, "beleg.pdf");
   const saved = JSON.parse(text(await c.callTool({ name: "datev_call", arguments: { ...call, save_to: target } })));
-  assert.equal(saved.saved_to, target);
+  assert.equal(saved.saved_to, join(realpathSync(dir), "beleg.pdf"));
   assert.deepEqual([...readFileSync(target)], [...PDF]);
   assert.equal(saved.bytes, undefined, "raw bytes never leak into the JSON answer");
   const inline = JSON.parse(text(await c.callTool({ name: "datev_call", arguments: call })));
@@ -43,4 +43,16 @@ test("save_to refuses hidden folders and key files", async () => {
     assert.equal((r as { isError?: boolean }).isError, true, bad);
     assert.match(text(r), /Refusing/);
   }
+});
+
+test("save_to through a symlinked folder that leads into a hidden folder is refused", async () => {
+  const c = await client(pdf);
+  const root = mkdtempSync(join(tmpdir(), "datev-link-"));
+  const hidden = join(root, ".ssh");
+  mkdirSync(hidden);
+  symlinkSync(hidden, join(root, "export"));
+  const r = await c.callTool({ name: "datev_call", arguments: { ...call, save_to: join(root, "export", "authorized_keys") } });
+  assert.equal((r as { isError?: boolean }).isError, true);
+  assert.match(text(r), /Refusing/);
+  assert.equal(existsSync(join(hidden, "authorized_keys")), false);
 });

@@ -138,3 +138,58 @@ test("a redirect or an unreadable body is an error, never an empty successful li
   assert.equal((garbled as { isError?: boolean }).isError, true);
   assert.match(text(garbled), /unexpected format/);
 });
+
+test("clients are read page by page past DATEV's 100 per request", async () => {
+  const seen: string[] = [];
+  const c = await client(async (u) => {
+    const url = new URL(String(u));
+    seen.push(url.search);
+    const skip = Number(url.searchParams.get("skip"));
+    const n = skip === 0 ? 100 : 50;
+    return json(200, Array.from({ length: n }, (_, i) => ({ id: `455148-${skip + i + 1}`, name: "x" })));
+  });
+  const out = JSON.parse(text(await c.callTool({ name: "datev_list_clients", arguments: {} })));
+  assert.equal(out.length, 150);
+  assert.deepEqual(seen, ["?top=100&skip=0", "?top=100&skip=100"]);
+});
+
+test("an HTTP 200 that carries only an error is an error, never data", async () => {
+  const c = await client(async () => json(200, { error: "Backend broken" }));
+  for (const [name, args] of [["datev_list_clients", {}], ["datev_list_fiscal_years", { client_id: "455148-1" }], ["datev_sums_and_balances", { client_id: "455148-1", fiscal_year_id: "20230101" }]] as const) {
+    const r = await c.callTool({ name, arguments: args });
+    assert.equal((r as { isError?: boolean }).isError, true, name);
+  }
+  const rowless = await client(async () => json(200, [{ accountNumber: 1000 }, { note: "not an account" }]));
+  const r = await rowless.callTool({ name: "datev_sums_and_balances", arguments: { client_id: "455148-1", fiscal_year_id: "20230101" } });
+  assert.match(text(r), /row 2/);
+});
+
+test("postings keep only the rows asked for, but count every match", async () => {
+  const c = await client(async (u, init) => {
+    const p = new URL(String(u)).pathname;
+    if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (p.endsWith("/state")) return json(200, { jobState: "COMPLETED" });
+    return json(200, Array.from({ length: 300 }, (_, i) => ({ accountNumber: 1200, amount: i })), { "x-total-pages": "1" });
+  });
+  const out = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", limit: 3 } })));
+  assert.equal(out.matches, 300);
+  assert.equal(out.rows.length, 3);
+});
+
+test("postings stop before reading pages when the shared budget is spent", async () => {
+  let pages = 0;
+  const c = await client(async (u, init) => {
+    const p = new URL(String(u)).pathname;
+    if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (p.endsWith("/state")) {
+      await new Promise((r) => setTimeout(r, 4200));
+      return json(200, { jobState: "COMPLETED" });
+    }
+    pages++;
+    return json(200, []);
+  });
+  const out = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", max_wait_seconds: 5 } })));
+  assert.equal(out.complete, false);
+  assert.equal(out.job_id, "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+  assert.equal(pages, 0);
+});

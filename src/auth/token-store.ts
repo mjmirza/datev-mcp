@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync, rmSync, statSync, existsSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import type { DatevEnv } from "./endpoints.js";
@@ -52,7 +53,7 @@ export class TokenStore {
 
   write(s: StoredSession): void {
     mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
-    const tmp = `${this.file}.${process.pid}.tmp`;
+    const tmp = `${this.file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
     writeFileSync(tmp, JSON.stringify(s), { mode: 0o600 });
     renameSync(tmp, this.file);
   }
@@ -69,31 +70,77 @@ export class TokenStore {
     }
   }
 
-  private tryLock(token: string, staleMs: number): boolean {
+  // Identifies one lock generation, so a takeover never removes a newer lock that reused the path.
+  private generation(): string | undefined {
     try {
-      mkdirSync(this.lockDir);
-      writeFileSync(join(this.lockDir, "owner"), JSON.stringify({ pid: process.pid, token }), { mode: 0o600 });
-      return true;
+      const st = statSync(this.lockDir);
+      return `${st.ino}:${st.birthtimeMs}:${this.owner()?.token ?? ""}`;
     } catch {
-      // Stale only when the holder process is gone. A slow but live holder keeps its lock, so its refresh token is never spent twice.
-      try {
-        const o = this.owner();
-        const old = Date.now() - statSync(this.lockDir).mtimeMs > staleMs;
-        if (old && (!o || !pidAlive(o.pid))) rmSync(this.lockDir, { recursive: true, force: true });
-      } catch {
-        /* lock vanished between checks */
-      }
+      return undefined;
+    }
+  }
+
+  private isStale(staleMs: number, maxHoldMs: number): boolean {
+    try {
+      const age = Date.now() - statSync(this.lockDir).mtimeMs;
+      const o = this.owner();
+      // Past the max hold it is stale even if its pid now belongs to an unrelated process (pid reuse).
+      // A young lock without an owner file is being born, not abandoned.
+      return age > maxHoldMs || (age > staleMs && (!o || !pidAlive(o.pid)));
+    } catch {
       return false;
     }
   }
 
+  private takeOver(gen: string, staleMs: number, maxHoldMs: number): void {
+    const mutex = `${this.lockDir}.takeover`;
+    try {
+      if (Date.now() - statSync(mutex).mtimeMs > 10_000) rmSync(mutex, { recursive: true, force: true });
+    } catch {
+      /* no leftover mutex */
+    }
+    try {
+      mkdirSync(mutex);
+    } catch {
+      return; // someone else is deciding right now
+    }
+    try {
+      // Decide again on fresh state: only remove the exact generation that was judged stale.
+      if (this.generation() === gen && this.isStale(staleMs, maxHoldMs)) {
+        const tomb = `${this.lockDir}.dead-${process.pid}-${randomBytes(4).toString("hex")}`;
+        renameSync(this.lockDir, tomb);
+        rmSync(tomb, { recursive: true, force: true });
+      }
+    } catch {
+      /* lock vanished or changed meanwhile */
+    } finally {
+      rmSync(mutex, { recursive: true, force: true });
+    }
+  }
+
+  private tryLock(token: string, staleMs: number, maxHoldMs: number): boolean {
+    try {
+      mkdirSync(this.lockDir);
+    } catch {
+      const gen = this.generation();
+      if (gen && this.isStale(staleMs, maxHoldMs)) this.takeOver(gen, staleMs, maxHoldMs);
+      return false;
+    }
+    // Published atomically, so a reader never sees half an owner record.
+    const tmp = join(this.lockDir, `owner.${token}.tmp`);
+    writeFileSync(tmp, JSON.stringify({ pid: process.pid, token }), { mode: 0o600 });
+    renameSync(tmp, join(this.lockDir, "owner"));
+    return true;
+  }
+
   // Cross-process mutex: several MCP clients (and login) share one session file. mkdir is atomic.
-  async withLock<T>(fn: () => Promise<T>, opts: { staleMs?: number; waitMs?: number } = {}): Promise<T> {
+  async withLock<T>(fn: () => Promise<T>, opts: { staleMs?: number; waitMs?: number; maxHoldMs?: number } = {}): Promise<T> {
     const staleMs = opts.staleMs ?? 30_000;
+    const maxHoldMs = opts.maxHoldMs ?? 120_000;
     const deadline = Date.now() + (opts.waitMs ?? 90_000);
-    const token = `${process.pid}-${Math.random().toString(36).slice(2)}`;
+    const token = `${process.pid}-${randomBytes(8).toString("hex")}`;
     mkdirSync(dirname(this.lockDir), { recursive: true, mode: 0o700 });
-    while (!this.tryLock(token, staleMs)) {
+    while (!this.tryLock(token, staleMs, maxHoldMs)) {
       if (Date.now() > deadline) throw new Error(`Timed out waiting for the DATEV session lock at ${this.lockDir}`);
       await sleep(50); // BESTPRACTICE_OK: polling a lock is inherently sequential
     }

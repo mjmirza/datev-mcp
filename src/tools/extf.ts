@@ -142,7 +142,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const summary = summarizeReport(validateBytes(file.bytes), "de");
         if (!summary.valid) return { ...ok({ uploaded: false, reason: "Fix the EXTF errors before uploading", ...summary }), isError: true };
         const d = deps(extra.signal);
-        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, sha256: createHash("sha256").update(file.bytes).digest("hex") };
+        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256: createHash("sha256").update(file.bytes).digest("hex") };
         if (confirm !== true) {
           return ok({
             preview: true,

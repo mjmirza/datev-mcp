@@ -138,3 +138,26 @@ test("a confirm token only fits the exact request it was issued for, and expires
   assert.match(checkConfirmToken(t, req, 1_000 + 16 * 60_000)!, /expired/);
   assert.match(checkConfirmToken("garbage", req, 2_000)!, /malformed/);
 });
+
+test("a failed save leaves no temp file behind, so the next attempt works", async () => {
+  const { mkdtempSync, writeFileSync, readdirSync, chmodSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { writeLocalFile } = await import("../../src/tools/files.js");
+  const dir = mkdtempSync(join(tmpdir(), "datev-retry-"));
+  const target = join(dir, "out.pdf");
+  writeFileSync(target, "old");
+  chmodSync(dir, 0o500); // read-only folder: the temp file cannot be created
+  assert.throws(() => writeLocalFile(target, new Uint8Array([1, 2, 3]), true), /Cannot create/);
+  chmodSync(dir, 0o700);
+  assert.deepEqual(readdirSync(dir), ["out.pdf"]);
+  writeLocalFile(target, new Uint8Array([1, 2, 3]), true);
+  assert.deepEqual([...readFileSync(target)], [1, 2, 3]);
+});
+
+test("a missing body and a null body never share a confirm token", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const t = issueConfirmToken({ op: "x", body: undefined });
+  assert.match(checkConfirmToken(t, { op: "x", body: null }) ?? "", /does not match/);
+  assert.equal(checkConfirmToken(t, { op: "x", body: undefined }), undefined);
+});

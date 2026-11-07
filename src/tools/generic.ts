@@ -97,7 +97,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (bytes) {
           if (save_to && r.status < 400 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
           else if (bytes.length <= INLINE_BINARY_MAX && !r.truncated) out.base64 = Buffer.from(bytes).toString("base64");
-          else out.note = r.truncated ? `The file is larger than ${HARD_MAX_BYTES} bytes and was not read completely.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
+          else out.note = r.truncated ? `The file is larger than ${(r.body as { cut_at_bytes?: number }).cut_at_bytes ?? HARD_MAX_BYTES} bytes and was not read completely. Nothing was saved.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
         }
         return r.status >= 400 ? { ...text(out), isError: true } : text(out);
       } catch (e) {

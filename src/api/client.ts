@@ -61,6 +61,8 @@ export interface CallDeps {
   signal?: AbortSignal;
   /** Budget for the whole call, retries and waits included. Default 55 s, under the usual 60 s MCP client timeout. */
   deadlineMs?: number;
+  /** Byte budget for a binary answer (PDF, image). Default and maximum 50 MB. */
+  maxBinaryBytes?: number;
 }
 
 export class CallError extends Error {
@@ -156,11 +158,35 @@ function encodeBody(op: Operation, input: CallInput): { body?: string | Uint8Arr
   throw new CallError(`Body for ${ct} must be a string`);
 }
 
-export function retryDelay(attempt: number, retryAfter: string | null): number {
-  const secs = retryAfter ? Number(retryAfter) : NaN;
-  if (Number.isFinite(secs) && secs >= 0) return Math.min(secs * 1000, 10_000);
+// Retry-After may be seconds or an HTTP date. It is honored as given; a wait that does not fit the budget means no retry.
+export function retryDelay(attempt: number, retryAfter: string | null, now = Date.now()): number {
+  const v = retryAfter?.trim();
+  if (v && /^\d+$/.test(v)) return Number(v) * 1000;
+  const at = v ? Date.parse(v) : NaN;
+  if (!Number.isNaN(at)) return Math.max(0, at - now);
   return Math.min(500 * 2 ** attempt, 4_000) * (0.5 + Math.random() / 2);
 }
+
+// Waits for a promise, but gives up at the deadline or on cancel. The promise itself (a shared token refresh) keeps running.
+async function bounded<T>(work: Promise<T>, deadline: number, signal: AbortSignal | undefined, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const stop = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new CallError(`Ran out of time ${what}. Try again, or narrow the request.`)), Math.max(0, deadline - Date.now()));
+    onAbort = () => reject(new CallError("The call was cancelled"));
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([work, stop]);
+  } finally {
+    clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+const discard = (res: Response | undefined) =>
+  res?.body ? Promise.race([res.body.cancel().catch(() => undefined), new Promise((r) => setTimeout(r, 1000))]) : Promise.resolve();
 
 // Some DATEV endpoints (e.g. general ledger accounts) answer with one JSON object per line.
 // An x-ndjson body is always a list, even with one line ("20230701\n" is one fiscal year id).
@@ -208,14 +234,16 @@ async function readCapped(res: Response, cap: number): Promise<{ bytes: Uint8Arr
   return { bytes, overflow };
 }
 
-async function readBody(res: Response, maxChars: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
+async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
   const ct = res.headers.get("content-type") ?? "";
-  const byteCap = Math.min(HARD_MAX_BYTES, maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
+  // A declared binary type gets its own byte budget; the text cap is about what fits in a conversation.
+  const declaredBinary = ct !== "" && !TEXTUAL.test(ct);
+  const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
   const { bytes, overflow } = await readCapped(res, byteCap);
   const binary = ct !== "" ? !TEXTUAL.test(ct) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
-    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256 }, truncated: overflow, bytes };
+    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow, bytes };
   }
   const text = new TextDecoder("utf-8").decode(bytes);
   const truncated = overflow || text.length > maxChars;
@@ -243,11 +271,13 @@ interface Prepared {
 async function attempt(p: Prepared, n: number): Promise<CallResult> {
   const { op, url, deps } = p;
   if (deps.signal?.aborted) throw new CallError("The call was cancelled before DATEV was asked");
+  if (p.deadline - Date.now() <= 0) throw new CallError("Ran out of time before DATEV answered. Try again, or narrow the request.");
+  const token = await bounded(deps.token(), p.deadline, deps.signal, "while getting a DATEV access token");
   const left = p.deadline - Date.now();
   if (left <= 0) throw new CallError("Ran out of time before DATEV answered. Try again, or narrow the request.");
   const headers: Record<string, string> = {
     ...p.extraHeaders,
-    authorization: `Bearer ${await deps.token()}`,
+    authorization: `Bearer ${token}`,
     "X-DATEV-Client-Id": deps.creds.clientId,
     accept: "application/json, */*;q=0.5",
   };
@@ -255,6 +285,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   if (p.contentType) headers["content-type"] = p.contentType;
   let res: Response | undefined;
   let netErr: unknown;
+  let read: Awaited<ReturnType<typeof readBody>> | undefined;
   try {
     // redirect "manual": fetch would forward X-DATEV-Client-Secret to whatever host a redirect names.
     res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.any([AbortSignal.timeout(Math.min(30_000, left)), ...(deps.signal ? [deps.signal] : [])]) });
@@ -262,19 +293,31 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     netErr = e;
   }
   // Reads retry transient failures. Writes retry only a 429: DATEV refused it, so it cannot have been applied.
-  const retryable =
-    n < MAX_ATTEMPTS &&
-    (op.method === "get" ? netErr !== undefined || (res !== undefined && RETRYABLE.has(res.status)) : res?.status === 429);
+  const statusRetry = res !== undefined && (op.method === "get" ? RETRYABLE.has(res.status) : res.status === 429);
+  if (res && !statusRetry) {
+    try {
+      read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
+    } catch (e) {
+      netErr = e; // the answer broke off while it was being read
+      if (op.method !== "get" || deps.signal?.aborted) throw new CallError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  const retryable = n < MAX_ATTEMPTS && (statusRetry || (op.method === "get" && netErr !== undefined));
   const delay = retryDelay(n - 1, res?.headers.get("retry-after") ?? null);
   // A retry only makes sense if it can still finish inside the budget, and never after a cancel.
   if (retryable && !deps.signal?.aborted && Date.now() + delay + 1000 < p.deadline) {
+    if (!read) await discard(res);
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-    await sleep(delay);
+    await bounded(sleep(delay), p.deadline, deps.signal, "while waiting to retry");
     return attempt(p, n + 1);
   }
   if (deps.signal?.aborted) throw new CallError("The call was cancelled");
   if (!res) throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
-  const { body, truncated, bytes } = await readBody(res, deps.maxBodyChars ?? 100_000);
+  if (!read) {
+    if (netErr !== undefined) throw new CallError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+    read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
+  }
+  const { body, truncated, bytes } = read;
   return {
     status: res.status,
     url: url.toString(),

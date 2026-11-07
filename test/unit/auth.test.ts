@@ -203,3 +203,39 @@ test("a lock left by a dead process is reclaimed", async () => {
   utimesSync(join(dir, "session-sandbox.lock"), new Date(0), new Date(0));
   assert.equal(await store.withLock(async () => "reclaimed", { waitMs: 2000 }), "reclaimed");
 });
+
+test("a takeover never removes a lock that was replaced after it was judged stale", async () => {
+  const dir = tmp();
+  const store = new TokenStore("sandbox", dir) as unknown as { generation(): string; takeOver(g: string, s: number, m: number): void };
+  const { mkdirSync, utimesSync, rmSync, readFileSync } = await import("node:fs");
+  const lock = join(dir, "session-sandbox.lock");
+  mkdirSync(lock);
+  writeFileSync(join(lock, "owner"), JSON.stringify({ pid: 999_999_9, token: "ghost" }));
+  utimesSync(lock, new Date(0), new Date(0));
+  const judged = store.generation();
+  // Meanwhile another process takes the lock over and a live owner gets it.
+  rmSync(lock, { recursive: true });
+  mkdirSync(lock);
+  writeFileSync(join(lock, "owner"), JSON.stringify({ pid: process.pid, token: "live" }));
+  store.takeOver(judged, 1, 120_000);
+  assert.equal(JSON.parse(readFileSync(join(lock, "owner"), "utf8")).token, "live");
+});
+
+test("a lock held past the maximum hold is taken over even if its pid now belongs to a live process", async () => {
+  const dir = tmp();
+  const store = new TokenStore("sandbox", dir);
+  const { mkdirSync, utimesSync } = await import("node:fs");
+  const lock = join(dir, "session-sandbox.lock");
+  mkdirSync(lock);
+  writeFileSync(join(lock, "owner"), JSON.stringify({ pid: process.ppid, token: "reused-pid" }));
+  utimesSync(lock, new Date(0), new Date(0));
+  assert.equal(await store.withLock(async () => "taken", { waitMs: 2000 }), "taken");
+});
+
+test("a wrong client secret keeps the saved session instead of logging out", async () => {
+  const store = new TokenStore("sandbox", tmp());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
+  const s = new Session(store, ENDPOINTS.sandbox, creds, { fetch: async () => json(401, { error: "invalid_client" }), now: () => 10_000_000 });
+  await assert.rejects(s.accessToken(), /invalid_client.*kept/);
+  assert.equal(store.read()?.tokens.refreshToken, "R1");
+});

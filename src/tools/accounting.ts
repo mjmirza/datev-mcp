@@ -13,10 +13,13 @@ function errorText(e: unknown): string {
   return `Failed: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-async function call(id: string, input: CallInput, deps: CallDeps, maxBodyChars?: number) {
+// deadline: one absolute end time shared by every request of a tool call.
+async function call(id: string, input: CallInput, deps: CallDeps, maxBodyChars?: number, deadline?: number) {
   const op = getOperation(id);
   if (!op) throw new CallError(`${id} is missing from the operation index`);
-  const r = await callOperation(op, input, maxBodyChars ? { ...deps, maxBodyChars } : deps);
+  const left = deadline === undefined ? undefined : deadline - Date.now();
+  if (left !== undefined && left <= 0) throw new CallError(`Ran out of time before ${id} could run`);
+  const r = await callOperation(op, input, { ...deps, ...(maxBodyChars ? { maxBodyChars } : {}), ...(left !== undefined ? { deadlineMs: left } : {}) });
   // Anything but 2xx is a failure here, a redirect included: a typed tool must never turn it into an empty answer.
   if (r.status < 200 || r.status >= 300) throw new CallError(`DATEV returned HTTP ${r.status} for ${id}: ${JSON.stringify(r.body).slice(0, 300)}`);
   if (r.bytes) throw new CallError(`DATEV answered ${id} with a binary file (${r.contentType ?? "unknown type"}) instead of data`);
@@ -29,8 +32,22 @@ function asList(body: unknown, id: string): Record<string, unknown>[] {
   if (Array.isArray(body)) return body as Record<string, unknown>[];
   if (body === "" || body === undefined || body === null) return [];
   // One NDJSON line sent as application/json parses to a single object: a list of one, not an error.
-  if (typeof body === "object") return [body as Record<string, unknown>];
+  // An object that only carries an error description is DATEV failing, even with HTTP 200.
+  if (typeof body === "object") {
+    const keys = Object.keys(body as object);
+    if (keys.length > 0 && keys.every((k) => /^(error|errors|message|detail|title|status|httpMessage|code)$/i.test(k)))
+      throw new CallError(`DATEV answered ${id} with an error instead of data: ${JSON.stringify(body).slice(0, 200)}`);
+    return [body as Record<string, unknown>];
+  }
   throw new CallError(`DATEV answered ${id} in an unexpected format (${typeof body}), so no result is shown rather than a wrong one`);
+}
+
+// Every row must look like what the endpoint promises; one stray row means the whole answer is not trusted.
+function rowsOf(body: unknown, id: string, valid: (row: Record<string, unknown>) => boolean, what: string): Record<string, unknown>[] {
+  const rows = asList(body, id);
+  const bad = rows.findIndex((r) => !r || typeof r !== "object" || Array.isArray(r) || !valid(r));
+  if (bad >= 0) throw new CallError(`DATEV answered ${id} with a row that is not ${what} (row ${bad + 1}: ${JSON.stringify(rows[bad]).slice(0, 150)})`);
+  return rows;
 }
 
 // The spec's JobState enum is PENDING, COMPLETED, FAILED, DELETED; other shapes fall back to reading the words.
@@ -58,10 +75,11 @@ export function jobIdFrom(body: unknown, location?: string): string | undefined 
 // DATEV sends fiscal years as bare ids (one per NDJSON line); accept objects with an id as well.
 export function fiscalYearIds(body: unknown): string[] {
   const items = Array.isArray(body) ? body : body === undefined || body === null || body === "" ? [] : [body];
-  return items
-    .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>).id : x))
-    .filter((x): x is string | number => typeof x === "string" || typeof x === "number")
-    .map(String);
+  return items.map((x, i) => {
+    const id = x && typeof x === "object" ? (x as Record<string, unknown>).id : x;
+    if (typeof id !== "string" && typeof id !== "number") throw new CallError(`DATEV sent a fiscal year without an id (entry ${i + 1}: ${JSON.stringify(x).slice(0, 150)})`);
+    return String(id);
+  });
 }
 
 const accountOf = (row: Record<string, unknown>): string =>
@@ -78,8 +96,22 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     },
     async (_args, extra) => {
       try {
-        const r = await call("accounting-clients.getclients", {}, deps(extra.signal));
-        return ok(asList(r.body, "accounting-clients.getclients").map((c) => ({ id: c.id, name: c.name, number: c.client_number, services: Array.isArray(c.services) ? (c.services as { name?: string }[]).map((s) => s.name) : undefined })));
+        const d = deps(extra.signal);
+        const deadline = Date.now() + 50_000;
+        const all: Record<string, unknown>[] = [];
+        // DATEV returns at most 100 clients per request, so page with skip until a short page arrives.
+        let complete = false;
+        for (let page = 0; page < 50; page++) {
+          const r = await call("accounting-clients.getclients", { query: { top: 100, skip: page * 100 } }, d, undefined, deadline); // BESTPRACTICE_OK: each page depends on the previous count
+          const rows = rowsOf(r.body, "accounting-clients.getclients", (c) => typeof c.id === "string" && c.id !== "", "a client with an id");
+          all.push(...rows);
+          if (rows.length < 100) {
+            complete = true;
+            break;
+          }
+        }
+        const clients = all.map((c) => ({ id: c.id, name: c.name, number: c.client_number, services: Array.isArray(c.services) ? (c.services as { name?: string }[]).map((s) => s.name) : undefined }));
+        return ok(complete ? clients : { complete: false, note: "More than 5000 clients; only the first 5000 are listed.", clients });
       } catch (e) {
         return err(errorText(e));
       }
@@ -97,6 +129,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     async ({ client_id }, extra) => {
       try {
         const body = (await call("accounting-dataexchange.getfiscalyears", { pathParams: { clientId: client_id } }, deps(extra.signal))).body;
+        if (body !== "" && body !== undefined && body !== null) asList(body, "accounting-dataexchange.getfiscalyears");
         return ok(fiscalYearIds(body).map((id) => ({ id })));
       } catch (e) {
         return err(errorText(e));
@@ -120,7 +153,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     async ({ client_id, fiscal_year_id, account_prefix, limit }, extra) => {
       try {
         const r = await call("accounting-dataexchange.getsumsandbalances", { pathParams: { clientId: client_id, fiscalYearId: fiscal_year_id } }, deps(extra.signal), UNCAPPED);
-        const all = asList(r.body, "accounting-dataexchange.getsumsandbalances");
+        const all = rowsOf(r.body, "accounting-dataexchange.getsumsandbalances", (x) => accountOf(x) !== "", "an account with a number");
         const rows = account_prefix ? all.filter((x) => accountOf(x).startsWith(account_prefix)) : all;
         return ok({ total_accounts: all.length, matches: rows.length, rows: rows.slice(0, limit ?? 50) });
       } catch (e) {
@@ -154,21 +187,24 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         const deadline = Date.now() + (max_wait_seconds ?? 45) * 1000;
         let jobId = job_id;
         if (!jobId) {
-          const started = await call("accounting-dataexchange.postaccountpostingsjob", { pathParams: ids }, d);
+          const started = await call("accounting-dataexchange.postaccountpostingsjob", { pathParams: ids }, d, undefined, deadline);
           jobId = jobIdFrom(started.body, started.location);
           if (!jobId) throw new CallError(`DATEV did not return a job id: ${JSON.stringify(started.body).slice(0, 200)}`);
         }
         const job = jobId;
-        let phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d)).body);
+        let phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d, undefined, deadline)).body);
         while (phase === "running" && Date.now() + 2000 < deadline) {
           await sleep(2000); // BESTPRACTICE_OK: polling a job is sequential by nature
-          phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d)).body); // BESTPRACTICE_OK: same poll
+          phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d, undefined, deadline)).body); // BESTPRACTICE_OK: same poll
         }
         if (phase === "failed") throw new CallError(`DATEV reported the postings job ${job} as failed or deleted. Start a new one by calling without job_id.`);
         if (phase === "running") return ok({ ready: false, job_id: job, note: "DATEV is still preparing the postings. Call again with this job_id to continue the same job." });
 
         const first = from_page ?? 1;
+        const keep = limit ?? 50;
+        if (Date.now() + 1000 >= deadline) return ok({ ready: true, job_id: job, complete: false, pages_read: "none", note: `The job is ready but no time was left to read it. Call again with job_id and from_page ${first}.` });
         const rows: Record<string, unknown>[] = [];
+        let matches = 0;
         let read = 0;
         let pageNo = first;
         let pages: number | undefined;
@@ -176,12 +212,17 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         // Each page's count comes from the previous answer and all pages share one deadline, so they are read in order.
         while (pages === undefined || pageNo <= pages) {
           if (pageNo > first && Date.now() >= deadline) break;
-          const page = await call("accounting-dataexchange.getaccountpostingsjob", { pathParams: { clientId: client_id, jobId: job }, query: { page: pageNo } }, d, UNCAPPED); // BESTPRACTICE_OK: paging is sequential
-          const all = asList(page.body, "accounting-dataexchange.getaccountpostingsjob");
+          const page = await call("accounting-dataexchange.getaccountpostingsjob", { pathParams: { clientId: client_id, jobId: job }, query: { page: pageNo } }, d, UNCAPPED, deadline); // BESTPRACTICE_OK: paging is sequential
+          const all = rowsOf(page.body, "accounting-dataexchange.getaccountpostingsjob", () => true, "a posting");
           pages = Number(page.paging?.["x-total-pages"] ?? 1) || 1;
           total = page.paging?.["x-total-count"] !== undefined ? Number(page.paging["x-total-count"]) : undefined;
           read += all.length;
-          for (const x of all) if (!account || accountOf(x).startsWith(account)) rows.push(x);
+          // Only the rows that will be shown are kept, so many large pages never pile up in memory.
+          for (const x of all) {
+            if (account && !accountOf(x).startsWith(account)) continue;
+            matches++;
+            if (rows.length < keep) rows.push(x);
+          }
           pageNo++;
         }
         const done = pages !== undefined && pageNo > pages;
@@ -192,8 +233,8 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
           pages_read: `${first}-${pageNo - 1} of ${pages}`,
           postings_read: read,
           total_postings: total,
-          matches: rows.length,
-          rows: rows.slice(0, limit ?? 50),
+          matches,
+          rows,
           ...(done ? {} : { note: `Not every page was read in time. Call again with job_id and from_page ${pageNo} to continue.` }),
         });
       } catch (e) {

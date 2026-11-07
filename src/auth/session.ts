@@ -52,10 +52,12 @@ export class Session {
         this.store.write({ ...s, tokens: { ...next, refreshToken: next.refreshToken } });
         return next.accessToken;
       } catch (e) {
-        if (e instanceof TokenError && (e.code === "invalid_grant" || e.status === 400 || e.status === 401)) {
+        // Only a rejected refresh token ends the session. A wrong client secret (invalid_client) or a server hiccup keeps it.
+        if (e instanceof TokenError && e.code === "invalid_grant") {
           this.store.clear();
           throw new NeedsLoginError(`DATEV no longer accepts the saved session (${e.code})`);
         }
+        if (e instanceof TokenError && e.code === "invalid_client") throw new Error("DATEV rejected the app credentials (invalid_client). Check DATEV_CLIENT_ID and DATEV_CLIENT_SECRET. The saved session was kept, so no new login is needed once they are right");
         throw e;
       }
     });

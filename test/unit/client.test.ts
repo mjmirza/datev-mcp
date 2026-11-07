@@ -215,3 +215,43 @@ test("a cancelled call never reaches DATEV, and a cancel mid-call is not retried
   await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { signal: mid.signal })), /cancelled/);
   assert.equal(calls, 1);
 });
+
+test("Retry-After is honored in seconds and as an HTTP date", async () => {
+  const { retryDelay } = await import("../../src/api/client.js");
+  assert.equal(retryDelay(0, "120"), 120_000);
+  const now = Date.parse("2026-11-07T12:00:00Z");
+  assert.equal(retryDelay(0, "Sat, 07 Nov 2026 12:01:00 GMT", now), 60_000);
+  // A wait longer than the budget means no retry at all.
+  let calls = 0;
+  const f: FetchLike = async () => (calls++, json(429, {}, { "retry-after": "120" }));
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f));
+  assert.equal(r.status, 429);
+  assert.equal(calls, 1);
+});
+
+test("a slow token, a cancelled backoff and a broken-off body all stay inside the budget", async () => {
+  const slow = deps(async () => json(200, {}), { token: () => new Promise((r) => setTimeout(() => r("T"), 2000)), deadlineMs: 50 });
+  await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, slow), /Ran out of time while getting/);
+  const stop = new AbortController();
+  const waiting = deps(async () => json(503, {}, { "retry-after": "5" }), { signal: stop.signal, sleep: (ms) => new Promise((r) => setTimeout(r, ms)) });
+  const t0 = Date.now();
+  setTimeout(() => stop.abort(), 30);
+  await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, waiting), /cancelled/);
+  assert.ok(Date.now() - t0 < 2000, "cancel ends the wait at once");
+  let n = 0;
+  const breaking: FetchLike = async () => {
+    n++;
+    if (n === 1) return new Response(new ReadableStream({ pull: (c) => c.error(new TypeError("terminated")) }), { headers: { "content-type": "application/json" } });
+    return json(200, { ok: true });
+  };
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(breaking));
+  assert.equal(r.attempts, 2);
+  assert.deepEqual(r.body, { ok: true });
+});
+
+test("a binary download is not cut at the text preview size", async () => {
+  const big = new Uint8Array(500_000).fill(7);
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async () => new Response(big, { headers: { "content-type": "application/pdf" } })));
+  assert.equal(r.truncated, false);
+  assert.equal(r.bytes?.length, 500_000);
+});
