@@ -189,6 +189,57 @@ function perOperation(op: Operation) {
     });
   }
 
+  {
+    // What actually leaves the machine: the exact URL, body bytes and content type, and no secret in the URL.
+    const want = buildUrl(op, "sandbox", good).toString();
+    const marker = { evalMarker: "äé😀 & <x>" };
+    const ct = op.body?.contentTypes[0] ?? "";
+    const input = op.body && /json/i.test(ct) ? { ...good, body: marker } : op.body && /octet/i.test(ct) ? { ...good, rawBody: new Uint8Array([0, 255, 128, 10]) } : good;
+    const { deps, calls } = mockDeps(() => json(200, {}));
+    expectOk("wire.request", id, () => callOperation(op, input, deps), () => {
+      const c = calls[0];
+      if (!c || calls.length !== 1) return `calls ${calls.length}`;
+      if (c.url !== want) return `fetched ${c.url}, built ${want}`;
+      if (/SECRET|TOK/.test(c.url)) return "credential in the URL";
+      const h = (c.init?.headers ?? {}) as Record<string, string>;
+      if (!h.accept) return "no accept header";
+      if (input.body === marker) {
+        if (c.init?.body !== JSON.stringify(marker)) return "JSON body changed on the wire";
+        if (h["content-type"] !== ct) return `content type ${h["content-type"]}, spec ${ct}`;
+      } else if (input.rawBody instanceof Uint8Array) {
+        const sent = c.init?.body as Uint8Array;
+        if (!(sent instanceof Uint8Array) || [...sent].join() !== "0,255,128,10") return "file bytes changed on the wire";
+      } else if (input.rawBody instanceof FormData) {
+        if (h["content-type"]) return "multipart content type set by hand, the boundary would be lost";
+      } else if (c.init?.body !== undefined) return "a body was sent that nobody asked for";
+      return undefined;
+    });
+  }
+  {
+    const raw = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x00, 0xff, 0xfe, 0x0a]);
+    expectOk("binary.byte-exact", id, () => callOperation(op, good, mockDeps(() => new Response(raw, { headers: { "content-type": "application/pdf" } })).deps), (v) => {
+      const r = v as { bytes?: Uint8Array };
+      return r.bytes && [...r.bytes].join() === [...raw].join() ? undefined : "binary answer altered";
+    });
+  }
+  {
+    const endless = () => new Response(new ReadableStream<Uint8Array>({ pull: (c) => c.enqueue(new Uint8Array(4096).fill(120)) }), { headers: { "content-type": "text/plain" } });
+    expectOk("cap.endless-stream", id, () => callOperation(op, good, mockDeps(endless, { maxBodyChars: 50 }).deps), (v) => {
+      const r = v as { truncated: boolean; body: string };
+      return r.truncated && r.body.length === 50 ? undefined : "endless answer not capped";
+    });
+  }
+  {
+    const gone = new AbortController();
+    gone.abort();
+    const { deps, calls } = mockDeps(() => json(200, {}), { signal: gone.signal });
+    expectThrow("cancel.never-sent", id, () => callOperation(op, good, deps), /cancelled/, () => record("cancel.no-request", id, calls.length === 0, `calls ${calls.length}`));
+  }
+  {
+    const { deps, calls } = mockDeps(() => json(503, {}), { deadlineMs: 500 });
+    expectOk("deadline.no-retry-past-budget", id, () => callOperation(op, good, deps), () => (calls.length === 1 ? undefined : `calls ${calls.length}`));
+  }
+
   [429, 502, 503, 504].forEach((status) => {
     const { deps, calls } = mockDeps((n) => (n < 3 ? json(status, {}, status === 429 ? { "retry-after": "0" } : {}) : json(200, [])));
     expectOk(`retry.${status}`, id, () => callOperation(op, good, deps), (v) => {

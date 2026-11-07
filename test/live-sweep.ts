@@ -18,8 +18,10 @@ interface Entry { ts: string; day: string; op: string; product: string; status: 
 const today = new Date().toISOString().slice(0, 10);
 mkdirSync("test/reports", { recursive: true });
 const ledger: Entry[] = existsSync(LEDGER) ? readFileSync(LEDGER, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Entry) : [];
-const terminal = (e: Entry) => typeof e.status === "number" && e.status !== 429;
-const done = new Set(ledger.filter(terminal).map((e) => e.op));
+// Settled: a real answer (2xx) or a confirmed absence (404). 401, 403, 5xx and errors are retried on a later day,
+// because they usually mean a product is not yet enabled for the sandbox app, not that the operation is finished.
+const settled = (e: Entry) => typeof e.status === "number" && (e.status < 300 || e.status === 404);
+const done = new Set(ledger.filter((e) => settled(e) || (e.day === today && e.status !== "skipped")).map((e) => e.op));
 let usedToday = ledger.filter((e) => e.day === today && typeof e.status === "number").length;
 const write = (e: Entry) => {
   ledger.push(e);
@@ -35,7 +37,10 @@ await client.connect(transport, { timeout: 300_000 });
 
 const reads = OPERATIONS.filter((o) => o.method === "get" && o.servers.sandbox);
 const pathNames = (o: Operation) => [...o.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
-const known = new Map<string, string>(); // `${api}|${param}` -> value harvested from a live list response
+const KNOWN = "test/reports/live-known.json";
+// `${api}|${param}` -> value harvested from a live list response, kept across runs so later days can reach child operations.
+const known = new Map<string, string>(existsSync(KNOWN) ? Object.entries(JSON.parse(readFileSync(KNOWN, "utf8")) as Record<string, string>) : []);
+const saveKnown = () => writeFileSync(KNOWN, JSON.stringify(Object.fromEntries(known), null, 2));
 const norm = (s: string) => s.toLowerCase().replace(/[-_]/g, "");
 
 function fits(o: Operation, name: string, v: string): boolean {
@@ -110,7 +115,10 @@ async function callOne(o: Operation): Promise<boolean> {
   const body = parsed.body;
   usedToday++;
   write({ ts: new Date().toISOString(), day: today, op: o.id, product: o.product, status, ms, attempts: parsed.attempts, items: Array.isArray(body) ? body.length : undefined, shape: shapeOf(body), bodyHash: createHash("sha256").update(JSON.stringify(body ?? "")).digest("hex").slice(0, 12) });
-  if (status >= 200 && status < 300) harvest(o, body);
+  if (status >= 200 && status < 300) {
+    harvest(o, body);
+    saveKnown();
+  }
   if (status === 429) stopReason = "DATEV answered 429 Too Many Requests; stopping here so the next run resumes without hammering the API";
   return true;
 }
