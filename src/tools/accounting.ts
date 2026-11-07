@@ -115,7 +115,7 @@ export function registerAccountingTools(server: McpServer, deps: () => CallDeps,
         fiscal_year_id: z.string(),
         account: z.string().regex(/^\d+$/).optional().describe("Only postings on this account (number prefix)"),
         limit: z.number().int().min(1).max(500).optional(),
-        max_wait_seconds: z.number().int().min(5).max(120).optional(),
+        max_wait_seconds: z.number().int().min(5).max(50).optional().describe("Max 50: MCP clients usually cancel a call after 60 seconds"),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
@@ -126,7 +126,7 @@ export function registerAccountingTools(server: McpServer, deps: () => CallDeps,
         const started = await call("accounting-dataexchange.postaccountpostingsjob", { pathParams: ids }, d);
         const jobId = jobIdFrom(started.body, started.location);
         if (!jobId) throw new CallError(`DATEV did not return a job id: ${JSON.stringify(started.body).slice(0, 200)}`);
-        const deadline = Date.now() + (max_wait_seconds ?? 60) * 1000;
+        const deadline = Date.now() + (max_wait_seconds ?? 45) * 1000;
         let phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId } }, d)).body);
         while (phase === "running" && Date.now() < deadline) {
           await sleep(2000); // BESTPRACTICE_OK: polling a job is sequential by nature
