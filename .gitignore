@@ -11,3 +11,6 @@ dist/
 .claude/
 specs/
 test/reports/
+
+# DATEV API documentation and anything derived from it (DATEV terms E.2.2/2.3): never commit
+src/data/operations.json

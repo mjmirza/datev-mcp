@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "MCP server for the DATEV APIs: accounting, payroll, documents and data exchange",
   "type": "module",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=22.0.0"
   },
@@ -17,7 +17,8 @@
     "index:check": "tsx scripts/build-spec-index.ts --check",
     "test": "npm run test:unit",
     "test:unit": "tsx --test test/unit/*.test.ts",
-    "test:live": "tsx test/live.ts"
+    "test:live": "tsx test/live.ts",
+    "specs": "bash scripts/fetch-specs.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
@@ -30,5 +31,6 @@
     "fast-check": "^4.10.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
-  }
+  },
+  "private": true
 }
