@@ -19,6 +19,7 @@ export interface Operation {
   write: boolean;
   health: boolean;
   scopes: string[];
+  clientSecretHeader: boolean;
   params: OperationParam[];
   body?: { required: boolean; contentTypes: string[]; schema?: unknown };
   servers: { production?: string; sandbox?: string };

@@ -32,6 +32,18 @@ export interface SpecDoc {
   servers?: { url: string }[];
   security?: unknown;
   paths?: Record<string, Obj>;
+  components?: { securitySchemes?: Record<string, { type?: string; name?: string }> };
+}
+
+// Picks the OAuth-based security alternative (what this server uses) and reports whether it
+// also demands the client secret as a header. Some products (smarttransfer, master-data) do.
+export function needsClientSecretHeader(security: unknown, doc: SpecDoc): boolean {
+  const schemes = doc.components?.securitySchemes ?? {};
+  const isSecret = (k: string) => schemes[k]?.type === "apiKey" && /client-secret/i.test(schemes[k]?.name ?? "");
+  const alts = Array.isArray(security) ? security.filter(isObj).map((a) => Object.keys(a)) : [];
+  if (alts.length === 0) return false;
+  const chosen = alts.find((a) => a.some((k) => schemes[k]?.type === "oauth2")) ?? alts[0];
+  return chosen.some(isSecret);
 }
 
 export interface SpecFile {
@@ -124,6 +136,7 @@ export function buildIndex(files: SpecFile[]): OperationIndex {
           write: method !== "get",
           health: /health/.test(key) || /\/health/.test(path),
           scopes: scopesOf(op.security ?? doc.security),
+          clientSecretHeader: needsClientSecretHeader(op.security ?? doc.security, doc),
           params,
           body: toBody(op.requestBody, doc),
           servers: srv,

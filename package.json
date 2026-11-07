@@ -16,7 +16,8 @@
     "index": "tsx scripts/build-spec-index.ts",
     "index:check": "tsx scripts/build-spec-index.ts --check",
     "test": "npm run test:unit",
-    "test:unit": "tsx --test test/unit/*.test.ts"
+    "test:unit": "tsx --test test/unit/*.test.ts",
+    "test:live": "tsx test/live.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
