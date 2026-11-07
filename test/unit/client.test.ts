@@ -192,8 +192,8 @@ test("an endless answer stops at the cap instead of filling memory", async () =>
 
 test("retries stop when they could not finish inside the call budget", async () => {
   let calls = 0;
-  const f: FetchLike = async () => (calls++, json(503, {}));
-  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { deadlineMs: 500 }));
+  const f: FetchLike = async () => (calls++, json(503, {}, { "retry-after": "600" }));
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { deadlineMs: 30_000 }));
   assert.equal(calls, 1);
   assert.equal(r.status, 503);
   await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { deadlineMs: 0 })), /Ran out of time/);

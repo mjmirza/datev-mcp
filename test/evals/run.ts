@@ -236,7 +236,8 @@ function perOperation(op: Operation) {
     expectThrow("cancel.never-sent", id, () => callOperation(op, good, deps), /cancelled/, () => record("cancel.no-request", id, calls.length === 0, `calls ${calls.length}`));
   }
   {
-    const { deps, calls } = mockDeps(() => json(503, {}), { deadlineMs: 500 });
+    // The asked wait (600 s) cannot fit a 30 s budget, so no retry; 30 s is too long for a slow runner to burn.
+    const { deps, calls } = mockDeps(() => json(503, {}, { "retry-after": "600" }), { deadlineMs: 30_000 });
     expectOk("deadline.no-retry-past-budget", id, () => callOperation(op, good, deps), () => (calls.length === 1 ? undefined : `calls ${calls.length}`));
   }
 
