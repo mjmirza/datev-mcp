@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
-import { jobIdFrom, jobPhase, registerAccountingTools } from "../../src/tools/accounting.js";
+import { fiscalYearIds, jobIdFrom, jobPhase, registerAccountingTools } from "../../src/tools/accounting.js";
 
 test("job phase reading covers finished, failed and running shapes", () => {
   assert.equal(jobPhase({ state: "Finished" }), "done");
@@ -73,6 +73,15 @@ test("sums and balances: reads the full list and filters by account prefix", asy
   assert.equal(out.total_accounts, 2000);
   assert.ok(out.matches > 0 && out.rows.length <= 5);
   for (const r of out.rows) assert.ok(String(r.accountNumber).startsWith("1000"));
+});
+
+test("fiscal years: bare NDJSON ids (as DATEV sends them) become id objects", async () => {
+  assert.deepEqual(fiscalYearIds(20230701), ["20230701"]);
+  assert.deepEqual(fiscalYearIds([20230701, 20240701]), ["20230701", "20240701"]);
+  assert.deepEqual(fiscalYearIds([{ id: "20230701" }]), ["20230701"]);
+  assert.deepEqual(fiscalYearIds(undefined), []);
+  const c = await client(async () => new Response("20230701\n", { status: 200, headers: { "content-type": "application/x-ndjson" } }));
+  assert.deepEqual(JSON.parse(text(await c.callTool({ name: "datev_list_fiscal_years", arguments: { client_id: "1" } }))), [{ id: "20230701" }]);
 });
 
 test("a DATEV error status surfaces as a tool error", async () => {

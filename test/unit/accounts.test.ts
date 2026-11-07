@@ -60,8 +60,7 @@ test("property: parseJsonOrLines round-trips any list of JSON objects written on
   fc.assert(
     fc.property(fc.array(fc.dictionary(fc.string(), fc.jsonValue()), { minLength: 1, maxLength: 20 }), (objs) => {
       const text = objs.map((o) => JSON.stringify(o)).join("\n");
-      const parsed = parseJsonOrLines(text);
-      assert.deepEqual(objs.length === 1 ? [parsed] : parsed, objs.length === 1 ? [JSON.parse(text)] : JSON.parse(JSON.stringify(objs)));
+      assert.deepEqual(parseJsonOrLines(text, true), JSON.parse(JSON.stringify(objs)));
     }),
   );
 });

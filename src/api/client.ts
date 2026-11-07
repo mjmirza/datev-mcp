@@ -109,13 +109,16 @@ export function retryDelay(attempt: number, retryAfter: string | null): number {
 }
 
 // Some DATEV endpoints (e.g. general ledger accounts) answer with one JSON object per line.
-export function parseJsonOrLines(text: string): unknown {
+// An x-ndjson body is always a list, even with one line ("20230701\n" is one fiscal year id).
+export function parseJsonOrLines(text: string, ndjson = false): unknown {
+  const asLines = () => text.split(/\r?\n/).filter((l) => l.trim() !== "").map((l) => JSON.parse(l) as unknown);
+  if (ndjson) return asLines();
   try {
     return JSON.parse(text);
   } catch {
-    const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+    const lines = asLines();
     if (lines.length === 0) throw new SyntaxError("empty body");
-    return lines.map((l) => JSON.parse(l) as unknown);
+    return lines;
   }
 }
 
@@ -123,9 +126,10 @@ async function readBody(res: Response, maxChars: number): Promise<{ body: unknow
   const text = await res.text();
   const truncated = text.length > maxChars;
   const slice = truncated ? text.slice(0, maxChars) : text;
-  if (!truncated && /json/i.test(res.headers.get("content-type") ?? "")) {
+  const ct = res.headers.get("content-type") ?? "";
+  if (!truncated && /json/i.test(ct)) {
     try {
-      return { body: parseJsonOrLines(slice), truncated };
+      return { body: parseJsonOrLines(slice, /ndjson/i.test(ct)), truncated };
     } catch {
       /* fall through to text */
     }

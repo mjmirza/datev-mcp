@@ -31,7 +31,7 @@ async function check(name: string, fn: () => Promise<{ ok: boolean; detail: stri
   }
 }
 
-const CLIENT = process.env.DATEV_LIVE_CLIENT ?? "455148-2";
+const CLIENT = process.env.DATEV_LIVE_CLIENT ?? "455148-1";
 let fiscalYear = "";
 
 await check("list clients", async () => {

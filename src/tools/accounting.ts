@@ -40,6 +40,15 @@ export function jobIdFrom(body: unknown, location?: string): string | undefined 
   return location?.split("/").filter(Boolean).pop();
 }
 
+// DATEV sends fiscal years as bare ids (one per NDJSON line); accept objects with an id as well.
+export function fiscalYearIds(body: unknown): string[] {
+  const items = Array.isArray(body) ? body : body === undefined || body === null || body === "" ? [] : [body];
+  return items
+    .map((x) => (x && typeof x === "object" ? (x as Record<string, unknown>).id : x))
+    .filter((x): x is string | number => typeof x === "string" || typeof x === "number")
+    .map(String);
+}
+
 const accountOf = (row: Record<string, unknown>): string =>
   String(row.accountNumber ?? row.account_number ?? row.account ?? row.generalLedgerAccount ?? "");
 
@@ -72,7 +81,8 @@ export function registerAccountingTools(server: McpServer, deps: () => CallDeps,
     },
     async ({ client_id }) => {
       try {
-        return ok((await call("accounting-dataexchange.getfiscalyears", { pathParams: { clientId: client_id } }, deps())).body);
+        const body = (await call("accounting-dataexchange.getfiscalyears", { pathParams: { clientId: client_id } }, deps())).body;
+        return ok(fiscalYearIds(body).map((id) => ({ id })));
       } catch (e) {
         return err(errorText(e));
       }
