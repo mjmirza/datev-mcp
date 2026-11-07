@@ -12,7 +12,7 @@ export interface StoredSession {
   tokens: TokenSet;
 }
 
-export function defaultStoreDir(): string {
+function defaultStoreDir(): string {
   return process.env.DATEV_MCP_HOME ?? join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "datev-mcp");
 }
 

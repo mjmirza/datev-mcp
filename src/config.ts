@@ -10,7 +10,7 @@ export interface Config {
   scopes: string[];
 }
 
-export function allIndexScopes(): string[] {
+function allIndexScopes(): string[] {
   const s = new Set<string>(["openid"]);
   for (const op of (index as OperationIndex).operations) for (const sc of op.scopes) if (sc !== "datev:all") s.add(sc);
   return [...s].sort();

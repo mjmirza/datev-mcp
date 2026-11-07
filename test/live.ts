@@ -55,7 +55,7 @@ await check("sums and balances", async () => {
 await check("account postings (async job)", async () => {
   const r = await call("datev_account_postings", { client_id: CLIENT, fiscal_year_id: fiscalYear, limit: 1, max_wait_seconds: 50 });
   const out = json(r);
-  return { ok: !r.isError, detail: r.isError ? String(out).slice(0, 250) : `ready=${out.ready} job=${out.job_id} postings=${out.postings_on_page} keys ${Object.keys(out.rows?.[0] ?? {}).slice(0, 8).join(",")}` };
+  return { ok: !r.isError, detail: r.isError ? String(out).slice(0, 250) : `ready=${out.ready} job=${out.job_id} postings=${out.postings_read} keys ${Object.keys(out.rows?.[0] ?? {}).slice(0, 8).join(",")}` };
 });
 
 const dir = mkdtempSync(join(tmpdir(), "datev-live-"));

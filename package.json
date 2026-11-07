@@ -20,12 +20,12 @@
     "test:live": "tsx test/live.ts",
     "specs": "bash scripts/fetch-specs.sh",
     "eval": "tsx test/evals/run.ts",
-    "sweep": "tsx test/live-sweep.ts"
+    "sweep": "tsx test/live-sweep.ts",
+    "audit:endpoints": "tsx scripts/endpoint-audit.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@seamless-engineering/datev-extf": "0.1.0",
-    "dotenv": "^18.0.9",
     "zod": "^4.6.7"
   },
   "devDependencies": {

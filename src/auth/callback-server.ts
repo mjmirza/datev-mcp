@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { randomToken } from "./pkce.js";
 
-export interface CallbackResult {
+interface CallbackResult {
   code: string;
 }
 

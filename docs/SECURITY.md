@@ -5,7 +5,7 @@ This server holds a login to a tax advisor's DATEV account and lets an AI assist
 
 ## Reporting a problem
 
-Report a suspected vulnerability privately to the maintainer by email at the address in the repository profile. Please do not open a public issue for it. You get an answer within five working days.
+Report a suspected vulnerability privately through this repository's Security tab ("Report a vulnerability"). Please do not open a public issue for it. You get an answer within five working days.
 
 ## What is protected
 
@@ -51,4 +51,4 @@ A second AI model (OpenAI Codex) was asked to attack the code, not to review it,
 
 ## Dependencies
 
-Runtime dependencies are the MCP SDK, zod, dotenv and the MIT-licensed `@seamless-engineering/datev-extf`. Run `npm audit` before every release.
+Runtime dependencies are the MCP SDK, zod and the MIT-licensed `@seamless-engineering/datev-extf`. Run `npm audit` before every release.

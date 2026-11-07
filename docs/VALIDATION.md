@@ -47,7 +47,7 @@ A scenario set that never fails proves nothing. Three bugs were put into the cli
 | Binary answers treated as text | 205 `binary.byte-exact` |
 | The cancel check before sending removed | 205 `cancel.no-request` |
 
-440 scenarios failed in total, and the code was restored byte for byte afterwards. The report is kept as `test/reports/mutation-check-2026-11-07T182055.md`. The same was done for single unit tests during the fixes, for example the session lock takeover test fails when its fresh re-check is removed, and the folder symlink test fails against the earlier file code.
+440 scenarios failed in total, and the code was restored byte for byte afterwards. The report is kept as [docs/evidence/mutation-check-2026-11-07T182055.md](evidence/mutation-check-2026-11-07T182055.md). The same was done for single unit tests during the fixes, for example the session lock takeover test fails when its fresh re-check is removed, and the folder symlink test fails against the earlier file code.
 
 ## Live sandbox
 
@@ -68,7 +68,7 @@ A scenario set that never fails proves nothing. Three bugs were put into the cli
 
 The 500 answers (smart transfer outbound and one master data health endpoint) carry DATEV's own message "Sandboxing policy error", which means the sandbox gateway refuses that product for this app. The 400 answers on the documents and HR export products come from DATEV's server before any request checking. Changing the accept header or adding the client secret header does not change them, so they point to products not yet enabled for this sandbox app rather than a defect here. The 401 answers are HR documents and four health endpoints (HR documents, HR exchange, HR files, income tax documents). The 404 answers are lookups where the sandbox test data has no such record. The per operation table is in [ENDPOINT-AUDIT.md](ENDPOINT-AUDIT.md).
 
-The live numbers above were measured earlier on 2026-11-07, before the second round of fixes. Those fixes did not touch how requests are built, and the offline wire checks still pass, but the live sweep has not been repeated since.
+The sweep was run twice on 2026-11-07, the second time on the final code after all four review passes, with 142 real calls in total. Both runs gave the same result per operation. The live tour on the final code passed all 11 of its checks, including a real EXTF import into the sandbox that DATEV accepted with HTTP 202. Its output is kept as [docs/evidence/live-tour-2026-11-07.txt](evidence/live-tour-2026-11-07.txt), next to the [sweep report](evidence/live-sweep-2026-11-07.md) and the [final eval report](evidence/eval-2026-11-07.md).
 
 ## Independent review
 
@@ -94,7 +94,7 @@ Two findings cannot be closed in Node.js and are documented rather than hidden.
 
 - Behavior with real client data in production. That needs DATEV's technical review first.
 - Products the sandbox app is not enabled for. The 400, 401 and 500 answers above are DATEV's gateway, and those operations have only been checked offline.
-- Write operations against DATEV. They are checked offline and through the MCP preview flow, and the EXTF preview is checked live, but no write was confirmed against the sandbox.
+- Write operations other than the EXTF import. The EXTF import was confirmed live (HTTP 202). Every other write is checked offline and through the MCP preview flow only.
 - DATEV's rate limit. DATEV publishes no number, so the sweep paces itself conservatively.
 
 ## Repeat it yourself

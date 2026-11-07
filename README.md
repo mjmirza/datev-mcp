@@ -2,7 +2,8 @@
 
 Ask your AI assistant about your DATEV bookkeeping, payroll and documents in plain words, and let it act on them only after you have seen exactly what it will do.
 
-![Status](https://img.shields.io/badge/status-private%20preview-orange)
+![Status](https://img.shields.io/badge/status-sandbox%20preview-orange)
+![License](https://img.shields.io/badge/license-source--available-lightgrey)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
 ![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C462%20passing-green)
@@ -26,28 +27,102 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 
 ## From zero to your first answer
 
-You need a DATEV developer account with an app registered for the sandbox, and Node.js 22 or newer. The full walkthrough, including the DATEV portal steps, is in [docs/SETUP.md](docs/SETUP.md).
+You need a DATEV developer account with an app registered for the sandbox, and Node.js 22 or newer. The DATEV portal steps are in [docs/SETUP.md](docs/SETUP.md). Plan about 15 minutes the first time.
 
-1. Install and build.
-   ```bash
-   npm install
-   npm run specs      # downloads DATEV's public API specs into specs/ (not committed)
-   npm run build
-   ```
-2. Provide your DATEV client id and client secret through your password manager or environment as `DATEV_CLIENT_ID` and `DATEV_CLIENT_SECRET`. Never paste them into a chat.
-3. Log in once. A browser window opens at DATEV.
-   ```bash
-   node dist/index.js login
-   ```
-4. Check that everything works.
-   ```bash
-   node dist/index.js doctor
-   ```
-5. Add the server to your AI client (example for Claude Code).
-   ```bash
-   claude mcp add datev -- node /absolute/path/to/datev-mcp/dist/index.js
-   ```
-6. Ask "list my DATEV clients". That is your first win.
+Every screenshot below was taken on 2026-11-07 against the DATEV sandbox, which holds test data only. The DATEV logo is blurred on purpose; this project is not affiliated with DATEV.
+
+### 1. Install and build
+
+```bash
+git clone https://github.com/mjmirza/datev-mcp.git
+cd datev-mcp
+npm install
+npm run specs      # downloads DATEV's public API specs into specs/ (never committed)
+npm run build
+```
+
+### 2. Add your DATEV app credentials
+
+Copy the example settings file and fill in the client id and secret from your app in the DATEV developer portal.
+
+```bash
+cp .env/.env.example .env/.env.local
+# edit .env/.env.local: DATEV_CLIENT_ID and DATEV_CLIENT_SECRET
+```
+
+Git ignores `.env/.env.local`. Every setting is explained in [.env/README.md](.env/README.md). A password manager that injects the two values at start is safer than a file, and either works. Never paste the secret into a chat.
+
+### 3. Sign in once
+
+```bash
+node --env-file=.env/.env.local dist/index.js login
+```
+
+A browser window opens at DATEV's sandbox login. These are the four screens you will see.
+
+**3a. Choose how to sign in.** For a sandbox test account, pick `DATEV-Benutzerkonto` and press Next.
+
+![DATEV sign-in, choose a login method](docs/images/01-signin-method.png)
+
+**3b. Enter your sandbox username and password.** You type these into DATEV's own page. datev-mcp never sees them.
+
+![DATEV sign-in, username and password](docs/images/02-signin-account.png)
+
+**3c. Grant the permissions.** DATEV lists what the app may do and where it will send you back (a one-time `localhost` address on your own machine). Press "I agree" at the bottom.
+
+![DATEV consent page listing the requested permissions](docs/images/03-signin-consent.png)
+
+**3d. Done.** The browser shows a short confirmation and your terminal prints `Logged in to DATEV sandbox`. The session is saved on your machine with owner-only permissions.
+
+![Login complete page](docs/images/04-signin-done.png)
+
+Working over SSH, or want a different browser? Set `DATEV_MCP_NO_BROWSER=1` and the command only prints the link.
+
+### 4. Check that everything works
+
+```bash
+node --env-file=.env/.env.local dist/index.js doctor
+```
+
+Six green lines mean the credentials, the operation index, the saved session, the token and two live DATEV calls all work.
+
+![datev-mcp doctor output, all checks OK](docs/images/00-doctor.png)
+
+### 5. Connect your AI client
+
+Example for Claude Code. Other MCP clients take the same command and arguments.
+
+```bash
+claude mcp add datev -- node --env-file=/absolute/path/to/datev-mcp/.env/.env.local /absolute/path/to/datev-mcp/dist/index.js
+```
+
+### 6. Ask your first question
+
+Type "which clients can I reach in DATEV?". That is your first win.
+
+## What the answers look like
+
+These are real answers from the DATEV sandbox, unedited apart from shortening long lists. The questions are what you type, the tool line is what your assistant calls behind the scenes.
+
+**Your clients and the data services each one has switched on.**
+
+![Answer listing the four sandbox clients](docs/images/05-clients.png)
+
+**Search the client's real chart of accounts in plain words.**
+
+![Answer listing bank accounts from the chart of accounts](docs/images/06-find-accounts.png)
+
+**Sums and balances (Summen- und Saldenliste) for a fiscal year.**
+
+![Answer with debit, credit and balance per account](docs/images/07-sums-and-balances.png)
+
+**Every posted booking of the year.** DATEV prepares this export as a background job. The server waits for it, reads all pages and tells you whether the list is complete.
+
+![Answer with account postings and a completeness line](docs/images/08-account-postings.png)
+
+**Booking something. Preview first, nothing sent.** The assistant builds and checks a DATEV booking file, then shows you what it would import and where. It can only send it after you agree, using the confirmation code tied to this exact file.
+
+![EXTF booking file preview with confirmation code](docs/images/09-extf-preview.png)
 
 ## The tools
 
@@ -134,6 +209,6 @@ The sandbox may only hold test data. Using this with real clients needs DATEV's 
 
 ## License
 
-Private. All rights reserved. Not licensed for use, copying or redistribution without written consent.
+Source-available, not open source. An individual may run and study it for personal, non-commercial evaluation with the credit kept intact. Any business or client use, and any derivative work, including one generated by an AI, needs written consent. The full terms are in [LICENSE](LICENSE). For a commercial license or help setting it up, reach out through [next8n.com](https://next8n.com).
 
-DATEV is a registered trademark of DATEV eG. This project is independent and is not affiliated with, endorsed by, or sponsored by DATEV eG.
+DATEV is a registered trademark of DATEV eG. This project is independent and is not affiliated with, endorsed by, or sponsored by DATEV eG. See [docs/TRADEMARKS.md](docs/TRADEMARKS.md).

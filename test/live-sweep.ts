@@ -21,7 +21,7 @@ const ledger: Entry[] = existsSync(LEDGER) ? readFileSync(LEDGER, "utf8").split(
 // Settled: a real answer (2xx) or a confirmed absence (404). 401, 403, 5xx and errors are retried on a later day,
 // because they usually mean a product is not yet enabled for the sandbox app, not that the operation is finished.
 const settled = (e: Entry) => typeof e.status === "number" && (e.status < 300 || e.status === 404);
-const done = new Set(ledger.filter((e) => settled(e) || (e.day === today && e.status !== "skipped")).map((e) => e.op));
+const done = REDO ? new Set<string>() : new Set(ledger.filter((e) => settled(e) || (e.day === today && e.status !== "skipped")).map((e) => e.op));
 let usedToday = ledger.filter((e) => e.day === today && typeof e.status === "number").length;
 const write = (e: Entry) => {
   ledger.push(e);

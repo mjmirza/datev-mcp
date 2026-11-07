@@ -29,7 +29,7 @@ export async function login(cfg: Config, log: (s: string) => void = (s) => proce
     codeChallenge: pkce.challenge,
   });
   log(`Opening the DATEV ${cfg.env} login in your browser. If nothing opens, visit:\n\n  ${url}\n`);
-  openBrowser(url);
+  if (process.env.DATEV_MCP_NO_BROWSER !== "1") openBrowser(url); // set to 1 over SSH, or to open the link in a browser of your choice
   const { code } = await cb.result;
   const tokens = await exchangeCode(cfg.endpoints.token, { code, redirectUri: cb.redirectUri, codeVerifier: pkce.verifier }, cfg.creds);
   const store = new TokenStore(cfg.env);
