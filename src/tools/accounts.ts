@@ -1,0 +1,87 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { callOperation, CallError, type CallDeps } from "../api/client.js";
+import { NeedsLoginError } from "../auth/session.js";
+import { getOperation } from "./catalog.js";
+
+// Reads the client's own chart of accounts (SKR03, SKR04 or custom) live from DATEV,
+// so no DATEV-owned account data ships with this package.
+
+export interface LedgerAccount {
+  accountNumber: number;
+  caption: string;
+  mainFunction?: number;
+  additionalFunction?: string;
+}
+
+const CACHE_MS = 10 * 60_000;
+const cache = new Map<string, { at: number; accounts: LedgerAccount[] }>();
+
+export function clearAccountCache(): void {
+  cache.clear();
+}
+
+const fold = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss");
+
+export function matchAccounts(accounts: LedgerAccount[], query: string, limit = 25): LedgerAccount[] {
+  const q = query.trim();
+  if (q === "") return accounts.slice(0, limit);
+  if (/^\d+$/.test(q)) return accounts.filter((a) => String(a.accountNumber).startsWith(q)).slice(0, limit);
+  const terms = fold(q).split(/\s+/).filter(Boolean);
+  return accounts.filter((a) => terms.every((t) => fold(a.caption).includes(t))).slice(0, limit);
+}
+
+export async function loadAccounts(clientId: string, fiscalYearId: string, deps: CallDeps, now = Date.now()): Promise<LedgerAccount[]> {
+  // The key carries who is asking: a login or app change must never be served the previous user's cached chart.
+  const who = createHash("sha256").update(`${deps.creds.clientId}|${await deps.token()}`).digest("hex").slice(0, 16);
+  const key = `${deps.env}|${who}|${clientId}|${fiscalYearId}`;
+  const hit = cache.get(key);
+  if (hit && now - hit.at < CACHE_MS) return hit.accounts;
+  const op = getOperation("accounting-dataexchange.getgeneralledgeraccounts");
+  if (!op) throw new CallError("The general ledger operation is missing from the index");
+  // A full chart easily exceeds the generic response cap, so read it whole and filter here.
+  const r = await callOperation(op, { pathParams: { clientId, fiscalYearId } }, { ...deps, maxBodyChars: Number.MAX_SAFE_INTEGER });
+  if (r.status !== 200) throw new CallError(`DATEV returned HTTP ${r.status} for the chart of accounts: ${JSON.stringify(r.body).slice(0, 300)}`);
+  if (!Array.isArray(r.body)) throw new CallError("DATEV returned the chart of accounts in an unexpected format");
+  const accounts = (r.body as LedgerAccount[])
+    .filter((a) => typeof a?.accountNumber === "number" && typeof a?.caption === "string")
+    .sort((a, b) => a.accountNumber - b.accountNumber);
+  cache.set(key, { at: now, accounts });
+  return accounts;
+}
+
+export function registerAccountTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
+  server.registerTool(
+    "datev_find_accounts",
+    {
+      title: "Find accounts in a client's chart of accounts",
+      description:
+        "Look up general ledger accounts (Sachkonten) of one DATEV client and fiscal year, by number prefix or by name words. Uses the client's real chart (SKR03, SKR04 or custom). Use before booking to check an account exists.",
+      inputSchema: {
+        client_id: z.string().describe("DATEV client id, e.g. 455148-2 (from the clients list)"),
+        fiscal_year_id: z.string().describe("Fiscal year id, e.g. 20230701 (from getfiscalyears)"),
+        query: z.string().describe("Account number prefix like '1200', or words like 'Bank' or 'Umsatzsteuer'"),
+        limit: z.number().int().min(1).max(100).optional(),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async ({ client_id, fiscal_year_id, query, limit }, extra) => {
+      try {
+        const all = await loadAccounts(client_id, fiscal_year_id, deps(extra.signal));
+        const hits = matchAccounts(all, query, limit ?? 25);
+        const text = JSON.stringify({ total_accounts: all.length, matches: hits.length, accounts: hits }, null, 2);
+        return { content: [{ type: "text" as const, text }] };
+      } catch (e) {
+        const message = e instanceof NeedsLoginError || e instanceof CallError ? e.message : `Account lookup failed: ${e instanceof Error ? e.message : String(e)}`;
+        return { content: [{ type: "text" as const, text: message }], isError: true };
+      }
+    },
+  );
+}

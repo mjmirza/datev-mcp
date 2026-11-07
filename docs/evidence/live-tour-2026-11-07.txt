@@ -1,0 +1,11 @@
+OK   list clients                         4 clients
+OK   fiscal years                         first 20230101; keys id
+OK   find accounts                        2061 total, e.g. 11000000 Aareal Bank 23456789
+OK   sums and balances                    239 accounts; row keys accountNumber,sumsAndBalancesMonthValues,annualValueDebit,annualValueCredit,balance,balanceDebitCreditIdentifier,caption,openingBalanceDebit
+OK   account postings (async job)         ready=true job=11111111-1111-4111-8111-111111111111 postings=(not printed by this older run) keys accountNumber,accountingSequenceId,accountingTransactionKey,accountingTransactionKey49AdditionalFunction,accountingTransactionKey49MainFunctionNumber,accountingTransactionKey49MainFunctionType,additionalFunctionsForGoodsAndServices,amountCredit
+OK   write EXTF batch (local)             2962 bytes, 0 warnings
+OK   validate EXTF (local)                errors 0, warnings 0
+OK   upload EXTF preview (no confirm)     nothing sent, confirm token issued
+OK   confirm without the preview token is refused Show the preview first: call without confirm, then call again with confirm: true
+OK   upload EXTF to sandbox (confirm)     HTTP 202 job /clients/455148-1/extf-files/jobs/1baef5ab-b652-43b7-92ef-1ca7cfdd8f5d ""
+OK   document upload preview (no confirm) nothing sent

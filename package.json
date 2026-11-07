@@ -1,0 +1,38 @@
+{
+  "name": "datev-mcp",
+  "version": "0.0.1",
+  "description": "MCP server for the DATEV APIs: accounting, payroll, documents and data exchange",
+  "type": "module",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "datev-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "index": "tsx scripts/build-spec-index.ts",
+    "index:check": "tsx scripts/build-spec-index.ts --check",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --test test/unit/*.test.ts",
+    "test:live": "tsx test/live.ts",
+    "specs": "bash scripts/fetch-specs.sh",
+    "eval": "tsx test/evals/run.ts",
+    "sweep": "tsx test/live-sweep.ts",
+    "audit:endpoints": "tsx scripts/endpoint-audit.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@seamless-engineering/datev-extf": "0.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "fast-check": "^4.10.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "private": true
+}

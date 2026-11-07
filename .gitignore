@@ -1,7 +1,8 @@
 node_modules/
 dist/
 *.log
-.env/.*
+!.env/
+.env/*
 !.env/.env.example
 !.env/README.md
 .DS_Store
@@ -10,3 +11,6 @@ dist/
 .claude/
 specs/
 test/reports/
+
+# DATEV API documentation and anything derived from it (DATEV terms E.2.2/2.3): never commit
+src/data/operations.json

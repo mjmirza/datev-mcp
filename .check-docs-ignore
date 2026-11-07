@@ -1,0 +1,4 @@
+test/reports
+node_modules
+specs
+.claude

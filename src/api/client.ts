@@ -1,0 +1,346 @@
+import { createHash } from "node:crypto";
+import type { DatevEnv } from "../auth/endpoints.js";
+import type { ClientCredentials, FetchLike } from "../auth/token-client.js";
+import type { Operation } from "../spec/types.js";
+
+export interface CallInput {
+  pathParams?: Record<string, string | number>;
+  query?: Record<string, string | number | boolean | (string | number)[]>;
+  headers?: Record<string, string>;
+  body?: unknown;
+  // Files: raw bytes (octet-stream) or a FormData (multipart, fetch sets the boundary).
+  rawBody?: Uint8Array | FormData;
+  contentType?: string;
+}
+
+const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secret|host|content-length|cookie)$/i;
+
+export function buildHeaders(op: Operation, input: CallInput): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(input.headers ?? {})) {
+    if (RESERVED_HEADERS.test(k)) throw new CallError(`Header "${k}" is set by the server and cannot be overridden`);
+    if (/[\r\n]/.test(v)) throw new CallError(`Header "${k}" contains a line break`);
+    out[k] = v;
+  }
+  for (const p of op.params.filter((x) => x.in === "header" && x.required)) {
+    const has = Object.keys(out).some((k) => k.toLowerCase() === p.name.toLowerCase());
+    if (!has) throw new CallError(`Missing required header "${p.name}"`);
+  }
+  return out;
+}
+
+export interface CallResult {
+  status: number;
+  url: string;
+  contentType?: string;
+  location?: string;
+  /** Pagination headers DATEV sends (x-total-pages, x-total-count, x-current-page, x-page-size, link). */
+  paging?: Record<string, string>;
+  body: unknown;
+  truncated: boolean;
+  attempts: number;
+  /** Raw bytes of a binary answer (PDF, image, archive), never decoded as text. */
+  bytes?: Uint8Array;
+}
+
+const PAGING_HEADERS = ["x-total-pages", "x-total-count", "x-current-page", "x-page-size", "link"];
+
+function pagingOf(h: Headers): Record<string, string> | undefined {
+  const out = Object.fromEntries(PAGING_HEADERS.map((k) => [k, h.get(k)]).filter((e): e is [string, string] => e[1] !== null));
+  return Object.keys(out).length ? out : undefined;
+}
+
+export interface CallDeps {
+  env: DatevEnv;
+  creds: ClientCredentials;
+  token: () => Promise<string>;
+  fetch?: FetchLike;
+  sleep?: (ms: number) => Promise<void>;
+  maxBodyChars?: number;
+  /** Cancels the call, e.g. the MCP request's signal when the client gives up. */
+  signal?: AbortSignal;
+  /** Budget for the whole call, retries and waits included. Default 55 s, under the usual 60 s MCP client timeout. */
+  deadlineMs?: number;
+  /** Byte budget for a binary answer (PDF, image). Default and maximum 50 MB. */
+  maxBinaryBytes?: number;
+}
+
+export class CallError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CallError";
+  }
+}
+
+const RETRYABLE = new Set([429, 502, 503, 504]);
+export const MAX_ATTEMPTS = 3;
+
+interface ParamSchema { type?: string; pattern?: string; format?: string; minimum?: number; maximum?: number; maxLength?: number; minLength?: number }
+
+// Checks a value against the constraints DATEV's spec declares, so a bad id fails here instead of costing a rate-limited call.
+export function checkAgainstSchema(name: string, v: string, schema: unknown): void {
+  if (!schema || typeof schema !== "object") return;
+  const s = schema as ParamSchema;
+  const bad = (why: string) => new CallError(`Parameter "${name}" ${why}`);
+  if (s.type === "integer") {
+    if (!/^-?\d+$/.test(v)) throw bad("must be a whole number");
+    const n = Number(v);
+    if (s.minimum !== undefined && n < s.minimum) throw bad(`must be at least ${s.minimum}`);
+    if (s.maximum !== undefined && n > s.maximum) throw bad(`must be at most ${s.maximum}`);
+  }
+  if (s.maxLength !== undefined && v.length > s.maxLength) throw bad(`must be at most ${s.maxLength} characters`);
+  if (s.minLength !== undefined && v.length < s.minLength) throw bad(`must be at least ${s.minLength} characters`);
+  if (s.format === "uuid" && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) throw bad("must be a UUID");
+  if (s.pattern) {
+    let re: RegExp | undefined;
+    try {
+      re = new RegExp(s.pattern, "u");
+    } catch {
+      re = undefined; // a pattern JavaScript cannot compile is left to DATEV to enforce
+    }
+    if (re && !re.test(v)) throw bad(`does not match the format DATEV expects (${s.pattern})`);
+  }
+}
+
+function encodePathValue(name: string, raw: string | number, separators: string, schema: unknown): string {
+  const v = String(raw);
+  if (v === "" || v === "." || v === ".." || /[/\\]/.test(v)) throw new CallError(`Path parameter "${name}" has an invalid value`);
+  // Two parameters in one segment ("{a}-{b}"): a value holding the separator would make the URL ambiguous.
+  if ([...separators].some((c) => v.includes(c))) throw new CallError(`Path parameter "${name}" must not contain "${separators}"`);
+  checkAgainstSchema(name, v, schema);
+  return encodeURIComponent(v);
+}
+
+// Literal characters that share a path segment with the placeholder, e.g. "-" in "{consultant}-{client}".
+function segmentSeparators(path: string, name: string): string {
+  const seg = path.split("/").find((s) => s.includes(`{${name}}`)) ?? "";
+  if ((seg.match(/\{/g) ?? []).length < 2) return "";
+  return [...new Set(seg.replace(/\{[^}]+\}/g, ""))].join("");
+}
+
+export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
+  const base = env === "sandbox" ? op.servers.sandbox : op.servers.production;
+  if (!base) throw new CallError(`${op.id} has no ${env} server in the DATEV spec`);
+  const path = op.path.replace(/\{([^}]+)\}/g, (_m, name: string) => {
+    const v = input.pathParams?.[name];
+    if (v === undefined) throw new CallError(`Missing path parameter "${name}"`);
+    const schema = op.params.find((p) => p.in === "path" && p.name === name)?.schema;
+    return encodePathValue(name, v, segmentSeparators(op.path, name), schema);
+  });
+  const url = new URL(base.replace(/\/$/, "") + path);
+  const baseUrl = new URL(base);
+  // Pin every call to the host and base path DATEV publishes for this operation.
+  if (url.origin !== baseUrl.origin || !url.pathname.startsWith(baseUrl.pathname.replace(/\/$/, ""))) throw new CallError("Refusing a URL outside the operation's DATEV server");
+  for (const p of op.params.filter((x) => x.in === "query" && x.required)) {
+    if (input.query?.[p.name] === undefined) throw new CallError(`Missing required query parameter "${p.name}"`);
+  }
+  for (const [k, v] of Object.entries(input.query ?? {})) {
+    for (const item of Array.isArray(v) ? v : [v]) url.searchParams.append(k, String(item));
+  }
+  return url;
+}
+
+function encodeBody(op: Operation, input: CallInput): { body?: string | Uint8Array | FormData; contentType?: string } {
+  if (input.rawBody !== undefined) {
+    if (!op.body) throw new CallError(`${op.id} does not take a request body`);
+    if (input.rawBody instanceof FormData) return { body: input.rawBody };
+    return { body: input.rawBody, contentType: input.contentType ?? op.body.contentTypes[0] ?? "application/octet-stream" };
+  }
+  if (input.body === undefined) {
+    if (op.body?.required) throw new CallError(`${op.id} requires a request body`);
+    return {};
+  }
+  if (!op.body) throw new CallError(`${op.id} does not take a request body`);
+  const ct = input.contentType ?? op.body.contentTypes[0] ?? "application/json";
+  if (/multipart\/form-data|octet-stream/i.test(ct)) throw new CallError(`${op.id} needs a file upload (${ct}); the generic tool sends JSON or text only`);
+  if (/json/i.test(ct)) return { body: JSON.stringify(input.body), contentType: ct };
+  if (typeof input.body === "string") return { body: input.body, contentType: ct };
+  throw new CallError(`Body for ${ct} must be a string`);
+}
+
+// Retry-After may be seconds or an HTTP date. It is honored as given; a wait that does not fit the budget means no retry.
+export function retryDelay(attempt: number, retryAfter: string | null, now = Date.now()): number {
+  const v = retryAfter?.trim();
+  if (v && /^\d+$/.test(v)) return Number(v) * 1000;
+  const at = v ? Date.parse(v) : NaN;
+  if (!Number.isNaN(at)) return Math.max(0, at - now);
+  return Math.min(500 * 2 ** attempt, 4_000) * (0.5 + Math.random() / 2);
+}
+
+// Waits for a promise, but gives up at the deadline or on cancel. The promise itself (a shared token refresh) keeps running.
+async function bounded<T>(work: Promise<T>, deadline: number, signal: AbortSignal | undefined, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const stop = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new CallError(`Ran out of time ${what}. Try again, or narrow the request.`)), Math.max(0, deadline - Date.now()));
+    onAbort = () => reject(new CallError("The call was cancelled"));
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([work, stop]);
+  } finally {
+    clearTimeout(timer);
+    if (onAbort) signal?.removeEventListener("abort", onAbort);
+  }
+}
+
+const discard = (res: Response | undefined) =>
+  res?.body ? Promise.race([res.body.cancel().catch(() => undefined), new Promise((r) => setTimeout(r, 1000))]) : Promise.resolve();
+
+// Some DATEV endpoints (e.g. general ledger accounts) answer with one JSON object per line.
+// An x-ndjson body is always a list, even with one line ("20230701\n" is one fiscal year id).
+export function parseJsonOrLines(text: string, ndjson = false): unknown {
+  const asLines = () => text.split(/\r?\n/).filter((l) => l.trim() !== "").map((l) => JSON.parse(l) as unknown);
+  if (ndjson) return asLines();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const lines = asLines();
+    if (lines.length === 0) throw new SyntaxError("empty body");
+    return lines;
+  }
+}
+
+// Even an "uncapped" read stops here, so a runaway answer cannot exhaust memory.
+export const HARD_MAX_BYTES = 50 * 1024 * 1024;
+const TEXTUAL = /json|xml|text\/|csv|javascript|html|x-www-form-urlencoded/i;
+
+async function readCapped(res: Response, cap: number): Promise<{ bytes: Uint8Array; overflow: boolean }> {
+  if (!res.body) return { bytes: new Uint8Array(), overflow: false };
+  const reader = res.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  let overflow = false;
+  for (;;) {
+    const { done, value } = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+    if (done) break;
+    if (size + value.length > cap) {
+      parts.push(value.subarray(0, cap - size));
+      size = cap;
+      overflow = true;
+      await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once the cap is hit
+      break;
+    }
+    parts.push(value);
+    size += value.length;
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) {
+    bytes.set(p, at);
+    at += p.length;
+  }
+  return { bytes, overflow };
+}
+
+async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
+  const ct = res.headers.get("content-type") ?? "";
+  // A declared binary type gets its own byte budget; the text cap is about what fits in a conversation.
+  const declaredBinary = ct !== "" && !TEXTUAL.test(ct);
+  const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
+  const { bytes, overflow } = await readCapped(res, byteCap);
+  const binary = ct !== "" ? !TEXTUAL.test(ct) : bytes.includes(0);
+  if (binary) {
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow, bytes };
+  }
+  const text = new TextDecoder("utf-8").decode(bytes);
+  const truncated = overflow || text.length > maxChars;
+  const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
+  if (!truncated && /json/i.test(ct)) {
+    try {
+      return { body: parseJsonOrLines(slice, /ndjson/i.test(ct)), truncated };
+    } catch {
+      /* fall through to text */
+    }
+  }
+  return { body: slice, truncated };
+}
+
+interface Prepared {
+  op: Operation;
+  url: URL;
+  body?: string | Uint8Array | FormData;
+  contentType?: string;
+  extraHeaders: Record<string, string>;
+  deps: CallDeps;
+  deadline: number;
+}
+
+async function attempt(p: Prepared, n: number): Promise<CallResult> {
+  const { op, url, deps } = p;
+  if (deps.signal?.aborted) throw new CallError("The call was cancelled before DATEV was asked");
+  if (p.deadline - Date.now() <= 0) throw new CallError("Ran out of time before DATEV answered. Try again, or narrow the request.");
+  const token = await bounded(deps.token(), p.deadline, deps.signal, "while getting a DATEV access token");
+  const left = p.deadline - Date.now();
+  if (left <= 0) throw new CallError("Ran out of time before DATEV answered. Try again, or narrow the request.");
+  const headers: Record<string, string> = {
+    ...p.extraHeaders,
+    authorization: `Bearer ${token}`,
+    "X-DATEV-Client-Id": deps.creds.clientId,
+    accept: "application/json, */*;q=0.5",
+  };
+  if (op.clientSecretHeader) headers["X-DATEV-Client-Secret"] = deps.creds.clientSecret;
+  if (p.contentType) headers["content-type"] = p.contentType;
+  let res: Response | undefined;
+  let netErr: unknown;
+  let read: Awaited<ReturnType<typeof readBody>> | undefined;
+  try {
+    // redirect "manual": fetch would forward X-DATEV-Client-Secret to whatever host a redirect names.
+    res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.any([AbortSignal.timeout(Math.min(30_000, left)), ...(deps.signal ? [deps.signal] : [])]) });
+  } catch (e) {
+    netErr = e;
+  }
+  // Reads retry transient failures. Writes retry only a 429: DATEV refused it, so it cannot have been applied.
+  const statusRetry = res !== undefined && (op.method === "get" ? RETRYABLE.has(res.status) : res.status === 429);
+  if (res && !statusRetry) {
+    try {
+      read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
+    } catch (e) {
+      netErr = e; // the answer broke off while it was being read
+      if (op.method !== "get" || deps.signal?.aborted) throw new CallError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+  const retryable = n < MAX_ATTEMPTS && (statusRetry || (op.method === "get" && netErr !== undefined));
+  const delay = retryDelay(n - 1, res?.headers.get("retry-after") ?? null);
+  // A retry only makes sense if it can still finish inside the budget, and never after a cancel.
+  if (retryable && !deps.signal?.aborted && Date.now() + delay + 1000 < p.deadline) {
+    if (!read) await discard(res);
+    const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+    await bounded(sleep(delay), p.deadline, deps.signal, "while waiting to retry");
+    return attempt(p, n + 1);
+  }
+  if (deps.signal?.aborted) throw new CallError("The call was cancelled");
+  if (!res) {
+    // A request cut off by the call budget is a timeout, so callers can keep partial work and resume.
+    if ((netErr as Error | undefined)?.name === "TimeoutError" || Date.now() >= p.deadline - 100)
+      throw new CallError("Ran out of time while waiting for DATEV to answer. Try again, or narrow the request.");
+    throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+  }
+  if (!read) {
+    if (netErr !== undefined) {
+      if ((netErr as Error).name === "TimeoutError" || Date.now() >= p.deadline - 100) throw new CallError("Ran out of time while reading DATEV's answer. Try again, or narrow the request.");
+      throw new CallError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+    }
+    read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
+  }
+  const { body, truncated, bytes } = read;
+  return {
+    status: res.status,
+    url: url.toString(),
+    contentType: res.headers.get("content-type") ?? undefined,
+    location: res.headers.get("location") ?? undefined,
+    paging: pagingOf(res.headers),
+    body,
+    truncated,
+    attempts: n,
+    ...(bytes ? { bytes } : {}),
+  };
+}
+
+// async so validation errors surface as a rejected promise, never a synchronous throw.
+export async function callOperation(op: Operation, input: CallInput, deps: CallDeps): Promise<CallResult> {
+  const url = buildUrl(op, deps.env, input);
+  return attempt({ op, url, deps, deadline: Date.now() + (deps.deadlineMs ?? 55_000), extraHeaders: buildHeaders(op, input), ...encodeBody(op, input) }, 1);
+}
