@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { callOperation, CallError, type CallDeps } from "../api/client.js";
@@ -38,7 +39,9 @@ export function matchAccounts(accounts: LedgerAccount[], query: string, limit = 
 }
 
 export async function loadAccounts(clientId: string, fiscalYearId: string, deps: CallDeps, now = Date.now()): Promise<LedgerAccount[]> {
-  const key = `${deps.env}|${clientId}|${fiscalYearId}`;
+  // The key carries who is asking: a login or app change must never be served the previous user's cached chart.
+  const who = createHash("sha256").update(`${deps.creds.clientId}|${await deps.token()}`).digest("hex").slice(0, 16);
+  const key = `${deps.env}|${who}|${clientId}|${fiscalYearId}`;
   const hit = cache.get(key);
   if (hit && now - hit.at < CACHE_MS) return hit.accounts;
   const op = getOperation("accounting-dataexchange.getgeneralledgeraccounts");
@@ -54,7 +57,7 @@ export async function loadAccounts(clientId: string, fiscalYearId: string, deps:
   return accounts;
 }
 
-export function registerAccountTools(server: McpServer, deps: () => CallDeps): void {
+export function registerAccountTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
   server.registerTool(
     "datev_find_accounts",
     {
@@ -69,9 +72,9 @@ export function registerAccountTools(server: McpServer, deps: () => CallDeps): v
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    async ({ client_id, fiscal_year_id, query, limit }) => {
+    async ({ client_id, fiscal_year_id, query, limit }, extra) => {
       try {
-        const all = await loadAccounts(client_id, fiscal_year_id, deps());
+        const all = await loadAccounts(client_id, fiscal_year_id, deps(extra.signal));
         const hits = matchAccounts(all, query, limit ?? 25);
         const text = JSON.stringify({ total_accounts: all.length, matches: hits.length, accounts: hits }, null, 2);
         return { content: [{ type: "text" as const, text }] };

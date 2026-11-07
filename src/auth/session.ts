@@ -42,12 +42,14 @@ export class Session {
     return this.store.withLock(async () => {
       const s = this.store.read();
       if (!s) throw new NeedsLoginError("no saved session");
+      if (s.clientId !== this.creds.clientId) throw new NeedsLoginError("saved session belongs to a different DATEV app");
       if (s.tokens.expiresAt - SKEW_MS > this.now()) return s.tokens.accessToken; // another process refreshed
       if (!s.tokens.refreshToken) throw new NeedsLoginError("session expired and has no refresh token");
+      // On a dropped connection the token is kept on purpose: if DATEV never received it a retry succeeds, and if it did the session is lost either way.
       try {
         const next = await refreshTokens(this.endpoints.token, s.tokens.refreshToken, this.creds, { fetch: this.opts.fetch, now: this.opts.now });
-        // DATEV rotates refresh tokens; keep the old one only if none came back.
-        this.store.write({ ...s, tokens: { ...next, refreshToken: next.refreshToken ?? s.tokens.refreshToken } });
+        // DATEV refresh tokens are single-use. The one just sent is spent, so it is never kept, even if no new one came back.
+        this.store.write({ ...s, tokens: { ...next, refreshToken: next.refreshToken } });
         return next.accessToken;
       } catch (e) {
         if (e instanceof TokenError && (e.code === "invalid_grant" || e.status === 400 || e.status === 401)) {

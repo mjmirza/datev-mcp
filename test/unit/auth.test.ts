@@ -160,3 +160,46 @@ test("callback server escapes a hostile error value instead of reflecting HTML",
   assert.ok(!(await r.text()).includes("<script>"));
   await rejected;
 });
+
+test("a refresh answer without a new refresh token drops the spent one instead of replaying it later", async () => {
+  const store = new TokenStore("sandbox", tmp());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
+  const s = new Session(store, ENDPOINTS.sandbox, creds, { fetch: async () => json(200, { access_token: "NEW", expires_in: 900 }), now: () => 10_000_000 });
+  assert.equal(await s.accessToken(), "NEW");
+  assert.equal(store.read()?.tokens.refreshToken, undefined);
+});
+
+test("the locked re-read refuses a session that another login saved for a different app", async () => {
+  const store = new TokenStore("sandbox", tmp());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
+  let sent = 0;
+  const s = new Session(store, ENDPOINTS.sandbox, creds, { fetch: async () => (sent++, json(200, { access_token: "X", refresh_token: "R2", expires_in: 900 })), now: () => 10_000_000 });
+  const original = store.read.bind(store);
+  let reads = 0;
+  store.read = () => (++reads === 1 ? original() : { ...original()!, clientId: "other-app" });
+  await assert.rejects(s.accessToken(), /different DATEV app/);
+  assert.equal(sent, 0);
+});
+
+test("a live lock holder keeps the lock past the stale age, and only the owner releases it", async () => {
+  const dir = tmp();
+  const a = new TokenStore("sandbox", dir);
+  const b = new TokenStore("sandbox", dir);
+  let release!: () => void;
+  const holding = a.withLock(() => new Promise<void>((r) => (release = r)), { staleMs: 1 });
+  await new Promise((r) => setTimeout(r, 30));
+  await assert.rejects(b.withLock(async () => "stolen", { staleMs: 1, waitMs: 200 }), /Timed out/);
+  release();
+  await holding;
+  assert.equal(await b.withLock(async () => "free now"), "free now");
+});
+
+test("a lock left by a dead process is reclaimed", async () => {
+  const dir = tmp();
+  const store = new TokenStore("sandbox", dir);
+  const { mkdirSync, utimesSync } = await import("node:fs");
+  mkdirSync(join(dir, "session-sandbox.lock"));
+  writeFileSync(join(dir, "session-sandbox.lock", "owner"), JSON.stringify({ pid: 999_999_9, token: "ghost" }));
+  utimesSync(join(dir, "session-sandbox.lock"), new Date(0), new Date(0));
+  assert.equal(await store.withLock(async () => "reclaimed", { waitMs: 2000 }), "reclaimed");
+});

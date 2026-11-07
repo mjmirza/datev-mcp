@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { decodeBytes, encodeCp1252, formatFinding, validateExtf, writeBuchungsstapel, type Report } from "@seamless-engineering/datev-extf";
 import { callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
+import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
 import { FileError, readLocalFile, writeLocalFile } from "./files.js";
 
 // EXTF validation and writing use @seamless-engineering/datev-extf (MIT). See CREDITS.md.
@@ -56,7 +58,7 @@ const batchRow = z.object({
   text: z.string().optional().describe("Buchungstext"),
 });
 
-export function registerExtfTools(server: McpServer, deps: () => CallDeps): void {
+export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
   server.registerTool(
     "datev_validate_extf",
     {
@@ -125,34 +127,39 @@ export function registerExtfTools(server: McpServer, deps: () => CallDeps): void
     {
       title: "Upload an EXTF file to DATEV",
       description:
-        "Send a checked EXTF file to a DATEV client's accounting (extf-files import). The file is validated first and refused if it has errors. Returns a preview unless confirm is true.",
+        "Send a checked EXTF file to a DATEV client's accounting (extf-files import). The file is validated first and refused if it has errors. The first call returns a preview and a confirm_token. Show it to the user, then call again with confirm: true and that token.",
       inputSchema: {
-        client_id: z.string().describe("DATEV client id, e.g. 455148-2"),
+        client_id: z.string().describe("DATEV client id, e.g. 455148-1"),
         file_path: z.string(),
         confirm: z.boolean().optional(),
+        confirm_token: z.string().optional().describe("The token returned by the preview"),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
     },
-    async ({ client_id, file_path, confirm }) => {
+    async ({ client_id, file_path, confirm, confirm_token }, extra) => {
       try {
         const file = readLocalFile(file_path, MAX_EXTF_BYTES);
         const summary = summarizeReport(validateBytes(file.bytes), "de");
         if (!summary.valid) return { ...ok({ uploaded: false, reason: "Fix the EXTF errors before uploading", ...summary }), isError: true };
-        const d = deps();
+        const d = deps(extra.signal);
+        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, sha256: createHash("sha256").update(file.bytes).digest("hex") };
         if (confirm !== true) {
           return ok({
             preview: true,
-            note: `Nothing was sent. This imports ${summary.rows} rows into DATEV ${d.env} client ${client_id}. Ask the user, then call again with confirm: true.`,
+            note: `Nothing was sent. This imports ${summary.rows} rows into DATEV ${d.env} client ${client_id}. Ask the user, then call again with confirm: true and this confirm_token.`,
             file: file.path,
             header: summary.header,
             warnings: summary.warnings,
+            confirm_token: issueConfirmToken(fingerprint),
           });
         }
+        const refused = checkConfirmToken(confirm_token, fingerprint);
+        if (refused) return err(refused);
         const op = getOperation("accounting-extf-files.importextffile");
         if (!op) return err("EXTF import operation missing from the index");
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
-        const out = { uploaded: r.status < 300, status: r.status, job_location: r.location, body: r.body, env: d.env };
-        return r.status >= 400 ? { ...ok(out), isError: true } : ok(out);
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, env: d.env };
+        return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));
       }

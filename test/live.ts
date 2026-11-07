@@ -81,12 +81,18 @@ await check("validate EXTF (local)", async () => {
   const out = json(await call("datev_validate_extf", { file_path: extfPath, lang: "de" }));
   return { ok: out.valid === true, detail: `errors ${out.errors}, warnings ${out.warnings}` };
 });
+let confirmToken = "";
 await check("upload EXTF preview (no confirm)", async () => {
   const out = json(await call("datev_upload_extf", { client_id: CLIENT, file_path: extfPath }));
-  return { ok: out.preview === true, detail: "nothing sent" };
+  confirmToken = out.confirm_token ?? "";
+  return { ok: out.preview === true && confirmToken.length > 0, detail: "nothing sent, confirm token issued" };
+});
+await check("confirm without the preview token is refused", async () => {
+  const r = await call("datev_upload_extf", { client_id: CLIENT, file_path: extfPath, confirm: true });
+  return { ok: r.isError === true && /preview first/i.test(r.content[0].text), detail: r.content[0].text.slice(0, 80) };
 });
 await check("upload EXTF to sandbox (confirm)", async () => {
-  const r = await call("datev_upload_extf", { client_id: CLIENT, file_path: extfPath, confirm: true });
+  const r = await call("datev_upload_extf", { client_id: CLIENT, file_path: extfPath, confirm: true, confirm_token: confirmToken });
   const out = json(r);
   return { ok: !r.isError && out.uploaded === true, detail: `HTTP ${out.status} job ${out.job_location ?? ""} ${JSON.stringify(out.body ?? "").slice(0, 160)}` };
 });

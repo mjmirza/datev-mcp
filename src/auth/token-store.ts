@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, rmSync, statSync, existsSync, openSync, closeSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, writeFileSync, rmSync, statSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import type { DatevEnv } from "./endpoints.js";
@@ -15,6 +15,15 @@ export function defaultStoreDir(): string {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
 
 export class TokenStore {
   readonly file: string;
@@ -52,14 +61,25 @@ export class TokenStore {
     rmSync(this.file, { force: true });
   }
 
-  private tryLock(staleMs: number): boolean {
+  private owner(): { pid: number; token: string } | undefined {
+    try {
+      return JSON.parse(readFileSync(join(this.lockDir, "owner"), "utf8")) as { pid: number; token: string };
+    } catch {
+      return undefined;
+    }
+  }
+
+  private tryLock(token: string, staleMs: number): boolean {
     try {
       mkdirSync(this.lockDir);
-      closeSync(openSync(join(this.lockDir, String(process.pid)), "w"));
+      writeFileSync(join(this.lockDir, "owner"), JSON.stringify({ pid: process.pid, token }), { mode: 0o600 });
       return true;
     } catch {
+      // Stale only when the holder process is gone. A slow but live holder keeps its lock, so its refresh token is never spent twice.
       try {
-        if (Date.now() - statSync(this.lockDir).mtimeMs > staleMs) rmSync(this.lockDir, { recursive: true, force: true });
+        const o = this.owner();
+        const old = Date.now() - statSync(this.lockDir).mtimeMs > staleMs;
+        if (old && (!o || !pidAlive(o.pid))) rmSync(this.lockDir, { recursive: true, force: true });
       } catch {
         /* lock vanished between checks */
       }
@@ -67,19 +87,20 @@ export class TokenStore {
     }
   }
 
-  // Cross-process mutex: several MCP clients can share one session file. mkdir is atomic.
+  // Cross-process mutex: several MCP clients (and login) share one session file. mkdir is atomic.
   async withLock<T>(fn: () => Promise<T>, opts: { staleMs?: number; waitMs?: number } = {}): Promise<T> {
-    const staleMs = opts.staleMs ?? 60_000;
+    const staleMs = opts.staleMs ?? 30_000;
     const deadline = Date.now() + (opts.waitMs ?? 90_000);
+    const token = `${process.pid}-${Math.random().toString(36).slice(2)}`;
     mkdirSync(dirname(this.lockDir), { recursive: true, mode: 0o700 });
-    while (!this.tryLock(staleMs)) {
+    while (!this.tryLock(token, staleMs)) {
       if (Date.now() > deadline) throw new Error(`Timed out waiting for the DATEV session lock at ${this.lockDir}`);
       await sleep(50); // BESTPRACTICE_OK: polling a lock is inherently sequential
     }
     try {
       return await fn();
     } finally {
-      rmSync(this.lockDir, { recursive: true, force: true });
+      if (this.owner()?.token === token) rmSync(this.lockDir, { recursive: true, force: true });
     }
   }
 }

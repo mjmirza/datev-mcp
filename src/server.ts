@@ -14,7 +14,7 @@ export const VERSION = "0.0.1";
 export function createServer(cfg: Config): McpServer {
   const server = new McpServer({ name: "datev-mcp", version: VERSION });
   const session = new Session(new TokenStore(cfg.env), cfg.endpoints, cfg.creds);
-  const deps = () => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken() });
+  const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal });
   registerGenericTools(server, deps);
   registerAccountTools(server, deps);
   registerAccountingTools(server, deps);

@@ -33,7 +33,8 @@ export async function login(cfg: Config, log: (s: string) => void = (s) => proce
   const { code } = await cb.result;
   const tokens = await exchangeCode(cfg.endpoints.token, { code, redirectUri: cb.redirectUri, codeVerifier: pkce.verifier }, cfg.creds);
   const store = new TokenStore(cfg.env);
-  store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens });
+  // Under the session lock, so a refresh running in another process cannot overwrite or clear this fresh login.
+  await store.withLock(async () => store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens }));
   const mins = Math.round((tokens.expiresAt - Date.now()) / 60000);
   log(`Logged in to DATEV ${cfg.env}. Access token valid ~${mins} min, refresh token ${tokens.refreshToken ? "received" : "NOT received"}.`);
   log(`Session saved to ${store.file} (owner-only).`);

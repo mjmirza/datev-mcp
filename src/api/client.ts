@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { DatevEnv } from "../auth/endpoints.js";
 import type { ClientCredentials, FetchLike } from "../auth/token-client.js";
 import type { Operation } from "../spec/types.js";
@@ -33,9 +34,20 @@ export interface CallResult {
   url: string;
   contentType?: string;
   location?: string;
+  /** Pagination headers DATEV sends (x-total-pages, x-total-count, x-current-page, x-page-size, link). */
+  paging?: Record<string, string>;
   body: unknown;
   truncated: boolean;
   attempts: number;
+  /** Raw bytes of a binary answer (PDF, image, archive), never decoded as text. */
+  bytes?: Uint8Array;
+}
+
+const PAGING_HEADERS = ["x-total-pages", "x-total-count", "x-current-page", "x-page-size", "link"];
+
+function pagingOf(h: Headers): Record<string, string> | undefined {
+  const out = Object.fromEntries(PAGING_HEADERS.map((k) => [k, h.get(k)]).filter((e): e is [string, string] => e[1] !== null));
+  return Object.keys(out).length ? out : undefined;
 }
 
 export interface CallDeps {
@@ -45,6 +57,10 @@ export interface CallDeps {
   fetch?: FetchLike;
   sleep?: (ms: number) => Promise<void>;
   maxBodyChars?: number;
+  /** Cancels the call, e.g. the MCP request's signal when the client gives up. */
+  signal?: AbortSignal;
+  /** Budget for the whole call, retries and waits included. Default 55 s, under the usual 60 s MCP client timeout. */
+  deadlineMs?: number;
 }
 
 export class CallError extends Error {
@@ -160,11 +176,50 @@ export function parseJsonOrLines(text: string, ndjson = false): unknown {
   }
 }
 
-async function readBody(res: Response, maxChars: number): Promise<{ body: unknown; truncated: boolean }> {
-  const text = await res.text();
-  const truncated = text.length > maxChars;
-  const slice = truncated ? text.slice(0, maxChars) : text;
+// Even an "uncapped" read stops here, so a runaway answer cannot exhaust memory.
+export const HARD_MAX_BYTES = 50 * 1024 * 1024;
+const TEXTUAL = /json|xml|text\/|csv|javascript|html|x-www-form-urlencoded/i;
+
+async function readCapped(res: Response, cap: number): Promise<{ bytes: Uint8Array; overflow: boolean }> {
+  if (!res.body) return { bytes: new Uint8Array(), overflow: false };
+  const reader = res.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  let overflow = false;
+  for (;;) {
+    const { done, value } = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+    if (done) break;
+    if (size + value.length > cap) {
+      parts.push(value.subarray(0, cap - size));
+      size = cap;
+      overflow = true;
+      await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once the cap is hit
+      break;
+    }
+    parts.push(value);
+    size += value.length;
+  }
+  const bytes = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) {
+    bytes.set(p, at);
+    at += p.length;
+  }
+  return { bytes, overflow };
+}
+
+async function readBody(res: Response, maxChars: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
   const ct = res.headers.get("content-type") ?? "";
+  const byteCap = Math.min(HARD_MAX_BYTES, maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
+  const { bytes, overflow } = await readCapped(res, byteCap);
+  const binary = ct !== "" ? !TEXTUAL.test(ct) : bytes.includes(0);
+  if (binary) {
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256 }, truncated: overflow, bytes };
+  }
+  const text = new TextDecoder("utf-8").decode(bytes);
+  const truncated = overflow || text.length > maxChars;
+  const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
   if (!truncated && /json/i.test(ct)) {
     try {
       return { body: parseJsonOrLines(slice, /ndjson/i.test(ct)), truncated };
@@ -182,10 +237,14 @@ interface Prepared {
   contentType?: string;
   extraHeaders: Record<string, string>;
   deps: CallDeps;
+  deadline: number;
 }
 
 async function attempt(p: Prepared, n: number): Promise<CallResult> {
   const { op, url, deps } = p;
+  if (deps.signal?.aborted) throw new CallError("The call was cancelled before DATEV was asked");
+  const left = p.deadline - Date.now();
+  if (left <= 0) throw new CallError("Ran out of time before DATEV answered. Try again, or narrow the request.");
   const headers: Record<string, string> = {
     ...p.extraHeaders,
     authorization: `Bearer ${await deps.token()}`,
@@ -198,7 +257,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   let netErr: unknown;
   try {
     // redirect "manual": fetch would forward X-DATEV-Client-Secret to whatever host a redirect names.
-    res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.timeout(30_000) });
+    res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.any([AbortSignal.timeout(Math.min(30_000, left)), ...(deps.signal ? [deps.signal] : [])]) });
   } catch (e) {
     netErr = e;
   }
@@ -206,26 +265,31 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   const retryable =
     n < MAX_ATTEMPTS &&
     (op.method === "get" ? netErr !== undefined || (res !== undefined && RETRYABLE.has(res.status)) : res?.status === 429);
-  if (retryable) {
+  const delay = retryDelay(n - 1, res?.headers.get("retry-after") ?? null);
+  // A retry only makes sense if it can still finish inside the budget, and never after a cancel.
+  if (retryable && !deps.signal?.aborted && Date.now() + delay + 1000 < p.deadline) {
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-    await sleep(retryDelay(n - 1, res?.headers.get("retry-after") ?? null));
+    await sleep(delay);
     return attempt(p, n + 1);
   }
+  if (deps.signal?.aborted) throw new CallError("The call was cancelled");
   if (!res) throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
-  const { body, truncated } = await readBody(res, deps.maxBodyChars ?? 100_000);
+  const { body, truncated, bytes } = await readBody(res, deps.maxBodyChars ?? 100_000);
   return {
     status: res.status,
     url: url.toString(),
     contentType: res.headers.get("content-type") ?? undefined,
     location: res.headers.get("location") ?? undefined,
+    paging: pagingOf(res.headers),
     body,
     truncated,
     attempts: n,
+    ...(bytes ? { bytes } : {}),
   };
 }
 
 // async so validation errors surface as a rejected promise, never a synchronous throw.
 export async function callOperation(op: Operation, input: CallInput, deps: CallDeps): Promise<CallResult> {
   const url = buildUrl(op, deps.env, input);
-  return attempt({ op, url, deps, extraHeaders: buildHeaders(op, input), ...encodeBody(op, input) }, 1);
+  return attempt({ op, url, deps, deadline: Date.now() + (deps.deadlineMs ?? 55_000), extraHeaders: buildHeaders(op, input), ...encodeBody(op, input) }, 1);
 }

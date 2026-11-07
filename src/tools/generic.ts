@@ -1,15 +1,18 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, type CallDeps } from "../api/client.js";
+import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
+import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
 import { describe, getOperation, products, searchOperations, summarize } from "./catalog.js";
 
 const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }] });
 const fail = (message: string) => ({ ...text(message), isError: true });
 
+const INLINE_BINARY_MAX = 256 * 1024;
 const scalar = z.union([z.string(), z.number(), z.boolean()]);
 
-export function registerGenericTools(server: McpServer, deps: () => CallDeps): void {
+export function registerGenericTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
   server.registerTool(
     "datev_search_operations",
     {
@@ -49,7 +52,7 @@ export function registerGenericTools(server: McpServer, deps: () => CallDeps): v
     {
       title: "Call a DATEV API operation",
       description:
-        "Call any DATEV operation by id. Read operations run directly. Operations that change data return a preview first and only run when called again with confirm: true.",
+        "Call any DATEV operation by id. Read operations run directly. Operations that change data return a preview and a confirm_token first, and only run when called again with confirm: true and that token.",
       inputSchema: {
         operation_id: z.string(),
         path_params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -57,32 +60,48 @@ export function registerGenericTools(server: McpServer, deps: () => CallDeps): v
         headers: z.record(z.string(), z.string()).optional().describe("Header parameters the operation declares, e.g. Filename"),
         body: z.unknown().optional().describe("JSON body, or a string for text content types"),
         content_type: z.string().optional(),
+        save_to: z.string().optional().describe("Absolute path to save a binary answer (PDF, image) to, byte for byte"),
+        overwrite: z.boolean().optional().describe("Allow save_to to replace an existing file"),
         confirm: z.boolean().optional().describe("Must be true to run an operation that changes data"),
+        confirm_token: z.string().optional().describe("The token returned by the preview of this exact call"),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
     },
-    async ({ operation_id, path_params, query, headers, body, content_type, confirm }) => {
+    async ({ operation_id, path_params, query, headers, body, content_type, save_to, overwrite, confirm, confirm_token }, extra) => {
       const op = getOperation(operation_id);
       if (!op) return fail(`Unknown operation "${operation_id}". Use datev_search_operations first.`);
       const input = { pathParams: path_params, query: query as Record<string, string>, headers, body, contentType: content_type };
-      const d = deps();
+      const d = deps(extra.signal);
+      const fingerprint = { tool: "datev_call", env: d.env, operation_id, path_params, query, headers, body, content_type };
       try {
+        if (save_to) assertShareable(expandPath(save_to)); // never into ~/.ssh, a dotfile or a key file
         if (op.write && confirm !== true) {
           const url = buildUrl(op, d.env, input);
           buildHeaders(op, input);
           return text({
             preview: true,
-            note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true once they agree.`,
+            note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`,
             method: op.method.toUpperCase(),
             url: url.toString(),
             body,
+            confirm_token: issueConfirmToken(fingerprint),
           });
         }
-        const r = await callOperation(op, input, d);
-        const out = { ...r, env: d.env };
+        if (op.write) {
+          const refused = checkConfirmToken(confirm_token, fingerprint);
+          if (refused) return fail(refused);
+        }
+        const { bytes, ...r } = await callOperation(op, input, d);
+        const out: Record<string, unknown> = { ...r, env: d.env };
+        // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
+        if (bytes) {
+          if (save_to && r.status < 400 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
+          else if (bytes.length <= INLINE_BINARY_MAX && !r.truncated) out.base64 = Buffer.from(bytes).toString("base64");
+          else out.note = r.truncated ? `The file is larger than ${HARD_MAX_BYTES} bytes and was not read completely.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
+        }
         return r.status >= 400 ? { ...text(out), isError: true } : text(out);
       } catch (e) {
-        if (e instanceof NeedsLoginError || e instanceof CallError) return fail(e.message);
+        if (e instanceof NeedsLoginError || e instanceof CallError || e instanceof FileError) return fail(e.message);
         return fail(`DATEV call failed: ${e instanceof Error ? e.message : String(e)}`);
       }
     },

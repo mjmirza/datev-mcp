@@ -70,3 +70,13 @@ test("reports a DATEV error status instead of pretending the chart is empty", as
   const f: FetchLike = async () => new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { "content-type": "application/json" } });
   await assert.rejects(loadAccounts("455148-1", "20230101", deps(f)), /HTTP 403/);
 });
+
+test("the chart cache is keyed by who asks: a different login is never served another user's accounts", async () => {
+  clearAccountCache();
+  let fetched = 0;
+  const f: FetchLike = async () => (fetched++, new Response(JSON.stringify([{ accountNumber: 1, caption: `owner ${fetched}` }]), { status: 200, headers: { "content-type": "application/json" } }));
+  const a = await loadAccounts("455148-1", "20230101", { ...deps(f), token: async () => "TOKEN-A" });
+  const b = await loadAccounts("455148-1", "20230101", { ...deps(f), token: async () => "TOKEN-B" });
+  assert.equal(fetched, 2);
+  assert.notEqual(a[0].caption, b[0].caption);
+});

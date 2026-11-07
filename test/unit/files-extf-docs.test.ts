@@ -88,3 +88,53 @@ test("document upload sends multipart with the file and JSON metadata, letting f
   assert.equal(file.name, "rechnung.pdf");
   assert.deepEqual(JSON.parse(await ((seen?.body as FormData).get("metadata") as Blob).text()), { document_type: "Rechnungseingang" });
 });
+
+test("files in hidden folders, key files and symlinks to them are never sent", async () => {
+  const { mkdirSync, symlinkSync } = await import("node:fs");
+  const dir = tmp();
+  mkdirSync(join(dir, ".config"));
+  writeFileSync(join(dir, ".config", "session-sandbox.json"), "{}");
+  writeFileSync(join(dir, "id_rsa"), "key");
+  writeFileSync(join(dir, ".env.local"), "X=1");
+  symlinkSync(join(dir, ".config", "session-sandbox.json"), join(dir, "innocent.pdf"));
+  for (const p of [join(dir, ".config", "session-sandbox.json"), join(dir, "id_rsa"), join(dir, ".env.local"), join(dir, "innocent.pdf")]) assert.throws(() => readLocalFile(p, 1000), FileError, p);
+  writeFileSync(join(dir, "beleg.pdf"), "%PDF");
+  assert.equal(readLocalFile(join(dir, "beleg.pdf"), 1000).name, "beleg.pdf");
+});
+
+test("a write never follows a symlink, creates owner-only files, and overwrites by rename", async () => {
+  const { symlinkSync, statSync, lstatSync } = await import("node:fs");
+  const dir = tmp();
+  const victim = join(dir, "victim.txt");
+  writeFileSync(victim, "keep me");
+  symlinkSync(victim, join(dir, "out.csv"));
+  assert.throws(() => writeLocalFile(join(dir, "out.csv"), new Uint8Array([1]), true), /symbolic link/);
+  symlinkSync(join(dir, "missing-target"), join(dir, "dangling.csv"));
+  assert.throws(() => writeLocalFile(join(dir, "dangling.csv"), new Uint8Array([1]), false), FileError);
+  assert.equal(readFileSync(victim, "utf8"), "keep me");
+  const fresh = writeLocalFile(join(dir, "new.csv"), new Uint8Array([65]), false);
+  assert.equal(statSync(fresh).mode & 0o777, 0o600);
+  writeLocalFile(fresh, new Uint8Array([66]), true);
+  assert.equal(readFileSync(fresh, "utf8"), "B");
+  assert.equal(lstatSync(fresh).isFile(), true);
+});
+
+test("the uploaded file part carries the content type DATEV requires, and ZIP is refused", async () => {
+  const { mimeFor } = await import("../../src/tools/documents.js");
+  const form = buildDocumentForm({ name: "rechnung.pdf", bytes: new Uint8Array([37]) }, {});
+  assert.equal((form.get("file") as File).type, "application/pdf");
+  assert.equal(mimeFor("scan.JPG"), "image/jpeg");
+  assert.throws(() => mimeFor("belege.zip"), /ZIP/);
+  assert.throws(() => mimeFor("tool.exe"), /Unsupported/);
+});
+
+test("a confirm token only fits the exact request it was issued for, and expires", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const req = { tool: "x", file: "/a.pdf", sha256: "abc", metadata: { b: 1, a: 2 } };
+  const t = issueConfirmToken(req, 1_000);
+  assert.equal(checkConfirmToken(t, { metadata: { a: 2, b: 1 }, sha256: "abc", file: "/a.pdf", tool: "x" }, 2_000), undefined);
+  assert.match(checkConfirmToken(t, { ...req, sha256: "changed" }, 2_000)!, /does not match/);
+  assert.match(checkConfirmToken(undefined, req, 2_000)!, /preview first/i);
+  assert.match(checkConfirmToken(t, req, 1_000 + 16 * 60_000)!, /expired/);
+  assert.match(checkConfirmToken("garbage", req, 2_000)!, /malformed/);
+});

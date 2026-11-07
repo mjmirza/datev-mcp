@@ -174,3 +174,44 @@ test("two parameters in one segment cannot be made ambiguous by a separator insi
   assert.match(buildUrl(eau, "sandbox", { pathParams: { c: "455148", m: "1" } }).pathname, /\/clients\/455148-1$/);
   assert.throws(() => buildUrl(eau, "sandbox", { pathParams: { c: "1-2", m: "3" } }), /must not contain "-"/);
 });
+
+test("a binary answer is kept byte for byte, never decoded as text", async () => {
+  const raw = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x00, 0xff, 0xfe, 0x80, 0x0a]);
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async () => new Response(raw, { status: 200, headers: { "content-type": "application/pdf" } })));
+  assert.deepEqual([...(r.bytes ?? [])], [...raw]);
+  const { createHash } = await import("node:crypto");
+  assert.equal((r.body as { sha256: string }).sha256, createHash("sha256").update(raw).digest("hex"));
+});
+
+test("an endless answer stops at the cap instead of filling memory", async () => {
+  const endless = new ReadableStream<Uint8Array>({ pull: (c) => c.enqueue(new TextEncoder().encode("x".repeat(1024))) });
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async () => new Response(endless, { status: 200, headers: { "content-type": "text/plain" } }), { maxBodyChars: 10 }));
+  assert.equal(r.truncated, true);
+  assert.equal((r.body as string).length, 10);
+});
+
+test("retries stop when they could not finish inside the call budget", async () => {
+  let calls = 0;
+  const f: FetchLike = async () => (calls++, json(503, {}));
+  const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { deadlineMs: 500 }));
+  assert.equal(calls, 1);
+  assert.equal(r.status, 503);
+  await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { deadlineMs: 0 })), /Ran out of time/);
+});
+
+test("a cancelled call never reaches DATEV, and a cancel mid-call is not retried", async () => {
+  let calls = 0;
+  const gone = new AbortController();
+  gone.abort();
+  await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async () => (calls++, json(200, {})), { signal: gone.signal })), /cancelled/);
+  assert.equal(calls, 0);
+  const mid = new AbortController();
+  const f: FetchLike = async (_u, init) => {
+    calls++;
+    mid.abort();
+    assert.ok((init as RequestInit).signal?.aborted, "fetch gets the caller's signal");
+    throw new Error("aborted");
+  };
+  await assert.rejects(callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { signal: mid.signal })), /cancelled/);
+  assert.equal(calls, 1);
+});
