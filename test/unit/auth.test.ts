@@ -227,9 +227,38 @@ test("a lock held past the maximum hold is taken over even if its pid now belong
   const { mkdirSync, utimesSync } = await import("node:fs");
   const lock = join(dir, "session-sandbox.lock");
   mkdirSync(lock);
-  writeFileSync(join(lock, "owner"), JSON.stringify({ pid: process.ppid, token: "reused-pid" }));
+  // The pid is alive, but it belongs to a process that started at another time: the holder is gone.
+  writeFileSync(join(lock, "owner"), JSON.stringify({ pid: process.ppid, token: "reused-pid", started: "Mon Jan  1 00:00:00 1990" }));
   utimesSync(lock, new Date(0), new Date(0));
   assert.equal(await store.withLock(async () => "taken", { waitMs: 2000 }), "taken");
+});
+
+test("a live holder is never evicted, however long it holds the lock", async () => {
+  const dir = tmp();
+  const store = new TokenStore("sandbox", dir);
+  const { mkdirSync, utimesSync } = await import("node:fs");
+  const { execFileSync } = await import("node:child_process");
+  const lock = join(dir, "session-sandbox.lock");
+  mkdirSync(lock);
+  const started = execFileSync("ps", ["-o", "lstart=", "-p", String(process.ppid)], { encoding: "utf8" }).trim();
+  writeFileSync(join(lock, "owner"), JSON.stringify({ pid: process.ppid, token: "slow-but-alive", started }));
+  utimesSync(lock, new Date(0), new Date(0));
+  await assert.rejects(store.withLock(async () => "stolen", { waitMs: 300 }), /Timed out/);
+});
+
+test("a refresh that lost the race to another process keeps that process's newer session", async () => {
+  const store = new TokenStore("sandbox", tmp());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
+  // DATEV refuses R1 because the other process already used it and saved R2.
+  const s = new Session(store, ENDPOINTS.sandbox, creds, {
+    fetch: async () => {
+      store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "NEW", refreshToken: "R2", expiresAt: 99_000_000, obtainedAt: 0 } });
+      return json(400, { error: "invalid_grant" });
+    },
+    now: () => 10_000_000,
+  });
+  assert.equal(await s.accessToken(), "NEW");
+  assert.equal(store.read()?.tokens.refreshToken, "R2");
 });
 
 test("a wrong client secret keeps the saved session instead of logging out", async () => {

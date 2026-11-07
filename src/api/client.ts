@@ -312,7 +312,12 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     return attempt(p, n + 1);
   }
   if (deps.signal?.aborted) throw new CallError("The call was cancelled");
-  if (!res) throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+  if (!res) {
+    // A request cut off by the call budget is a timeout, so callers can keep partial work and resume.
+    if ((netErr as Error | undefined)?.name === "TimeoutError" || Date.now() >= p.deadline - 100)
+      throw new CallError("Ran out of time while waiting for DATEV to answer. Try again, or narrow the request.");
+    throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+  }
   if (!read) {
     if (netErr !== undefined) throw new CallError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
     read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);

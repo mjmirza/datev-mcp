@@ -54,6 +54,12 @@ export class Session {
       } catch (e) {
         // Only a rejected refresh token ends the session. A wrong client secret (invalid_client) or a server hiccup keeps it.
         if (e instanceof TokenError && e.code === "invalid_grant") {
+          // If another process already rotated the token, its newer session is valid: keep it, never delete it.
+          const now = this.store.read();
+          if (now && now.tokens.refreshToken !== s.tokens.refreshToken) {
+            if (now.tokens.expiresAt - SKEW_MS > this.now()) return now.tokens.accessToken;
+            throw new Error("Another process refreshed the DATEV session at the same moment. Try the call again");
+          }
           this.store.clear();
           throw new NeedsLoginError(`DATEV no longer accepts the saved session (${e.code})`);
         }

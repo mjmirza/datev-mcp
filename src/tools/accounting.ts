@@ -27,6 +27,12 @@ async function call(id: string, input: CallInput, deps: CallDeps, maxBodyChars?:
   return r;
 }
 
+// An object that only carries an error description is DATEV failing, even with HTTP 200.
+const errorOnly = (o: object): boolean => {
+  const keys = Object.keys(o);
+  return keys.length > 0 && keys.every((k) => /^(error|errors|message|detail|title|status|httpMessage|code)$/i.test(k));
+};
+
 // An empty body is an empty list. Anything else that is not a list means DATEV answered in a shape we do not understand.
 function asList(body: unknown, id: string): Record<string, unknown>[] {
   if (Array.isArray(body)) return body as Record<string, unknown>[];
@@ -34,9 +40,7 @@ function asList(body: unknown, id: string): Record<string, unknown>[] {
   // One NDJSON line sent as application/json parses to a single object: a list of one, not an error.
   // An object that only carries an error description is DATEV failing, even with HTTP 200.
   if (typeof body === "object") {
-    const keys = Object.keys(body as object);
-    if (keys.length > 0 && keys.every((k) => /^(error|errors|message|detail|title|status|httpMessage|code)$/i.test(k)))
-      throw new CallError(`DATEV answered ${id} with an error instead of data: ${JSON.stringify(body).slice(0, 200)}`);
+    if (errorOnly(body)) throw new CallError(`DATEV answered ${id} with an error instead of data: ${JSON.stringify(body).slice(0, 200)}`);
     return [body as Record<string, unknown>];
   }
   throw new CallError(`DATEV answered ${id} in an unexpected format (${typeof body}), so no result is shown rather than a wrong one`);
@@ -45,7 +49,7 @@ function asList(body: unknown, id: string): Record<string, unknown>[] {
 // Every row must look like what the endpoint promises; one stray row means the whole answer is not trusted.
 function rowsOf(body: unknown, id: string, valid: (row: Record<string, unknown>) => boolean, what: string): Record<string, unknown>[] {
   const rows = asList(body, id);
-  const bad = rows.findIndex((r) => !r || typeof r !== "object" || Array.isArray(r) || !valid(r));
+  const bad = rows.findIndex((r) => !r || typeof r !== "object" || Array.isArray(r) || errorOnly(r) || !valid(r));
   if (bad >= 0) throw new CallError(`DATEV answered ${id} with a row that is not ${what} (row ${bad + 1}: ${JSON.stringify(rows[bad]).slice(0, 150)})`);
   return rows;
 }
@@ -82,8 +86,16 @@ export function fiscalYearIds(body: unknown): string[] {
   });
 }
 
-const accountOf = (row: Record<string, unknown>): string =>
-  String(row.accountNumber ?? row.account_number ?? row.account ?? row.generalLedgerAccount ?? "");
+const accountRaw = (row: Record<string, unknown>): unknown => row.accountNumber ?? row.account_number ?? row.account ?? row.generalLedgerAccount;
+const accountOf = (row: Record<string, unknown>): string => {
+  const v = accountRaw(row);
+  return typeof v === "number" || typeof v === "string" ? String(v) : "";
+};
+// An account number is a whole number, sent as a number or as digits.
+const hasAccountNumber = (row: Record<string, unknown>): boolean => {
+  const v = accountRaw(row);
+  return (typeof v === "number" && Number.isInteger(v) && v >= 0) || (typeof v === "string" && /^\d+$/.test(v));
+};
 
 export function registerAccountingTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps, sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))): void {
   server.registerTool(
@@ -129,7 +141,6 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     async ({ client_id }, extra) => {
       try {
         const body = (await call("accounting-dataexchange.getfiscalyears", { pathParams: { clientId: client_id } }, deps(extra.signal))).body;
-        if (body !== "" && body !== undefined && body !== null) asList(body, "accounting-dataexchange.getfiscalyears");
         return ok(fiscalYearIds(body).map((id) => ({ id })));
       } catch (e) {
         return err(errorText(e));
@@ -153,7 +164,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     async ({ client_id, fiscal_year_id, account_prefix, limit }, extra) => {
       try {
         const r = await call("accounting-dataexchange.getsumsandbalances", { pathParams: { clientId: client_id, fiscalYearId: fiscal_year_id } }, deps(extra.signal), UNCAPPED);
-        const all = rowsOf(r.body, "accounting-dataexchange.getsumsandbalances", (x) => accountOf(x) !== "", "an account with a number");
+        const all = rowsOf(r.body, "accounting-dataexchange.getsumsandbalances", hasAccountNumber, "an account with a number");
         const rows = account_prefix ? all.filter((x) => accountOf(x).startsWith(account_prefix)) : all;
         return ok({ total_accounts: all.length, matches: rows.length, rows: rows.slice(0, limit ?? 50) });
       } catch (e) {
@@ -192,10 +203,19 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
           if (!jobId) throw new CallError(`DATEV did not return a job id: ${JSON.stringify(started.body).slice(0, 200)}`);
         }
         const job = jobId;
-        let phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d, undefined, deadline)).body);
-        while (phase === "running" && Date.now() + 2000 < deadline) {
-          await sleep(2000); // BESTPRACTICE_OK: polling a job is sequential by nature
-          phase = jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d, undefined, deadline)).body); // BESTPRACTICE_OK: same poll
+        const outOfTime = (e: unknown) => e instanceof CallError && /Ran out of time/.test(e.message);
+        const state = async () => jobPhase((await call("accounting-dataexchange.getjobstate", { pathParams: { clientId: client_id, jobId: job } }, d, undefined, deadline)).body);
+        let phase: "done" | "failed" | "running";
+        try {
+          phase = await state();
+          while (phase === "running" && Date.now() + 2000 < deadline) {
+            await sleep(2000); // BESTPRACTICE_OK: polling a job is sequential by nature
+            phase = await state(); // BESTPRACTICE_OK: same poll
+          }
+        } catch (e) {
+          // The job exists; running out of time must not lose it.
+          if (outOfTime(e)) return ok({ ready: false, job_id: job, note: "Ran out of time while waiting for DATEV. Call again with this job_id to continue the same job." });
+          throw e;
         }
         if (phase === "failed") throw new CallError(`DATEV reported the postings job ${job} as failed or deleted. Start a new one by calling without job_id.`);
         if (phase === "running") return ok({ ready: false, job_id: job, note: "DATEV is still preparing the postings. Call again with this job_id to continue the same job." });
@@ -212,7 +232,13 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         // Each page's count comes from the previous answer and all pages share one deadline, so they are read in order.
         while (pages === undefined || pageNo <= pages) {
           if (pageNo > first && Date.now() >= deadline) break;
-          const page = await call("accounting-dataexchange.getaccountpostingsjob", { pathParams: { clientId: client_id, jobId: job }, query: { page: pageNo } }, d, UNCAPPED, deadline); // BESTPRACTICE_OK: paging is sequential
+          let page;
+          try {
+            page = await call("accounting-dataexchange.getaccountpostingsjob", { pathParams: { clientId: client_id, jobId: job }, query: { page: pageNo } }, d, UNCAPPED, deadline); // BESTPRACTICE_OK: paging is sequential
+          } catch (e) {
+            if (outOfTime(e)) break; // keep what was read; the answer says where to continue
+            throw e;
+          }
           const all = rowsOf(page.body, "accounting-dataexchange.getaccountpostingsjob", () => true, "a posting");
           pages = Number(page.paging?.["x-total-pages"] ?? 1) || 1;
           total = page.paging?.["x-total-count"] !== undefined ? Number(page.paging["x-total-count"]) : undefined;
@@ -230,7 +256,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
           ready: true,
           job_id: job,
           complete: done,
-          pages_read: `${first}-${pageNo - 1} of ${pages}`,
+          pages_read: pageNo > first ? `${first}-${pageNo - 1} of ${pages ?? "unknown"}` : "none",
           postings_read: read,
           total_postings: total,
           matches,

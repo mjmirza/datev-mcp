@@ -161,3 +161,16 @@ test("a missing body and a null body never share a confirm token", async () => {
   assert.match(checkConfirmToken(t, { op: "x", body: null }) ?? "", /does not match/);
   assert.equal(checkConfirmToken(t, { op: "x", body: undefined }), undefined);
 });
+
+test("a named pipe is refused at once instead of hanging the server", async () => {
+  const { mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { execFileSync } = await import("node:child_process");
+  const { readLocalFile } = await import("../../src/tools/files.js");
+  const fifo = join(mkdtempSync(join(tmpdir(), "datev-fifo-")), "beleg.pdf");
+  execFileSync("mkfifo", [fifo]);
+  const t0 = Date.now();
+  assert.throws(() => readLocalFile(fifo, 1000), /Not a regular file/);
+  assert.ok(Date.now() - t0 < 1000);
+});

@@ -193,3 +193,34 @@ test("postings stop before reading pages when the shared budget is spent", async
   assert.equal(out.job_id, "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
   assert.equal(pages, 0);
 });
+
+test("fiscal years still accept bare ids, and rows need real field types", async () => {
+  const bare = await client(async () => new Response("20230701\n", { headers: { "content-type": "application/json" } }));
+  assert.deepEqual(JSON.parse(text(await bare.callTool({ name: "datev_list_fiscal_years", arguments: { client_id: "455148-1" } }))), [{ id: "20230701" }]);
+  const objNumber = await client(async () => json(200, [{ accountNumber: { bad: true } }]));
+  assert.equal(((await objNumber.callTool({ name: "datev_sums_and_balances", arguments: { client_id: "455148-1", fiscal_year_id: "20230101" } })) as { isError?: boolean }).isError, true);
+  const errorRow = await client(async (u, init) => {
+    const p = new URL(String(u)).pathname;
+    if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (p.endsWith("/state")) return json(200, { jobState: "COMPLETED" });
+    return json(200, [{ error: "Backend broken" }], { "x-total-pages": "1" });
+  });
+  const r = await errorRow.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101" } });
+  assert.equal((r as { isError?: boolean }).isError, true);
+});
+
+test("postings that run out of time on a later page keep the rows read and say where to continue", async () => {
+  const c = await client(async (u, init) => {
+    const url = new URL(String(u));
+    if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (url.pathname.endsWith("/state")) return json(200, { jobState: "COMPLETED" });
+    if (url.searchParams.get("page") === "1") return json(200, [{ accountNumber: 1200, n: 1 }], { "x-total-pages": "3" });
+    // Page 2 never answers in time; like real fetch, the request ends when its signal aborts.
+    return new Promise<Response>((_, reject) => (init as RequestInit).signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+  });
+  const out = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", max_wait_seconds: 5 } })));
+  assert.equal(out.complete, false);
+  assert.equal(out.job_id, "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+  assert.equal(out.rows.length, 1);
+  assert.match(out.note, /from_page 2/);
+});
