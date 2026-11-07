@@ -84,13 +84,24 @@ export function retryDelay(attempt: number, retryAfter: string | null): number {
   return Math.min(500 * 2 ** attempt, 4_000) * (0.5 + Math.random() / 2);
 }
 
+// Some DATEV endpoints (e.g. general ledger accounts) answer with one JSON object per line.
+export function parseJsonOrLines(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+    if (lines.length === 0) throw new SyntaxError("empty body");
+    return lines.map((l) => JSON.parse(l) as unknown);
+  }
+}
+
 async function readBody(res: Response, maxChars: number): Promise<{ body: unknown; truncated: boolean }> {
   const text = await res.text();
   const truncated = text.length > maxChars;
   const slice = truncated ? text.slice(0, maxChars) : text;
   if (!truncated && /json/i.test(res.headers.get("content-type") ?? "")) {
     try {
-      return { body: JSON.parse(slice), truncated };
+      return { body: parseJsonOrLines(slice), truncated };
     } catch {
       /* fall through to text */
     }
