@@ -1,0 +1,43 @@
+<!-- freshness: 45d -->
+# Compliance
+
+This page explains which rules apply when you use datev-mcp and what the project does to keep you inside them. It is a working summary, not legal advice. Confirm anything that matters for your practice against DATEV's current signed terms and with your own counsel.
+
+## DATEV's developer terms
+
+| Rule | What the project does |
+|---|---|
+| API documentation may not be passed on | DATEV's specs are downloaded by each developer into `specs/` and never committed. The derived operation index is also kept out of git. Public pages here name operation ids and counts only, never DATEV's descriptions |
+| The sandbox may hold test data only | The server defaults to `DATEV_ENV=sandbox`. Do not put real client data into the sandbox, not even to try something out |
+| Production access needs DATEV's review | Using real client data needs the paid technical review (Technische Prüfung) for your app. Until that is done, run in sandbox only |
+| No DATEV logo, no advertising with the name | The project uses no DATEV logo or artwork. The name DATEV appears only to say which system it connects to |
+| The client secret stays with the app owner | The secret is read from the environment only. It is never logged, never written to the session file, never shown in a tool answer |
+
+## Data protection (DSGVO / GDPR)
+
+Answers from DATEV can contain personal data, for example employee payroll records, names on invoices or bank details in postings.
+
+- **Where the data goes.** The server passes DATEV's answer to your AI client. From there it goes wherever that client sends it, which is usually the AI provider. Check that you have a data processing agreement with that provider and that sending this category of data to it is permitted for your clients.
+- **What the server keeps.** Nothing on disk except the login session. The chart of accounts is cached in memory for 10 minutes. Files you save with `save_to` are written where you tell it, owner-only.
+- **Least access.** Request only the scopes you need with `DATEV_SCOPES`, and subscribe your app only to the products you use.
+- **Payroll and special categories.** Payroll data can include health related or religious information (sick days, church tax). Treat the HR products as high risk and keep them out of conversations that do not need them.
+
+## Professional secrecy for tax advisors
+
+Tax advisors are bound by professional secrecy (§ 57 StBerG, § 203 StGB). Sending client data to an outside AI service can count as disclosure to a third party. Before using this with real clients, check that the AI provider has been bound to secrecy in writing, as § 62a StBerG requires for service providers.
+
+## EU AI Act
+
+datev-mcp is a connector, not an AI system. If you build a product on top of it that people talk to, you must tell them they are dealing with an AI (Article 50), and the people running it need sufficient AI literacy (Article 4). Nothing in this project performs a prohibited practice or a high-risk use.
+
+## Writes and accountability
+
+Every change to DATEV data needs a preview and a confirmation code that matches that exact preview. Keep the person who confirms the preview the person who is accountable for the booking. Do not set up a client that confirms writes automatically.
+
+## Before going to production
+
+1. Complete DATEV's technical review for your app.
+2. Sign a data processing agreement with your AI provider and bind it to professional secrecy.
+3. Restrict `DATEV_SCOPES` to what you use.
+4. Run `npm audit`, `npm test` and `npm run eval`, and keep the reports.
+5. Decide who in your practice confirms writes, and write that down.
