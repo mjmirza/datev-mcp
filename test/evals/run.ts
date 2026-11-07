@@ -322,7 +322,18 @@ function properties() {
   prop("prop.ndjson-roundtrip", fc.property(fc.array(fc.dictionary(fc.string(), fc.jsonValue()), { minLength: 1, maxLength: 15 }), (objs) =>
     JSON.stringify(parseJsonOrLines(objs.map((o) => JSON.stringify(o)).join("\n"), true)) === JSON.stringify(JSON.parse(JSON.stringify(objs))),
   ));
-  prop("prop.fiscal-year-ids", fc.property(fc.array(fc.oneof(fc.integer({ min: 19000101, max: 21001231 }), fc.record({ id: fc.string({ minLength: 1 }) }))), (xs) => fiscalYearIds(xs).length === xs.length));
+  // Valid fiscal year ids (eight digits, 1992 to 2099) all come through; one invalid id refuses the whole answer.
+  const fyId = fc.integer({ min: 19920101, max: 20991231 });
+  prop("prop.fiscal-year-ids", fc.property(fc.array(fc.oneof(fyId, fyId.map(String), fyId.map((id) => ({ id })))), (xs) => fiscalYearIds(xs).length === xs.length));
+  prop("prop.fiscal-year-ids-refuse", fc.property(fc.array(fyId), fc.oneof(fc.string(), fc.record({ id: fc.string() }), fc.constant({}), fc.integer({ max: 19920000 })), (good, bad) => {
+    fc.pre(!/^(199[2-9]|20[0-9][0-9])[0-9]{4}$/.test(String(typeof bad === "object" ? (bad as { id?: unknown }).id : bad)));
+    try {
+      fiscalYearIds([...good, bad]);
+      return false;
+    } catch (e) {
+      return e instanceof CallError;
+    }
+  }));
   prop("prop.job-phase-total", fc.property(fc.jsonValue(), (v) => ["done", "failed", "running"].includes(jobPhase(v))));
   const accounts: LedgerAccount[] = Array.from({ length: 300 }, (_, i) => ({ accountNumber: 10000000 + i * 37, caption: `Konto ${i}` }));
   prop("prop.account-prefix", fc.property(fc.stringMatching(/^[0-9]{1,8}$/), fc.integer({ min: 1, max: 50 }), (q, lim) => {
