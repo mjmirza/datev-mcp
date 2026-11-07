@@ -57,10 +57,47 @@ export class CallError extends Error {
 const RETRYABLE = new Set([429, 502, 503, 504]);
 export const MAX_ATTEMPTS = 3;
 
-function encodePathValue(name: string, raw: string | number): string {
+interface ParamSchema { type?: string; pattern?: string; format?: string; minimum?: number; maximum?: number; maxLength?: number; minLength?: number }
+
+// Checks a value against the constraints DATEV's spec declares, so a bad id fails here instead of costing a rate-limited call.
+export function checkAgainstSchema(name: string, v: string, schema: unknown): void {
+  if (!schema || typeof schema !== "object") return;
+  const s = schema as ParamSchema;
+  const bad = (why: string) => new CallError(`Parameter "${name}" ${why}`);
+  if (s.type === "integer") {
+    if (!/^-?\d+$/.test(v)) throw bad("must be a whole number");
+    const n = Number(v);
+    if (s.minimum !== undefined && n < s.minimum) throw bad(`must be at least ${s.minimum}`);
+    if (s.maximum !== undefined && n > s.maximum) throw bad(`must be at most ${s.maximum}`);
+  }
+  if (s.maxLength !== undefined && v.length > s.maxLength) throw bad(`must be at most ${s.maxLength} characters`);
+  if (s.minLength !== undefined && v.length < s.minLength) throw bad(`must be at least ${s.minLength} characters`);
+  if (s.format === "uuid" && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)) throw bad("must be a UUID");
+  if (s.pattern) {
+    let re: RegExp | undefined;
+    try {
+      re = new RegExp(s.pattern, "u");
+    } catch {
+      re = undefined; // a pattern JavaScript cannot compile is left to DATEV to enforce
+    }
+    if (re && !re.test(v)) throw bad(`does not match the format DATEV expects (${s.pattern})`);
+  }
+}
+
+function encodePathValue(name: string, raw: string | number, separators: string, schema: unknown): string {
   const v = String(raw);
   if (v === "" || v === "." || v === ".." || /[/\\]/.test(v)) throw new CallError(`Path parameter "${name}" has an invalid value`);
+  // Two parameters in one segment ("{a}-{b}"): a value holding the separator would make the URL ambiguous.
+  if ([...separators].some((c) => v.includes(c))) throw new CallError(`Path parameter "${name}" must not contain "${separators}"`);
+  checkAgainstSchema(name, v, schema);
   return encodeURIComponent(v);
+}
+
+// Literal characters that share a path segment with the placeholder, e.g. "-" in "{consultant}-{client}".
+function segmentSeparators(path: string, name: string): string {
+  const seg = path.split("/").find((s) => s.includes(`{${name}}`)) ?? "";
+  if ((seg.match(/\{/g) ?? []).length < 2) return "";
+  return [...new Set(seg.replace(/\{[^}]+\}/g, ""))].join("");
 }
 
 export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
@@ -69,7 +106,8 @@ export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
   const path = op.path.replace(/\{([^}]+)\}/g, (_m, name: string) => {
     const v = input.pathParams?.[name];
     if (v === undefined) throw new CallError(`Missing path parameter "${name}"`);
-    return encodePathValue(name, v);
+    const schema = op.params.find((p) => p.in === "path" && p.name === name)?.schema;
+    return encodePathValue(name, v, segmentSeparators(op.path, name), schema);
   });
   const url = new URL(base.replace(/\/$/, "") + path);
   const baseUrl = new URL(base);
@@ -159,12 +197,15 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   let res: Response | undefined;
   let netErr: unknown;
   try {
-    res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, signal: AbortSignal.timeout(30_000) });
+    // redirect "manual": fetch would forward X-DATEV-Client-Secret to whatever host a redirect names.
+    res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.timeout(30_000) });
   } catch (e) {
     netErr = e;
   }
-  // Only reads are retried: a write that timed out may already have been applied by DATEV.
-  const retryable = op.method === "get" && n < MAX_ATTEMPTS && (netErr !== undefined || (res !== undefined && RETRYABLE.has(res.status)));
+  // Reads retry transient failures. Writes retry only a 429: DATEV refused it, so it cannot have been applied.
+  const retryable =
+    n < MAX_ATTEMPTS &&
+    (op.method === "get" ? netErr !== undefined || (res !== undefined && RETRYABLE.has(res.status)) : res?.status === 429);
   if (retryable) {
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     await sleep(retryDelay(n - 1, res?.headers.get("retry-after") ?? null));

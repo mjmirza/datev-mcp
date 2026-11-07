@@ -18,7 +18,9 @@
     "test": "npm run test:unit",
     "test:unit": "tsx --test test/unit/*.test.ts",
     "test:live": "tsx test/live.ts",
-    "specs": "bash scripts/fetch-specs.sh"
+    "specs": "bash scripts/fetch-specs.sh",
+    "eval": "tsx test/evals/run.ts",
+    "sweep": "tsx test/live-sweep.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

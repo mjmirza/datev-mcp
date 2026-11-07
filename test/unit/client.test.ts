@@ -141,3 +141,36 @@ test("catalog search finds the clients list and hides health checks by default",
   assert.equal(getOperation("does.not.exist"), undefined);
   assert.ok(OPERATIONS.some((o) => o.clientSecretHeader), "smarttransfer and master-data need the secret header");
 });
+
+test("chaos: a write retries a 429, because DATEV refused it and cannot have applied it", async () => {
+  let n = 0;
+  const w = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/json"] } });
+  const r = await callOperation(w, { body: { a: 1 } }, deps(async () => (++n < 3 ? json(429, {}, { "retry-after": "0" }) : json(201, { ok: true }))));
+  assert.equal(n, 3);
+  assert.equal(r.status, 201);
+});
+
+test("never follows redirects, so the client secret header cannot reach another host", async () => {
+  let seen: RequestInit | undefined;
+  const r = await callOperation(op({ clientSecretHeader: true }), { pathParams: { "client-id": "1" } }, deps(async (_u, init) => ((seen = init), new Response(null, { status: 302, headers: { location: "https://evil.example/" } }))));
+  assert.equal(seen?.redirect, "manual");
+  assert.equal(r.status, 302);
+  assert.equal(r.location, "https://evil.example/");
+});
+
+test("checks path values against the spec schema before any request is sent", () => {
+  const client = op({ params: [{ name: "client-id", in: "path", required: true, schema: { type: "string", pattern: "^(?<consultant>[1-9]\\d{3,6})-(?<client>[1-9]\\d{0,4})$", maxLength: 13 } }] });
+  assert.match(buildUrl(client, "sandbox", { pathParams: { "client-id": "455148-1" } }).pathname, /455148-1$/);
+  assert.throws(() => buildUrl(client, "sandbox", { pathParams: { "client-id": "455148" } }), /does not match/);
+  const fy = op({ path: "/fy/{y}", params: [{ name: "y", in: "path", required: true, schema: { type: "integer", minimum: 19920101, maximum: 20991231 } }] });
+  assert.throws(() => buildUrl(fy, "sandbox", { pathParams: { y: "2023" } }), /at least 19920101/);
+  assert.throws(() => buildUrl(fy, "sandbox", { pathParams: { y: "abc" } }), /whole number/);
+  const tq = op({ path: "/t/{t}", params: [{ name: "t", in: "path", required: true, schema: { type: "string", minLength: 13, maxLength: 15 } }] });
+  assert.throws(() => buildUrl(tq, "sandbox", { pathParams: { t: "short" } }), /at least 13/);
+});
+
+test("two parameters in one segment cannot be made ambiguous by a separator inside a value", () => {
+  const eau = op({ path: "/clients/{c}-{m}", params: [{ name: "c", in: "path", required: true }, { name: "m", in: "path", required: true }] });
+  assert.match(buildUrl(eau, "sandbox", { pathParams: { c: "455148", m: "1" } }).pathname, /\/clients\/455148-1$/);
+  assert.throws(() => buildUrl(eau, "sandbox", { pathParams: { c: "1-2", m: "3" } }), /must not contain "-"/);
+});

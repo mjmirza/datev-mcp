@@ -51,7 +51,7 @@ test("parses DATEV's one-object-per-line chart format (as returned by the live s
   clearAccountCache();
   const ndjson = '{"accountNumber":6000000,"caption":"Anleihen, nicht konvertibel"}\n{"accountNumber":1200000,"caption":"Bank"}\n';
   const f: FetchLike = async () => new Response(ndjson, { status: 200, headers: { "content-type": "application/json" } });
-  const got = await loadAccounts("a", "b", deps(f));
+  const got = await loadAccounts("455148-1", "20230101", deps(f));
   assert.deepEqual(got.map((a) => a.accountNumber), [1200000, 6000000]);
 });
 
@@ -68,5 +68,5 @@ test("property: parseJsonOrLines round-trips any list of JSON objects written on
 test("reports a DATEV error status instead of pretending the chart is empty", async () => {
   clearAccountCache();
   const f: FetchLike = async () => new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: { "content-type": "application/json" } });
-  await assert.rejects(loadAccounts("x", "y", deps(f)), /HTTP 403/);
+  await assert.rejects(loadAccounts("455148-1", "20230101", deps(f)), /HTTP 403/);
 });
