@@ -21,6 +21,18 @@ const PART_LIMITS: Record<string, Record<string, number>> = {
   "cashregister.importfile": { metadata: 10_000 },
 };
 
+// Limits DATEV states only in prose: the HR import file name and provider (50 characters each).
+const NAME_LIMITS: Record<string, number> = { "hr-files.post_v1_clients_client_id_files": 50 };
+const TEXT_LIMITS: Record<string, Record<string, number>> = { "hr-files.post_v1_clients_client_id_files": { file_provider: 50 } };
+
+// A file name goes into the multipart header as is, so characters that break it or Windows paths are refused.
+const BAD_NAME = /[\u0000-\u001f\u007f"\\<>:|?*\u201c\u201d]/;
+function checkName(op: Operation, name: string): void {
+  if (BAD_NAME.test(name)) throw new UploadError(`The file name "${name}" contains a character DATEV refuses (control characters, quotes, backslash, < > : | ? *). Rename the file first.`);
+  const max = NAME_LIMITS[op.id];
+  if (max !== undefined && name.length > max) throw new UploadError(`${op.id} accepts file names of at most ${max} characters, "${name}" has ${name.length}.`);
+}
+
 const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: typeof v === "string" ? v : JSON.stringify(v, null, 2) }] });
 const err = (m: string) => ({ ...ok(localize(m)), isError: true });
 
@@ -82,6 +94,8 @@ function checkField(op: Operation, name: string, value: unknown, schema: Schema,
   if (wantsObject && !isObject) throw new UploadError(`Part "${name}" of ${op.id} must be a JSON object.`);
   if (schema.type === "string" && typeof value !== "string") throw new UploadError(`Part "${name}" of ${op.id} must be text.`);
   if (typeof value === "string") {
+    const textMax = TEXT_LIMITS[op.id]?.[name];
+    if (textMax !== undefined && value.length > textMax) throw new UploadError(`Part "${name}" of ${op.id} must be at most ${textMax} characters.`);
     if (schema.enum && !schema.enum.includes(value)) throw new UploadError(`Part "${name}" of ${op.id} must be one of: ${schema.enum.join(", ")}.`);
     try {
       checkAgainstSchema(name, value, schema);
@@ -98,6 +112,13 @@ function checkField(op: Operation, name: string, value: unknown, schema: Schema,
       if (!ps) continue;
       if (ps.type === "string" && typeof v !== "string") throw new UploadError(`"${name}.${k}" of ${op.id} must be text.`);
       if (ps.enum && !ps.enum.includes(v)) throw new UploadError(`"${name}.${k}" of ${op.id} must be one of: ${ps.enum.join(", ")}.`);
+      if (typeof v === "string") {
+        try {
+          checkAgainstSchema(`${name}.${k}`, v, ps);
+        } catch (e) {
+          throw new UploadError((e as Error).message);
+        }
+      }
     }
   }
 }
@@ -149,6 +170,7 @@ function readAll(op: Operation, order: string[], files: Record<string, string | 
     for (const p of Array.isArray(value) ? value : [value]) {
       const limit = Math.min(MAX_FILE_BYTES, PART_LIMITS[op.id]?.[part] ?? MAX_FILE_BYTES);
       const f = readLocalFile(p, limit);
+      checkName(op, f.name);
       total += f.bytes.length;
       if (total > MAX_TOTAL_BYTES) throw new FileError(`The upload is larger than ${MAX_TOTAL_BYTES / 1024 / 1024} MB together. Send the files in smaller groups.`);
       out.push({ part, path: f.path, name: f.name, bytes: f.bytes, type: typeFor(op, part, f.name), sha256: createHash("sha256").update(f.bytes).digest("hex") });

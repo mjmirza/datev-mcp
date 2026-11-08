@@ -43,7 +43,12 @@ const isError = (r: unknown) => (r as { isError?: boolean }).isError === true;
 const GUID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
 const TQX = { traffiqx_id: "1234567890123" };
 
-const hrDoc = { operation_id: "hr-documents.uploaddocument", path_params: { client_guid: GUID }, files: { file: pdf } };
+const hrFields = () => ({
+  operation_id: "hr-files.post_v1_clients_client_id_files",
+  path_params: { "client-id": "455148-1" },
+  fields: { import_file_type: "bwd", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" },
+});
+const hrDoc ={ operation_id: "hr-documents.uploaddocument", path_params: { client_guid: GUID }, files: { file: pdf } };
 
 async function send(c: Client, args: Record<string, unknown>) {
   const preview = JSON.parse(text(await c.callTool({ name: "datev_upload_file", arguments: args })));
@@ -144,6 +149,12 @@ test("wrong parts, wrong types, bad fields and bad headers are refused before an
     [{ operation_id: "hr-files.post_v1_clients_client_id_files", path_params: { "client-id": "455148-1" }, files: { file: big }, fields: { import_file_type: "bwd", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" } }, /limit is 3000000/],
     [{ operation_id: "hr-files.post_v1_clients_client_id_files", path_params: { "client-id": "455148-1" }, files: { file: xml }, fields: { import_file_type: "zip", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" } }, /one of/],
     [{ operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: file("a.zip", "PK") } }, /ZIP/],
+    [{ operation_id: "my-tax-income-tax-documents.saveincometaxdocument", files: { file: pdf }, fields: { document: { source: "fixture", note: "x".repeat(1001) } } }, /document\.note/],
+    [{ ...hrFields(), files: { file: file("x".repeat(51) + ".txt", "x") } }, /at most 50/],
+    [{ ...hrFields(), files: { file: xml }, fields: { ...hrFields().fields, file_provider: "p".repeat(51) } }, /at most 50/],
+    [{ operation_id: "smarttransfer-outbound.post_documents_outbox", files: { files: [file('quo"te.pdf', "x")] } }, /character DATEV refuses/],
+    [{ operation_id: "smarttransfer-outbound.post_documents_outbox", files: { files: [file("line\nbreak.pdf", "x")] } }, /character DATEV refuses/],
+    [{ ...tqx, headers: { "X-App-Display-Name": "x".repeat(500) }, files: { data: xml, view_component: view } }, /X-App-Display-Name/],
   ];
   for (const [args, why] of cases) {
     const r = await c.callTool({ name: "datev_upload_file", arguments: args });
@@ -180,7 +191,7 @@ test("hidden folders, key files and hard links are refused and nothing is sent",
   writeFileSync(inside, "x");
   const linked = join(dir, "receipt.pdf");
   linkSync(inside, linked);
-  for (const p of [inside, file("signing.ppk", "x"), file("ssh_host_ed25519_key", "x"), linked]) {
+  for (const p of [inside, file("signing.ppk", "x"), file("ssh_host_ed25519_key", "x"), file("AuthKey_ABC123.p8", "x"), file("private.pkcs8", "x"), linked]) {
     const r = await c.callTool({ name: "datev_upload_file", arguments: { operation_id: "smarttransfer-outbound.post_documents_outbox", files: { files: [p] } } });
     assert.ok(isError(r), p);
   }

@@ -35,6 +35,11 @@ export function buildHeaders(op: Operation, input: CallInput): Record<string, st
     const has = Object.keys(out).some((k) => k.toLowerCase() === p.name.toLowerCase());
     if (!has) throw new CallError(`Missing required header "${p.name}"`);
   }
+  // Declared headers are checked against their schema like any other parameter.
+  for (const p of op.params.filter((x) => x.in === "header")) {
+    const key = Object.keys(out).find((k) => k.toLowerCase() === p.name.toLowerCase());
+    if (key !== undefined) checkAgainstSchema(p.name, out[key], p.schema);
+  }
   return out;
 }
 

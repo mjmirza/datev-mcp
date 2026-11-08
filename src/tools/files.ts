@@ -16,7 +16,7 @@ export function expandPath(p: string): string {
   return resolve(withHome);
 }
 
-const SECRET_NAME = /^\.env|\.(pem|key|p12|pfx|kdbx|jks|ppk)$|^id_(rsa|ed25519|ecdsa|dsa)|^ssh_host_.*_key$|^credentials(\.json)?$|^session-.*\.json$/i;
+const SECRET_NAME = /^\.env|\.(pem|key|p12|pfx|kdbx|jks|ppk|p8|pkcs8|keystore)$|^id_(rsa|ed25519|ecdsa|dsa)|^ssh_host_.*_key$|^credentials(\.json)?$|^session-.*\.json$/i;
 
 // Files a tool may send to DATEV: never hidden folders (the DATEV session, ~/.ssh, ~/.aws) and never key or secret files.
 export function assertShareable(path: string): void {

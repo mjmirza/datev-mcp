@@ -33,6 +33,8 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 - The chart of accounts cache is tied to the login. Previously a different login could be served the previous user's cached chart.
 
 ### Fixed
+- Header values. Previously a header DATEV declares with a format or length (for example the EXTF `Filename`, which must match `EXTF_*.csv`) was sent unchecked and refused by DATEV. Now it is checked against the spec before the request, and `datev_upload_extf` refuses a wrong file name in the preview instead of after confirmation.
+- Upload file names and key files. Previously a file name with a line break, quote, backslash or `< > : | ? *` went into the multipart header unchanged, the HR import accepted names over its 50 character limit, and `.p8`, `.pkcs8` and `.keystore` key files could be sent. All three are now refused before anything is sent. Text inside JSON parts is also checked against the lengths and formats the spec declares.
 - Refresh token reuse. Previously a refresh that failed could leave the spent token stored and try it again. Now a spent token is never written back.
 - Session lock. Previously any process could remove a lock it judged stale, even while the owner was still working. Now the lock records its owner and is only taken over when it is old and the owner is gone.
 - File safety. Previously any readable file could be uploaded and saves could follow a symlink. Now hidden folders and key-like files are refused, symlinks are resolved before the check, and new files are created exclusively with owner-only permissions.
