@@ -56,3 +56,32 @@ test("save_to through a symlinked folder that leads into a hidden folder is refu
   assert.match(text(r), /Refusing/);
   assert.equal(existsSync(join(hidden, "authorized_keys")), false);
 });
+
+test("the upload tools say when DATEV's answer was cut at the size cap", async () => {
+  const { registerDocumentTools } = await import("../../src/tools/documents.js");
+  const { registerExtfTools } = await import("../../src/tools/extf.js");
+  const { writeLocalFile } = await import("../../src/tools/files.js");
+  const big: FetchLike = async () => new Response("x".repeat(200), { status: 201, headers: { "content-type": "text/plain" } });
+  const server = new McpServer({ name: "t", version: "0" });
+  const deps = () => ({ env: "sandbox" as const, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: big, maxBodyChars: 50 });
+  registerDocumentTools(server, deps);
+  registerExtfTools(server, deps);
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "t", version: "0" });
+  await c.connect(b);
+  const dir = mkdtempSync(join(tmpdir(), "datev-trunc-"));
+  const pdfPath = writeLocalFile(join(dir, "beleg.pdf"), PDF, false);
+  const docArgs = { client_id: "455148-1", file_path: pdfPath };
+  const docPreview = JSON.parse(text(await c.callTool({ name: "datev_upload_document", arguments: docArgs })));
+  const doc = JSON.parse(text(await c.callTool({ name: "datev_upload_document", arguments: { ...docArgs, confirm: true, confirm_token: docPreview.confirm_token } })));
+  assert.equal(doc.uploaded, true);
+  assert.equal(doc.truncated, true, "document upload hid a cut answer");
+  const extfPath = join(dir, "EXTF_Buchungsstapel.csv");
+  await c.callTool({ name: "datev_write_extf_batch", arguments: { output_path: extfPath, berater: "455148", mandant: "1", wj_start: "20230101", account_length: 8, from: "20230101", to: "20230131", label: "t", rows: [{ amount_cents: 1190, side: "S", account: "12000000", contra_account: "84000000", day: 3, month: 1, beleg1: "T1", text: "Test" }], lang: "de" } });
+  const extfArgs = { client_id: "455148-1", file_path: extfPath };
+  const extfPreview = JSON.parse(text(await c.callTool({ name: "datev_upload_extf", arguments: extfArgs })));
+  const extf = JSON.parse(text(await c.callTool({ name: "datev_upload_extf", arguments: { ...extfArgs, confirm: true, confirm_token: extfPreview.confirm_token } })));
+  assert.equal(extf.uploaded, true);
+  assert.equal(extf.truncated, true, "EXTF upload hid a cut answer");
+});

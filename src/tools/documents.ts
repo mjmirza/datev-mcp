@@ -96,7 +96,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         const op = getOperation("accounting-documents.post_clients_client_id_documents");
         if (!op) return err("Document upload operation missing from the index");
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, rawBody: buildDocumentForm(file, metadata) }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, env: d.env };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

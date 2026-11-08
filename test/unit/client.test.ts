@@ -110,6 +110,19 @@ test("refuses file uploads and missing bodies in the generic call", async () => 
   const up = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["multipart/form-data"] } });
   await assert.rejects(callOperation(up, { body: "x" }, deps(async () => json(200, {}))), /file upload/);
   await assert.rejects(callOperation(up, {}, deps(async () => json(200, {}))), /requires a request body/);
+  let sent = 0;
+  const raw = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/octet-stream"] } });
+  await assert.rejects(callOperation(raw, { body: "x", contentType: "text/plain" }, deps(async () => (sent++, json(200, {})))), /file upload/);
+  const json1 = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/json"] } });
+  await assert.rejects(callOperation(json1, { body: "x", contentType: "text/plain" }, deps(async () => (sent++, json(200, {})))), /content type/);
+  await assert.rejects(callOperation(json1, { body: "x", contentType: "" }, deps(async () => (sent++, json(200, {})))), /content type/);
+  assert.equal(sent, 0, "a chosen content type must not slip a body past the declared ones");
+  const wild = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/*+json"] } });
+  await callOperation(wild, { body: { a: 1 }, contentType: "application/vnd.example+json" }, deps(async () => (sent++, json(200, {}))));
+  assert.equal(sent, 1, "a declared suffix wildcard accepts a matching content type");
+  await assert.rejects(callOperation(json1, { body: { a: 1 }, contentType: "application/json/text/plain" }, deps(async () => (sent++, json(200, {})))), /content type/);
+  await assert.rejects(callOperation(json1, { body: { a: 1 }, headers: { "Content-Type": "text/plain" } }, deps(async () => (sent++, json(200, {})))), /set by the server/);
+  assert.equal(sent, 1, "a malformed or header-smuggled content type must not reach DATEV");
 });
 
 test("truncates oversized responses instead of flooding the model context", async () => {
@@ -254,4 +267,39 @@ test("a binary download is not cut at the text preview size", async () => {
   const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async () => new Response(big, { headers: { "content-type": "application/pdf" } })));
   assert.equal(r.truncated, false);
   assert.equal(r.bytes?.length, 500_000);
+});
+
+test("a caller's Accept header is sent as given, and a content type with odd whitespace is refused", async () => {
+  let seen: Headers | undefined;
+  const pdf = op({ method: "get", path: "/x", params: [{ name: "Accept", in: "header", required: true }] });
+  await callOperation(pdf, { headers: { Accept: "application/pdf" } }, deps(async (_u, init) => ((seen = new Headers(init?.headers)), json(200, {}))));
+  assert.equal(seen?.get("accept"), "application/pdf");
+  await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async (_u, init) => ((seen = new Headers(init?.headers)), json(200, {}))));
+  assert.equal(seen?.get("accept"), "application/json, */*;q=0.5");
+  let sent = 0;
+  const json1 = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/json"] } });
+  for (const ct of [" application/json", " application/json", "application/json "]) {
+    await assert.rejects(callOperation(json1, { body: { a: 1 }, contentType: ct }, deps(async () => (sent++, json(200, {})))), /content type/, JSON.stringify(ct));
+  }
+  assert.equal(sent, 0);
+});
+
+test("only the media type itself, not its parameters, decides how a body is encoded", async () => {
+  const sent: { body?: unknown; ct?: string | null }[] = [];
+  const f: FetchLike = async (_u, init) => (sent.push({ body: init?.body, ct: new Headers(init?.headers).get("content-type") }), json(200, {}));
+  const xml = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/xml", "application/json"] } });
+  await callOperation(xml, { body: "<a/>", contentType: "application/xml; profile=json" }, deps(f));
+  assert.equal(sent[0]?.body, "<a/>", "XML was re-encoded as JSON because a parameter mentioned json");
+  await assert.rejects(callOperation(xml, { body: { a: 1 }, contentType: "application/xml; profile=json" }, deps(f)), /must be a string/);
+  await callOperation(xml, { body: { a: 1 }, contentType: "application/json" }, deps(f));
+  assert.equal(sent[1]?.body, JSON.stringify({ a: 1 }));
+});
+
+test("a binary answer stays binary even when its content type parameters mention json or xml", async () => {
+  const raw = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0xff, 0x80, 0x00, 0x0a]);
+  for (const ct of ["application/pdf; profile=json", 'application/pdf; name="report.xml"', "application/pdf"]) {
+    const r = await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(async () => new Response(raw, { status: 200, headers: { "content-type": ct } })));
+    assert.ok(r.bytes, `no bytes for ${ct}`);
+    assert.deepEqual([...r.bytes!], [...raw], `bytes changed for ${ct}`);
+  }
 });

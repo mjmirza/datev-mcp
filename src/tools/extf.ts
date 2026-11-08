@@ -64,7 +64,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
     {
       title: "Check a DATEV EXTF file",
       description:
-        "Check an EXTF file (Buchungsstapel, Debitoren/Kreditoren) before importing it into DATEV. Explains every problem with line, field and a plain-language fix, in German or English. Runs locally, nothing is sent to DATEV.",
+        "Check an EXTF file (Buchungsstapel, Debitoren/Kreditoren) before importing it into DATEV. Explains each problem with line, field and a plain-language fix, in German or English, up to 100 findings, and says how many more there are. Runs locally, nothing is sent to DATEV.",
       inputSchema: {
         file_path: z.string().optional().describe("Absolute path to the .csv file"),
         content: z.string().optional().describe("File content, if no path is given"),
@@ -158,7 +158,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const op = getOperation("accounting-extf-files.importextffile");
         if (!op) return err("EXTF import operation missing from the index");
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, env: d.env };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

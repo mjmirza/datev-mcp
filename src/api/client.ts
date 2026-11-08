@@ -13,7 +13,7 @@ export interface CallInput {
   contentType?: string;
 }
 
-const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secret|host|content-length|cookie)$/i;
+const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secret|host|content-length|content-type|content-encoding|transfer-encoding|cookie)$/i;
 
 export function buildHeaders(op: Operation, input: CallInput): Record<string, string> {
   const out: Record<string, string> = {};
@@ -140,6 +140,21 @@ export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
   return url;
 }
 
+// A declared media type may use wildcards: */*, type/*, or a suffix pattern like application/*+json.
+function mediaMatches(declared: string, actual: string): boolean {
+  const TYPE = /^[a-z0-9!#$&^_.+*-]+\/[a-z0-9!#$&^_.+*-]+$/;
+  const norm = (c: string) => c.split(";")[0]!.trim().toLowerCase();
+  if (!/^[!-~][ -~]*$/.test(actual) || actual !== actual.trim()) return false; // printable ASCII, no outer whitespace
+  if (!TYPE.test(norm(declared)) || !TYPE.test(norm(actual))) return false; // exactly one slash, token characters only
+  const [dt, ds] = norm(declared).split("/");
+  const [at, as] = norm(actual).split("/");
+  if (!dt || !ds || !at || !as) return false;
+  if (dt !== "*" && dt !== at) return false;
+  if (ds === "*") return true;
+  if (ds.startsWith("*+")) return as.endsWith(ds.slice(1));
+  return ds === as;
+}
+
 function encodeBody(op: Operation, input: CallInput): { body?: string | Uint8Array | FormData; contentType?: string } {
   if (input.rawBody !== undefined) {
     if (!op.body) throw new CallError(`${op.id} does not take a request body`);
@@ -151,9 +166,16 @@ function encodeBody(op: Operation, input: CallInput): { body?: string | Uint8Arr
     return {};
   }
   if (!op.body) throw new CallError(`${op.id} does not take a request body`);
-  const ct = input.contentType ?? op.body.contentTypes[0] ?? "application/json";
-  if (/multipart\/form-data|octet-stream/i.test(ct)) throw new CallError(`${op.id} needs a file upload (${ct}); the generic tool sends JSON or text only`);
-  if (/json/i.test(ct)) return { body: JSON.stringify(input.body), contentType: ct };
+  const declared = op.body.contentTypes;
+  // Only the media type decides the encoding; parameters such as "; profile=json" never do.
+  const media = (c: string) => c.split(";")[0]!.trim().toLowerCase();
+  const isFile = (c: string) => /^(multipart\/form-data|application\/octet-stream)$/.test(media(c));
+  const isJson = (c: string) => /^[^/]+\/([^/]+\+)?json$/.test(media(c));
+  if (declared.length && declared.every(isFile)) throw new CallError(`${op.id} needs a file upload (${declared.join(", ")}); the generic tool sends JSON or text only`);
+  const ct = input.contentType ?? declared[0] ?? "application/json";
+  if (input.contentType !== undefined && declared.length && !declared.some((d) => mediaMatches(d, ct))) throw new CallError(`${op.id} does not accept content type "${ct}"; it accepts ${declared.join(", ")}`);
+  if (isFile(ct)) throw new CallError(`${op.id} needs a file upload (${ct}); the generic tool sends JSON or text only`);
+  if (isJson(ct)) return { body: JSON.stringify(input.body), contentType: ct };
   if (typeof input.body === "string") return { body: input.body, contentType: ct };
   throw new CallError(`Body for ${ct} must be a string`);
 }
@@ -236,11 +258,13 @@ async function readCapped(res: Response, cap: number): Promise<{ bytes: Uint8Arr
 
 async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
   const ct = res.headers.get("content-type") ?? "";
+  // Only the bare media type counts, so a parameter like "; profile=json" cannot turn a PDF into text.
+  const media = ct.split(";")[0]!.trim();
   // A declared binary type gets its own byte budget; the text cap is about what fits in a conversation.
-  const declaredBinary = ct !== "" && !TEXTUAL.test(ct);
+  const declaredBinary = media !== "" && !TEXTUAL.test(media);
   const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
   const { bytes, overflow } = await readCapped(res, byteCap);
-  const binary = ct !== "" ? !TEXTUAL.test(ct) : bytes.includes(0);
+  const binary = media !== "" ? !TEXTUAL.test(media) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow, bytes };
@@ -248,9 +272,9 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const text = new TextDecoder("utf-8").decode(bytes);
   const truncated = overflow || text.length > maxChars;
   const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
-  if (!truncated && /json/i.test(ct)) {
+  if (!truncated && /json/i.test(media)) {
     try {
-      return { body: parseJsonOrLines(slice, /ndjson/i.test(ct)), truncated };
+      return { body: parseJsonOrLines(slice, /ndjson/i.test(media)), truncated };
     } catch {
       /* fall through to text */
     }
@@ -279,8 +303,9 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     ...p.extraHeaders,
     authorization: `Bearer ${token}`,
     "X-DATEV-Client-Id": deps.creds.clientId,
-    accept: "application/json, */*;q=0.5",
   };
+  // The caller's Accept wins, e.g. application/pdf for a PDF report. Otherwise ask for JSON first.
+  if (!Object.keys(headers).some((k) => k.toLowerCase() === "accept")) headers.accept = "application/json, */*;q=0.5";
   if (op.clientSecretHeader) headers["X-DATEV-Client-Secret"] = deps.creds.clientSecret;
   if (p.contentType) headers["content-type"] = p.contentType;
   let res: Response | undefined;
