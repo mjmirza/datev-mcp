@@ -21,7 +21,7 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 
 - **Answers without clicking.** Clients, fiscal years, sums and balances, account postings and the chart of accounts come straight from DATEV into the conversation.
 - **Nothing changes behind your back.** Every write that changes bookings, files or records returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client. The one exception is `datev_account_postings`, which starts DATEV's read-only postings export job directly.
-- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be described, 203 of them searched (health checks left out), with twelve focused tools for the everyday cases. Operations that need a file upload work only where a typed tool exists (EXTF import and documents). The rest are listed on the project board.
+- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with twelve focused tools for the everyday cases. Operations that need a file upload work only where a typed tool exists (EXTF import and documents). The rest are listed on the project board.
 - **Your files stay yours.** The server refuses to send anything from hidden folders (where SSH keys and cloud logins live) or anything that looks like a key or credentials file.
 - **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Two limits: the account search skips single account rows it cannot read, and the postings filter skips posting rows without a readable account number.
 
@@ -137,7 +137,7 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 | `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe | No, writes a local file |
 | `datev_upload_extf` | Imports an EXTF booking file into a client | Yes, preview first |
 | `datev_upload_document` | Uploads a receipt or invoice to the Belegbilderservice | Yes, preview first |
-| `datev_search_operations` | Finds DATEV operations by words (203 of 209, health checks left out) | No |
+| `datev_search_operations` | Finds DATEV operations by words (health checks with `include_health`) | No |
 | `datev_describe_operation` | Shows the parameters an operation needs | No |
 | `datev_call` | Calls a DATEV operation by id, reads directly, writes with preview. Sends JSON or text, never a file | Writes need confirmation |
 
