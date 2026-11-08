@@ -23,7 +23,7 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 - **Nothing changes behind your back.** Every write that changes bookings, files or records returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client. The one exception is `datev_account_postings`, which starts DATEV's read-only postings export job directly.
 - **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with twelve focused tools for the everyday cases. Operations that need a file upload work only where a typed tool exists (EXTF import and documents). The rest are listed on the project board.
 - **Your files stay yours.** The server refuses to send anything from hidden folders (where SSH keys and cloud logins live) or anything that looks like a key or credentials file.
-- **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Two limits: the account search skips single account rows it cannot read, and the postings filter skips posting rows without a readable account number.
+- **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Rows the tools cannot read are counted in the answer (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is refused.
 
 ## From zero to your first answer
 

@@ -227,6 +227,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         if (Date.now() + 1000 >= deadline) return ok({ ready: true, job_id: job, complete: false, pages_read: "none", note: `The job is ready but no time was left to read it. Call again with job_id and from_page ${first}.` });
         const rows: Record<string, unknown>[] = [];
         let matches = 0;
+        let withoutAccount = 0;
         let read = 0;
         let pageNo = first;
         let pages: number | undefined;
@@ -247,6 +248,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
           read += all.length;
           // Only the rows that will be shown are kept, so many large pages never pile up in memory.
           for (const x of all) {
+            if (!hasAccountNumber(x)) withoutAccount++;
             if (account && !accountOf(x).startsWith(account)) continue;
             matches++;
             if (rows.length < keep) rows.push(x);
@@ -262,8 +264,13 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
           postings_read: read,
           total_postings: total,
           matches,
+          rows_without_account: withoutAccount,
           rows,
-          ...(done ? {} : { note: `Not every page was read in time. Call again with job_id and from_page ${pageNo} to continue.` }),
+          ...(done
+            ? account && withoutAccount > 0
+              ? { note: `${withoutAccount} posting rows have no readable account number, so the account filter could not match them. Call without account to see them.` }
+              : {}
+            : { note: `Not every page was read in time. Call again with job_id and from_page ${pageNo} to continue.` }),
         });
       } catch (e) {
         return err(errorText(e));
