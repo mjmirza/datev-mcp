@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
-import { clearAccountCache, loadAccounts, matchAccounts, type LedgerAccount } from "../../src/tools/accounts.js";
+import { clearAccountCache, loadAccountChart, loadAccounts, matchAccounts, type LedgerAccount } from "../../src/tools/accounts.js";
 import type { CallDeps } from "../../src/api/client.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
 
@@ -89,4 +89,15 @@ test("the token wait in loadAccounts counts against the call budget", async () =
     /Ran out of time while getting a DATEV access token/,
   );
   assert.ok(Date.now() - started < 1000, "gave up inside the budget");
+});
+
+test("find_accounts reports skipped account rows and refuses a chart with no readable row", async () => {
+  clearAccountCache();
+  const mixed: FetchLike = async () => new Response(JSON.stringify([{ accountNumber: 1200, caption: "Bank" }, { caption: "no number" }, { accountNumber: "x" }]), { status: 200, headers: { "content-type": "application/json" } });
+  const r = await loadAccountChart("455148-1", "20260101", deps(mixed));
+  assert.equal(r.accounts.length, 1);
+  assert.equal(r.skipped, 2);
+  clearAccountCache();
+  const junk: FetchLike = async () => new Response(JSON.stringify([{ caption: "a" }, { foo: 1 }]), { status: 200, headers: { "content-type": "application/json" } });
+  await assert.rejects(loadAccountChart("455148-1", "20260102", deps(junk)), /none of the 2 rows/);
 });

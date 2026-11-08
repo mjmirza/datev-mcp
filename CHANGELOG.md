@@ -5,6 +5,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- Unreadable rows are reported. Previously `datev_find_accounts` dropped malformed account rows and `datev_account_postings` dropped postings without an account number when filtering, so a bad answer could look like `matches: 0`. Now both count them (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is an error.
 - Bounded token wait in the account search. Previously `datev_find_accounts` fetched its token before the 55 second budget started and could wait up to 90 seconds for the session lock. Now the token wait counts against the budget.
 - Searchable health checks. Previously `datev_search_operations` always left out the 6 health check operations, so 5 health-only products could only be reached by id. Now `include_health: true` returns them too.
 - Questions and answers. Previously docs/FAQ.md had a short list. Now `docs/qa/` holds 2,000+ answered questions, from curated pages for setup, safety and troubleshooting plus generated pages for every product and operation built by `npm run qa` from the operation index, the live sweep ledger and the eval report. Every answer was checked against the code by a second model before publishing, and false claims it found were corrected.

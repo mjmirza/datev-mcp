@@ -16,7 +16,12 @@ export interface LedgerAccount {
 }
 
 const CACHE_MS = 10 * 60_000;
-const cache = new Map<string, { at: number; accounts: LedgerAccount[] }>();
+export interface AccountChart {
+  accounts: LedgerAccount[];
+  /** Rows DATEV sent that lack a numeric account number or a caption. */
+  skipped: number;
+}
+const cache = new Map<string, { at: number; chart: AccountChart }>();
 
 export function clearAccountCache(): void {
   cache.clear();
@@ -39,6 +44,10 @@ export function matchAccounts(accounts: LedgerAccount[], query: string, limit = 
 }
 
 export async function loadAccounts(clientId: string, fiscalYearId: string, deps: CallDeps, now = Date.now()): Promise<LedgerAccount[]> {
+  return (await loadAccountChart(clientId, fiscalYearId, deps, now)).accounts;
+}
+
+export async function loadAccountChart(clientId: string, fiscalYearId: string, deps: CallDeps, now = Date.now()): Promise<AccountChart> {
   // The key carries who is asking: a login or app change must never be served the previous user's cached chart.
   // The budget starts before the token wait, so a held session lock cannot push the call past the client timeout.
   const deadline = Date.now() + (deps.deadlineMs ?? 55_000);
@@ -46,18 +55,20 @@ export async function loadAccounts(clientId: string, fiscalYearId: string, deps:
   const who = createHash("sha256").update(`${deps.creds.clientId}|${token}`).digest("hex").slice(0, 16);
   const key = `${deps.env}|${who}|${clientId}|${fiscalYearId}`;
   const hit = cache.get(key);
-  if (hit && now - hit.at < CACHE_MS) return hit.accounts;
+  if (hit && now - hit.at < CACHE_MS) return hit.chart;
   const op = getOperation("accounting-dataexchange.getgeneralledgeraccounts");
   if (!op) throw new CallError("The general ledger operation is missing from the index");
   // A full chart easily exceeds the generic response cap, so read it whole and filter here.
   const r = await callOperation(op, { pathParams: { clientId, fiscalYearId } }, { ...deps, maxBodyChars: Number.MAX_SAFE_INTEGER, deadlineMs: Math.max(0, deadline - Date.now()) });
   if (r.status !== 200) throw new CallError(`DATEV returned HTTP ${r.status} for the chart of accounts: ${JSON.stringify(r.body).slice(0, 300)}`);
   if (!Array.isArray(r.body)) throw new CallError("DATEV returned the chart of accounts in an unexpected format");
-  const accounts = (r.body as LedgerAccount[])
-    .filter((a) => typeof a?.accountNumber === "number" && typeof a?.caption === "string")
-    .sort((a, b) => a.accountNumber - b.accountNumber);
-  cache.set(key, { at: now, accounts });
-  return accounts;
+  const rows = r.body as LedgerAccount[];
+  const accounts = rows.filter((a) => typeof a?.accountNumber === "number" && typeof a?.caption === "string").sort((a, b) => a.accountNumber - b.accountNumber);
+  if (rows.length > 0 && accounts.length === 0)
+    throw new CallError(`DATEV returned a chart of accounts, but none of the ${rows.length} rows has an account number and a name (first row: ${JSON.stringify(rows[0]).slice(0, 150)})`);
+  const chart = { accounts, skipped: rows.length - accounts.length };
+  cache.set(key, { at: now, chart });
+  return chart;
 }
 
 export function registerAccountTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
@@ -77,9 +88,10 @@ export function registerAccountTools(server: McpServer, deps: (signal?: AbortSig
     },
     async ({ client_id, fiscal_year_id, query, limit }, extra) => {
       try {
-        const all = await loadAccounts(client_id, fiscal_year_id, deps(extra.signal));
+        const { accounts: all, skipped } = await loadAccountChart(client_id, fiscal_year_id, deps(extra.signal));
         const hits = matchAccounts(all, query, limit ?? 25);
-        const text = JSON.stringify({ total_accounts: all.length, matches: hits.length, accounts: hits }, null, 2);
+        const note = skipped ? { note: `${skipped} account rows from DATEV had no account number or name and were left out.` } : {};
+        const text = JSON.stringify({ total_accounts: all.length, matches: hits.length, skipped_rows: skipped, ...note, accounts: hits }, null, 2);
         return { content: [{ type: "text" as const, text }] };
       } catch (e) {
         const message = e instanceof NeedsLoginError || e instanceof CallError ? e.message : `Account lookup failed: ${e instanceof Error ? e.message : String(e)}`;

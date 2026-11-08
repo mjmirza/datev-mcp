@@ -11,7 +11,7 @@ What each tool does and how to call it.
 
 ### When should I use a typed tool instead of `datev_call`?
 
-Whenever one exists. Typed tools page through lists and shape DATEV's answers. They are not a guarantee against bad data: `datev_find_accounts` skips malformed account rows, and `datev_list_clients` stops at 50 pages of 100 (5,000 clients) and then reports `complete: false`.
+Whenever one exists. Typed tools page through lists and shape DATEV's answers. They count rows they cannot read instead of hiding them (`skipped_rows`, `rows_without_account`). `datev_list_clients` stops at 50 pages of 100 (5,000 clients) and then reports `complete: false`.
 
 ### What does `datev_list_clients` return?
 

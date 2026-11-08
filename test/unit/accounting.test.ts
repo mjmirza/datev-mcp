@@ -251,3 +251,15 @@ test("a page whose body stalls until the deadline still keeps the rows already r
   assert.equal(out.complete, false);
   assert.equal(out.rows.length, 1);
 });
+
+test("account postings: rows without a readable account are counted, not silently dropped", async () => {
+  const f: FetchLike = async (u) => {
+    const url = new URL(String(u));
+    if (url.pathname.includes("/state")) return json(200, { jobState: "COMPLETED" });
+    return json(200, '{"amount":1}\n{"amount":2,"accountNumber":null}', { "x-total-pages": "1", "x-total-count": "2" });
+  };
+  const out = JSON.parse(text(await (await client(f)).callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", job_id: JOB, account: "1200" } })));
+  assert.equal(out.matches, 0);
+  assert.equal(out.rows_without_account, 2);
+  assert.match(out.note, /no readable account number/);
+});
