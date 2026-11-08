@@ -71,7 +71,7 @@ Ask the assistant to search operations by plain words and describe one. It reads
 
 ### Can I get cost centres (KOST1, KOST2) into DATEV?
 
-EXTF supports cost centre columns. The typed batch writer covers the common booking columns. Open an issue if you need cost centres there.
+Yes. `datev_write_extf_batch` takes optional `kost1` and `kost2` per row, each up to 36 letters, digits, spaces or underscores. Values DATEV would flag, such as `A-1`, are refused before the file is written.
 
 ### How do I avoid duplicate imports?
 

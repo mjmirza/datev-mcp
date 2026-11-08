@@ -134,7 +134,7 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 | `datev_account_postings` | Posted bookings for a fiscal year, all pages, resumable | No |
 | `datev_find_accounts` | Searches the client's real chart of accounts (SKR03, SKR04 or custom) | No |
 | `datev_validate_extf` | Checks a DATEV EXTF booking file locally, before anything is sent | No |
-| `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe | No, writes a local file |
+| `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe, cost centres included | No, writes a local file |
 | `datev_upload_extf` | Imports an EXTF booking file into a client | Yes, preview first |
 | `datev_upload_document` | Uploads a receipt or invoice to the Belegbilderservice | Yes, preview first |
 | `datev_search_operations` | Finds DATEV operations by words (health checks with `include_health`) | No |

@@ -1,7 +1,19 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { decodeBytes, encodeCp1252, formatFinding, validateExtf, writeBuchungsstapel, type Report } from "@seamless-engineering/datev-extf";
+import {
+  BUCHUNGSSTAPEL_COLUMNS,
+  decodeBytes,
+  encodeCp1252,
+  formatFinding,
+  parseCsv,
+  quote,
+  validateExtf,
+  writeBuchungsstapel,
+  type BatchHeader,
+  type BatchRow,
+  type Report,
+} from "@seamless-engineering/datev-extf";
 import { callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
@@ -46,6 +58,26 @@ export function validateBytes(bytes: Uint8Array): Report {
   return validateExtf(decodeBytes(bytes));
 }
 
+const KOST1 = BUCHUNGSSTAPEL_COLUMNS.indexOf("KOST1 - Kostenstelle");
+const KOST2 = BUCHUNGSSTAPEL_COLUMNS.indexOf("KOST2 - Kostenstelle");
+const KOST_PATTERN = /^[A-Za-z0-9_ ]{1,36}$/;
+const CRLF = "\r\n";
+
+// The library writer has no cost centre fields, so KOST1 and KOST2 are set on each data row here.
+export function writeBatch(header: BatchHeader, rows: (BatchRow & { kost1?: string; kost2?: string })[]): string {
+  const csv = writeBuchungsstapel(header, rows);
+  if (!rows.some((r) => r.kost1 || r.kost2)) return csv;
+  const lines = csv.split(CRLF);
+  rows.forEach((r, i) => {
+    if (!r.kost1 && !r.kost2) return;
+    const cells = parseCsv(lines[i + 2], ";").rows[0].cells;
+    if (r.kost1) cells[KOST1] = { value: r.kost1, quoted: true };
+    if (r.kost2) cells[KOST2] = { value: r.kost2, quoted: true };
+    lines[i + 2] = cells.map((c) => (c.quoted ? quote(c.value) : c.value)).join(";");
+  });
+  return lines.join(CRLF);
+}
+
 const batchRow = z.object({
   amount_cents: z.number().int().positive().describe("Unsigned amount in cents, e.g. 11900 for 119,00 EUR"),
   side: z.enum(["S", "H"]).describe("S = Soll (debit), H = Haben (credit)"),
@@ -56,6 +88,8 @@ const batchRow = z.object({
   month: z.number().int().min(1).max(12),
   beleg1: z.string().optional().describe("Belegfeld 1, e.g. invoice number"),
   text: z.string().optional().describe("Buchungstext"),
+  kost1: z.string().regex(KOST_PATTERN).optional().describe("KOST1 cost centre, up to 36 letters, digits, spaces or underscores"),
+  kost2: z.string().regex(KOST_PATTERN).optional().describe("KOST2 cost centre, same format as kost1"),
 });
 
 export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
@@ -107,9 +141,9 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
     },
     async (a) => {
       try {
-        const csv = writeBuchungsstapel(
+        const csv = writeBatch(
           { berater: a.berater, mandant: a.mandant, wjStart: a.wj_start, skl: a.account_length, from: a.from, to: a.to, label: a.label, skr: a.skr ?? "", created: new Date() },
-          a.rows.map((r) => ({ amount: r.amount_cents, side: r.side, account: r.account, contra: r.contra_account, key: r.bu_key, day: r.day, month: r.month, beleg1: r.beleg1, text: r.text })),
+          a.rows.map((r) => ({ amount: r.amount_cents, side: r.side, account: r.account, contra: r.contra_account, key: r.bu_key, day: r.day, month: r.month, beleg1: r.beleg1, text: r.text, kost1: r.kost1?.trim(), kost2: r.kost2?.trim() })),
         );
         const bytes = encodeCp1252(csv);
         const summary = summarizeReport(validateBytes(bytes), a.lang ?? "de");
