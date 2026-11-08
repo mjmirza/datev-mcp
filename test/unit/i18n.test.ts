@@ -29,12 +29,35 @@ test("each of the ten common errors has a German version", () => {
 });
 
 test("the German versions keep the details the user needs", () => {
-  assert.match(localize(COMMON[0], "de"), /session expired and has no refresh token/);
+  assert.match(localize(COMMON[0], "de"), /die Sitzung ist abgelaufen und enthält kein Refresh-Token/);
   assert.match(localize(COMMON[0], "de"), /datev-mcp login/);
-  assert.match(localize(COMMON[2], "de"), /Zugriffstoken/);
+  assert.equal(localize(COMMON[2], "de"), "Die Zeit ist beim Abrufen des DATEV-Zugriffstokens abgelaufen. Versuchen Sie es erneut oder grenzen Sie die Anfrage ein.");
   assert.match(localize(COMMON[8], "de"), /"x\.y"/);
-  assert.match(localize(COMMON[9], "de"), /HTTP 403/);
-  assert.match(localize(COMMON[9], "de"), /\{"error":"forbidden"\}/);
+  assert.equal(localize(COMMON[9], "de"), 'DATEV hat die Anfrage für die Operation "accounting-clients.getclients" mit HTTP 403 beantwortet: {"error":"forbidden"}');
+});
+
+test("every login reason the session raises is translated", () => {
+  const reasons: [string, string][] = [
+    ["no saved session", "keine gespeicherte Sitzung"],
+    ["saved session belongs to a different DATEV app", "die gespeicherte Sitzung gehört zu einer anderen DATEV-App"],
+    ["session expired and has no refresh token", "die Sitzung ist abgelaufen und enthält kein Refresh-Token"],
+    ["DATEV no longer accepts the saved session (invalid_grant)", "DATEV akzeptiert die gespeicherte Sitzung nicht mehr (invalid_grant)"],
+  ];
+  for (const [en, de] of reasons) assert.equal(localize(`DATEV login needed: ${en}. Run "datev-mcp login".`, "de"), `DATEV-Anmeldung nötig, ${de}. Führen Sie "datev-mcp login" aus.`);
+});
+
+test("every time-out variant reads as one correct German sentence", () => {
+  const whens = ["while getting a DATEV access token", "while waiting to retry", "while waiting for DATEV to answer", "while reading DATEV's answer"];
+  for (const w of whens) {
+    const de = localize(`Ran out of time ${w}. Try again, or narrow the request.`, "de");
+    assert.match(de, /^Die Zeit ist beim .+ abgelaufen\. Versuchen Sie/, de);
+  }
+  assert.match(localize("Ran out of time before DATEV answered. Try again, or narrow the request.", "de"), /^Die Zeit ist abgelaufen, bevor DATEV geantwortet hat\./);
+});
+
+test("the chart of accounts is the Kontenplan, and quoted operation ids still translate", () => {
+  assert.match(localize("DATEV returned HTTP 404 for the chart of accounts: {}", "de"), /^DATEV hat die Anfrage für den Kontenplan mit HTTP 404 beantwortet/);
+  assert.equal(localize('Unknown operation "x"y". Use datev_search_operations first.', "de"), 'Unbekannte Operation "x"y". Suchen Sie sie zuerst mit datev_search_operations.');
 });
 
 test("unknown messages pass through unchanged in German", () => {
