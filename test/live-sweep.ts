@@ -7,6 +7,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { checkAgainstSchema } from "../src/api/client.js";
 import type { Operation } from "../src/spec/types.js";
 import { OPERATIONS } from "../src/tools/catalog.js";
+import { errorReason } from "./sweep-reason.js";
 
 const MAX_PER_DAY = Number(process.env.DATEV_SWEEP_MAX ?? 150);
 const GAP_MS = Number(process.env.DATEV_SWEEP_GAP_MS ?? 3000);
@@ -14,7 +15,7 @@ const REDO = process.env.DATEV_SWEEP_ALL === "1";
 const LEDGER = "test/reports/live-ledger.jsonl";
 const DEFAULT_CLIENT = process.env.DATEV_LIVE_CLIENT ?? "455148-1";
 
-interface Entry { ts: string; day: string; op: string; product: string; status: number | "skipped" | "error"; ms: number; attempts?: number; items?: number; shape?: string; bodyHash?: string; note?: string }
+interface Entry { ts: string; day: string; op: string; product: string; status: number | "skipped" | "error"; ms: number; attempts?: number; items?: number; shape?: string; bodyHash?: string; note?: string; reason?: string }
 const today = new Date().toISOString().slice(0, 10);
 mkdirSync("test/reports", { recursive: true });
 const ledger: Entry[] = existsSync(LEDGER) ? readFileSync(LEDGER, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Entry) : [];
@@ -114,7 +115,7 @@ async function callOne(o: Operation): Promise<boolean> {
   const status = parsed.status ?? 0;
   const body = parsed.body;
   usedToday++;
-  write({ ts: new Date().toISOString(), day: today, op: o.id, product: o.product, status, ms, attempts: parsed.attempts, items: Array.isArray(body) ? body.length : undefined, shape: shapeOf(body), bodyHash: createHash("sha256").update(JSON.stringify(body ?? "")).digest("hex").slice(0, 12) });
+  write({ ts: new Date().toISOString(), day: today, op: o.id, product: o.product, status, ms, attempts: parsed.attempts, items: Array.isArray(body) ? body.length : undefined, shape: shapeOf(body), bodyHash: createHash("sha256").update(JSON.stringify(body ?? "")).digest("hex").slice(0, 12), ...(status >= 300 ? { reason: errorReason(body) } : {}) });
   if (status >= 200 && status < 300) {
     harvest(o, body);
     saveKnown();
@@ -168,7 +169,7 @@ const md = [
   "",
   "| Operation | Status | ms | Shape | When | Note |",
   "|---|---|---|---|---|---|",
-  ...rows.map((e) => `| ${e.op} | ${e.status} | ${e.ms || ""} | ${e.shape ?? ""} | ${e.ts.slice(0, 16)} | ${(e.note ?? "").replace(/\|/g, "/")} |`),
+  ...rows.map((e) => `| ${e.op} | ${e.status} | ${e.ms || ""} | ${e.shape ?? ""} | ${e.ts.slice(0, 16)} | ${(e.note ?? e.reason ?? "").replace(/\|/g, "/")} |`),
 ].join("\n");
 writeFileSync(`test/reports/live-sweep-${today}.md`, md);
 console.log(md.split("\n").slice(0, 12 + counts.size).join("\n"));
