@@ -211,7 +211,7 @@ export const CURATED: Section[] = [
     ["Does an AI assistant make DATEV bookings safer or riskier?", "It can be either. This server keeps a person in charge of every write with a preview and a code tied to that exact request."],
     ["What other DATEV MCP servers exist?", "There are other projects, for example a DATEV connector in HelpCode-ai/anythingmcp. Compare coverage, write safety and tests before choosing."],
     ["How do I learn the DATEV API quickly?", "Ask the assistant to search operations by plain words and describe one. It reads the operation index that `npm run specs` built on your machine."],
-    ["Can I get cost centres (KOST1, KOST2) into DATEV?", "EXTF supports cost centre columns. The typed batch writer covers the common booking columns. Open an issue if you need cost centres there."],
+    ["Can I get cost centres (KOST1, KOST2) into DATEV?", "Yes. `datev_write_extf_batch` takes optional `kost1` and `kost2` per row, each up to 36 letters, digits, spaces or underscores. Values DATEV would flag, such as `A-1`, are refused before the file is written."],
     ["How do I avoid duplicate imports?", "Each confirmation code is accepted once, so one approval cannot be sent twice. If the send fails after the code was accepted, request a new preview. Writes are never retried except after a 429."],
   ]),
   s("mcp-clients", "MCP clients", "Running the server in different assistants.", [

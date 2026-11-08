@@ -5,6 +5,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- Cost centres in the batch writer. Previously `datev_write_extf_batch` wrote only the common booking columns. Now each row takes optional `kost1` and `kost2`, written to the KOST1 and KOST2 columns, and values the EXTF check would flag are refused.
 - Unreadable rows are reported. Previously `datev_find_accounts` dropped malformed account rows and `datev_account_postings` dropped postings without an account number when filtering, so a bad answer could look like `matches: 0`. Now both count them (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is an error.
 - Bounded token wait in the account search. Previously `datev_find_accounts` fetched its token before the 55 second budget started and could wait up to 90 seconds for the session lock. Now the token wait counts against the budget.
 - Searchable health checks. Previously `datev_search_operations` always left out the 6 health check operations, so 5 health-only products could only be reached by id. Now `include_health: true` returns them too.
