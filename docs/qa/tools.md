@@ -83,7 +83,7 @@ Uploads a receipt or invoice for a client, after the same preview and confirmati
 
 ### What does `datev_search_operations` do?
 
-Finds DATEV operations by keywords, optionally limited to one product or to writes only. Health check operations are left out, so 203 of the 209 operations are searchable.
+Finds DATEV operations by keywords, optionally limited to one product or to writes only. Health check operations are left out by default. Pass `include_health: true` to search all 209.
 
 ### What does `datev_describe_operation` do?
 

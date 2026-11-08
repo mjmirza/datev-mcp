@@ -287,7 +287,7 @@ In DATEV's spec every operation has a sandbox server. Your app also has to be su
 
 ### How do I find the right `hr-documents-health` operation?
 
-It only has health checks, which `datev_search_operations` leaves out. Ask for `datev_describe_operation` with `hr-documents-health.health`.
+It only has health checks. `datev_search_operations` leaves them out unless you pass `include_health: true`. You can also ask for `datev_describe_operation` with `hr-documents-health.health`.
 
 ### Is `hr-documents-health` fully tested offline?
 
@@ -351,7 +351,7 @@ In DATEV's spec every operation has a sandbox server. Your app also has to be su
 
 ### How do I find the right `hr-exchange-health` operation?
 
-It only has health checks, which `datev_search_operations` leaves out. Ask for `datev_describe_operation` with `hr-exchange-health.health`.
+It only has health checks. `datev_search_operations` leaves them out unless you pass `include_health: true`. You can also ask for `datev_describe_operation` with `hr-exchange-health.health`.
 
 ### Is `hr-exchange-health` fully tested offline?
 
@@ -447,7 +447,7 @@ In DATEV's spec every operation has a sandbox server. Your app also has to be su
 
 ### How do I find the right `hr-files-health` operation?
 
-It only has health checks, which `datev_search_operations` leaves out. Ask for `datev_describe_operation` with `hr-files-health.health`.
+It only has health checks. `datev_search_operations` leaves them out unless you pass `include_health: true`. You can also ask for `datev_describe_operation` with `hr-files-health.health`.
 
 ### Is `hr-files-health` fully tested offline?
 
@@ -543,7 +543,7 @@ In DATEV's spec every operation has a sandbox server. Your app also has to be su
 
 ### How do I find the right `master-data-master-clients-health` operation?
 
-It only has health checks, which `datev_search_operations` leaves out. Ask for `datev_describe_operation` with `master-data-master-clients-health.info` or `master-data-master-clients-health.health`.
+It only has health checks. `datev_search_operations` leaves them out unless you pass `include_health: true`. You can also ask for `datev_describe_operation` with `master-data-master-clients-health.info` or `master-data-master-clients-health.health`.
 
 ### Is `master-data-master-clients-health` fully tested offline?
 
@@ -607,7 +607,7 @@ In DATEV's spec every operation has a sandbox server. Your app also has to be su
 
 ### How do I find the right `my-tax-mytax-income-tax-documents-health` operation?
 
-It only has health checks, which `datev_search_operations` leaves out. Ask for `datev_describe_operation` with `my-tax-mytax-income-tax-documents-health.health`.
+It only has health checks. `datev_search_operations` leaves them out unless you pass `include_health: true`. You can also ask for `datev_describe_operation` with `my-tax-mytax-income-tax-documents-health.health`.
 
 ### Is `my-tax-mytax-income-tax-documents-health` fully tested offline?
 

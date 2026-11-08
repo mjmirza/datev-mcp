@@ -5,6 +5,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- Searchable health checks. Previously `datev_search_operations` always left out the 6 health check operations, so 5 health-only products could only be reached by id. Now `include_health: true` returns them too.
 - Questions and answers. Previously docs/FAQ.md had a short list. Now `docs/qa/` holds 2,000+ answered questions, from curated pages for setup, safety and troubleshooting plus generated pages for every product and operation built by `npm run qa` from the operation index, the live sweep ledger and the eval report. Every answer was checked against the code by a second model before publishing, and false claims it found were corrected.
 - Community. The README links Discussions, the project board and the Q&A, and the issue form offers Discussions for questions and private reports for security problems.
 - Documentation set. Previously the README was three lines. Now there is a README for both business and technical readers, plus setup, security, validation, endpoint audit, compliance, accessibility, questions and credits pages under `docs/`, because the project needs to be understood and checked by people who did not build it.

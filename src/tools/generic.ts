@@ -23,12 +23,13 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         query: z.string().describe("Keywords, e.g. 'list clients', 'upload document', 'payroll report'"),
         product: z.string().optional().describe(`Limit to one product. One of: ${products().join(", ")}`),
         writes_only: z.boolean().optional().describe("Only operations that change data"),
+        include_health: z.boolean().optional().describe("Also return the health check operations, left out by default"),
         limit: z.number().int().min(1).max(50).optional(),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async ({ query, product, writes_only, limit }) => {
-      const hits = searchOperations(query, { product, writesOnly: writes_only, limit });
+    async ({ query, product, writes_only, include_health, limit }) => {
+      const hits = searchOperations(query, { product, writesOnly: writes_only, includeHealth: include_health, limit });
       return text(hits.length ? hits.map(summarize) : "No matching DATEV operations. Try other keywords or drop the product filter.");
     },
   );

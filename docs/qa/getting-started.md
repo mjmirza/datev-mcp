@@ -19,7 +19,7 @@ Any client that speaks MCP over standard input and output, for example Claude Co
 
 ### Do I need to know the DATEV API to use it?
 
-No. You ask in plain words. The assistant picks the tool, and for unusual tasks it searches the operations with `datev_search_operations` (203 of the 209, health checks left out).
+No. You ask in plain words. The assistant picks the tool, and for unusual tasks it searches the operations with `datev_search_operations`. Health checks are left out unless you pass `include_health: true`.
 
 ### How long does the first setup take?
 
