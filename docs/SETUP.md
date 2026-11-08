@@ -57,7 +57,7 @@ A browser opens at DATEV. After you sign in, the session is saved on your machin
 node dist/index.js doctor
 ```
 
-Each line is `OK` or `FAIL` with a short reason. It checks the credentials are present, the operation index loaded, a session exists, the token refreshes, DATEV's userinfo answers, and the clients API answers.
+Each line is `OK` or `FAIL` with a short reason. It checks the credentials are present, the operation index loaded, a session exists, it yields a valid access token (refreshed only when due), DATEV's userinfo answers, and the clients API answers.
 
 ## 6. Connect your AI client
 
@@ -67,7 +67,7 @@ The server speaks MCP over standard input and output. For Claude Code, run this 
 claude mcp add datev -- node /absolute/path/to/datev-mcp/dist/index.js
 ```
 
-Any other MCP client takes the same command and an empty argument list. If you use a launcher that injects the credentials, point the client at the launcher instead.
+Any other MCP client takes `node` as the command and the path to `dist/index.js` as its one argument. If you use a launcher script that injects the credentials, point the client at the launcher as the command, with an empty argument list.
 
 ## 7. First questions to try
 

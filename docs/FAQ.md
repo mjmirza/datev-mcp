@@ -27,7 +27,7 @@ DATEV's refresh token lasts about 11 hours and can be used only once. After a lo
 DATEV's terms do not allow passing their API documentation on. `npm run specs` downloads them for you.
 
 **How do I call an operation that has no dedicated tool?**
-Use `datev_search_operations` to find it, `datev_describe_operation` to see its parameters, then `datev_call`.
+Use `datev_search_operations` to find it, `datev_describe_operation` to see its parameters, then `datev_call`. `datev_call` sends JSON or text bodies, never a file. 18 operations take a file: 12 require one and cannot be used through `datev_call`, 6 can be called without a file. Two of them have their own tools, `datev_upload_extf` and `datev_upload_document`.
 
 **How do I download a PDF?**
 Call the operation with `datev_call` and pass `save_to` with an absolute path. The file is written byte for byte. Small files can also come back as base64 without `save_to`.
@@ -36,7 +36,9 @@ Call the operation with `datev_call` and pass `save_to` with an absolute path. T
 DATEV prepares postings as a background job. Call again with the returned `job_id`, and with `from_page` if some pages were already read. No second job is started.
 
 **What happens when DATEV is slow or rate limits?**
-Reads retry 429, 502, 503, 504 and network errors up to three attempts, honoring `Retry-After`. Writes retry only a 429. Every call stops after 55 seconds, and your AI client can cancel it earlier.
+Reads retry 429, 502, 503, 504 and network errors up to three attempts, honoring `Retry-After`. Writes retry only a 429. Each DATEV call has a 55 second budget, token included, and your AI client can cancel it earlier. The account search fetches its token before the budget starts and can wait up to 90 seconds for the session lock.
 
 **How do I know the tests mean anything?**
 The offline scenarios are checked by planting bugs in the client and confirming the scenarios fail. The last check caught all three planted bugs with 440 failing scenarios. See [VALIDATION.md](VALIDATION.md).
+
+More than 2,000 further answers, including one page per DATEV product with every operation, are in [docs/qa](qa/README.md).

@@ -1,1 +1,11 @@
 blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/mjmirza/datev-mcp/discussions/categories/q-a
+    about: Questions about setup, the DATEV API or the tools. Check docs/qa first, over 2,000 answers.
+  - name: Share an idea
+    url: https://github.com/mjmirza/datev-mcp/discussions/categories/ideas
+    about: Ideas for new tools or DATEV products to cover.
+  - name: Report a vulnerability
+    url: https://github.com/mjmirza/datev-mcp/security/advisories/new
+    about: Please report security problems privately, never in a public issue.
