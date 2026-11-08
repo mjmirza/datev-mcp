@@ -20,7 +20,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 - Writes need a confirmation code. Previously `confirm: true` alone ran a write, so a preview could be skipped or the payload changed after it. Now the preview returns a code bound to the exact request, and confirm only works with it.
 - The answer body is read as a stream with a hard 50 MB stop. Previously the whole body was buffered before any size check.
 - Postings read every page. Previously only the first page was read. Now pages are read in order within the budget, a partial read says where to continue, and an earlier job can be resumed with `job_id`.
-- The typed accounting tools treat any non-2xx answer, a redirect, a truncated body or an unknown shape as an error. The upload tools report a cut answer with `truncated: true` instead. Previously some of these came back as an empty list that looked like a real answer.
+- The typed accounting tools treat any non-2xx answer, a redirect, a truncated body or an unknown answer shape as an error. Single malformed rows inside a list are skipped by the account search and the postings account filter. The upload tools report a cut answer with `truncated: true` instead. Previously some of these came back as an empty list that looked like a real answer.
 - Document uploads send the correct file type, refuse ZIP, and check DATEV's length limits for metadata.
 - The chart of accounts cache is tied to the login. Previously a different login could be served the previous user's cached chart.
 

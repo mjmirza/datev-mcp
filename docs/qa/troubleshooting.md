@@ -63,7 +63,7 @@ The token was refused. Log in again. If it keeps failing, check that the app and
 
 ### The assistant says a list is empty but I expected data.
 
-An empty list can mean DATEV has no records, or that `datev_find_accounts` skipped rows it could not read. Errors are not turned into empty lists. Check the client id and fiscal year, and try `datev_call` to see DATEV's raw answer.
+An empty list can mean DATEV has no records, or that `datev_find_accounts` skipped account rows it could not read, or that `datev_account_postings` skipped posting rows without a readable account number while filtering by account. Errors are not turned into empty lists. Check the client id and fiscal year, and try `datev_call` to see DATEV's raw answer.
 
 ### A typed tool says the answer has an unknown shape.
 
