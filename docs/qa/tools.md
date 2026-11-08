@@ -83,7 +83,7 @@ Uploads a receipt or invoice for a client, after the same preview and confirmati
 
 ### What does `datev_upload_file` do?
 
-Sends local files to any DATEV operation that takes a multipart upload, for example HR documents, smart transfer, DXSO jobs, the cash register import, property tax and traffiqx invoices. `files` maps a file part to a path, `fields` fills the other parts with text or JSON. Part names come from `datev_describe_operation`. It checks the part names, refuses a missing required part, and previews before sending. Each file is limited to 20 MiB, all together to 50 MiB.
+Sends local files to any DATEV operation that takes a multipart upload, for example HR documents, smart transfer, DXSO jobs, the cash register import, property tax and traffiqx invoices. `files` maps a file part to a path, `fields` fills the other parts with text or JSON. Part names come from `datev_describe_operation`. It checks part names, file types the spec declares and field values against the schema, sends parts in the order the spec lists them, and previews before sending. Each file is limited to 20 MiB (less where DATEV says so, for example 3 MB for an HR import file), everything together to 50 MiB.
 
 ### What does `datev_search_operations` do?
 

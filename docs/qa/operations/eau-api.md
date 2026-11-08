@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `eau-api.createeaurequest` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.createeaurequest`?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "personnelNumber" that no list call has 
 
 ### Is `eau-api.getfeedbacks` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.getfeedbacks`?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `eau-api.canceleaurequest` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.canceleaurequest`?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 141 ms.
 
 ### Is `eau-api.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.getclients`?
 

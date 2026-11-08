@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id_document_types` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id_document_types`?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id_duo_version` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id_duo_version`?
 
@@ -157,7 +157,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.post_clients_client_id_documents` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.post_clients_client_id_documents`?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.put_clients_client_id_documents_document_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.put_clients_client_id_documents_document_id`?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.put_clients_client_id_documents_stapled` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.put_clients_client_id_documents_stapled`?
 

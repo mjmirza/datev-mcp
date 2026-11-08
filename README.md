@@ -148,7 +148,7 @@ Every number below comes from a real run on 2026-11-07. The method and how to re
 
 | Check | Result |
 |---|---|
-| Offline scenarios across all 209 operations | 28,494 of 28,494 passing |
+| Offline scenarios across all 209 operations | 28,496 of 28,496 passing |
 | Planted bugs the scenarios had to catch | 3 of 3 caught, 440 failing scenarios |
 | Unit and integration tests | 101 of 101 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |

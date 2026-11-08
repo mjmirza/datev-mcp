@@ -7,7 +7,7 @@ How the claims in this repository are checked.
 
 ### How many tests are there?
 
-Over 100 unit and integration tests and 28,494 offline scenarios across all 209 operations. `npm test` and `npm run eval` print the current counts.
+Over 100 unit and integration tests and 28,496 offline scenarios across all 209 operations. `npm test` and `npm run eval` print the current counts.
 
 ### What are the offline scenarios?
 

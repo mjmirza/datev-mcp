@@ -8,9 +8,9 @@ What was checked, how, the numbers from the last run, and how to repeat each che
 | Layer | What it proves | Command | Last result |
 |---|---|---|---|
 | Type check | The code is consistent, strict mode | `npm run typecheck` | Clean |
-| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 137 of 137 passing |
-| Offline scenario run | Every one of the 209 operations against 62 scenario categories, with a fake DATEV | `npm run eval` | 28,494 of 28,494 passing |
-| Planted bugs | The scenarios catch real defects | see below | 4 of 4 bugs caught |
+| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 141 of 141 passing |
+| Offline scenario run | Every one of the 209 operations against 62 scenario categories, with a fake DATEV | `npm run eval` | 28,496 of 28,496 passing |
+| Planted bugs | The scenarios catch real defects | see below | 5 of 5 bugs caught |
 | Live DATEV sandbox | The server works against the real DATEV gateway | `npm run test:live`, `npm run sweep` | 71 read operations reached, 38 returned data |
 
 On top of that, a second AI model reviewed the code four times, described under "Independent review".
@@ -32,7 +32,7 @@ On top of that, a second AI model reviewed the code four times, described under 
 | Limits | 4 | Endless answers stop at the cap, binaries stay byte-exact, a cancelled call sends nothing, retries never run past the time budget |
 | Body rules | 3 | A required body is enforced, an unexpected body is refused, a file upload cannot be sent as JSON |
 | Writes | 1 | Through the real MCP protocol, a write without confirmation sends nothing and returns a preview |
-| Uploads | 2 | For every multipart operation with a sandbox server, `datev_upload_file` previews without sending, and after confirmation each declared file and field part is on the wire, list parts with every file |
+| Uploads | 2 | For all 17 multipart operations, `datev_upload_file` previews without any request, and after confirmation sends one request with every part in spec order, each file with its exact bytes, name and declared type, and each field with its exact value |
 | Search | 1 | Each operation is found by its own summary |
 | Properties | 7 | Randomised inputs, 1,000 to 2,000 runs each, for NDJSON parsing, fiscal year id shapes, job phases, account prefixes, path encoding and EXTF batches |
 
@@ -40,7 +40,7 @@ The report of every run is written to `test/reports/eval-<time>.md` and `.json`.
 
 ## Planted bugs
 
-A scenario set that never fails proves nothing. Four bugs were put into the code on purpose and the full run repeated.
+A scenario set that never fails proves nothing. Five bugs were put into the code on purpose and the full run repeated.
 
 | Planted bug | Scenarios that failed |
 |---|---|
@@ -48,6 +48,7 @@ A scenario set that never fails proves nothing. Four bugs were put into the code
 | Binary answers treated as text | 205 `binary.byte-exact` |
 | The cancel check before sending removed | 205 `cancel.no-request` |
 | Upload list parts cut to their first file (2026-11-08) | 3 `upload.parts-on-wire` |
+| Upload parts sent in reverse order (2026-11-08) | 5 `upload.parts-on-wire` |
 
 440 scenarios failed in total, and the code was restored byte for byte afterwards. The report is kept as [docs/evidence/mutation-check-2026-11-07T182055.md](evidence/mutation-check-2026-11-07T182055.md). The same was done for single unit tests during the fixes, for example the session lock takeover test fails when its fresh re-check is removed, and the folder symlink test fails against the earlier file code.
 

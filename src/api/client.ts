@@ -17,9 +17,18 @@ const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secre
 
 export function buildHeaders(op: Operation, input: CallInput): Record<string, string> {
   const out: Record<string, string> = {};
+  const seen = new Set<string>();
   for (const [k, v] of Object.entries(input.headers ?? {})) {
     if (RESERVED_HEADERS.test(k)) throw new CallError(`Header "${k}" is set by the server and cannot be overridden`);
     if (/[\r\n]/.test(v)) throw new CallError(`Header "${k}" contains a line break`);
+    // Names differing only in case would merge in an order the confirm code cannot see.
+    if (seen.has(k.toLowerCase())) throw new CallError(`Header "${k}" is given twice`);
+    seen.add(k.toLowerCase());
+    try {
+      new Headers([[k, v]]);
+    } catch {
+      throw new CallError(`Header "${k}" is not a valid HTTP header`);
+    }
     out[k] = v;
   }
   for (const p of op.params.filter((x) => x.in === "header" && x.required)) {
@@ -141,7 +150,7 @@ export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
 }
 
 // A declared media type may use wildcards: */*, type/*, or a suffix pattern like application/*+json.
-function mediaMatches(declared: string, actual: string): boolean {
+export function mediaMatches(declared: string, actual: string): boolean {
   const TYPE = /^[a-z0-9!#$&^_.+*-]+\/[a-z0-9!#$&^_.+*-]+$/;
   const norm = (c: string) => c.split(";")[0]!.trim().toLowerCase();
   if (!/^[!-~][ -~]*$/.test(actual) || actual !== actual.trim()) return false; // printable ASCII, no outer whitespace
