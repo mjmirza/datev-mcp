@@ -15,7 +15,7 @@ datev-mcp has no screens of its own. People use it through an AI client, by typi
 
 | Gap | Plan |
 |---|---|
-| Messages are mostly English. Only the EXTF check reports in German (the default) or English | German messages for the most common errors, since most users work in German |
+| Messages are English by default. `DATEV_MCP_LANG=de` gives German versions of the most common errors (login, time-outs, confirm codes, unknown operations, DATEV HTTP errors), and the EXTF check reports in German or English. Rarer errors stay English | German versions of the remaining messages |
 | JSON field names are English and technical | One sentence in everyday words before each JSON answer |
 | The login opens a DATEV web page | That page belongs to DATEV and follows DATEV's own accessibility work. The login URL is also printed, so it can be opened in any browser |
 

@@ -18,6 +18,7 @@ import { callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
+import { localize } from "../i18n.js";
 import { FileError, readLocalFile, writeLocalFile } from "./files.js";
 
 // EXTF validation and writing use @seamless-engineering/datev-extf (MIT). See CREDITS.md.
@@ -27,7 +28,7 @@ const MAX_FINDINGS = 100;
 
 type Lang = "de" | "en";
 const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: typeof v === "string" ? v : JSON.stringify(v, null, 2) }] });
-const err = (m: string) => ({ ...ok(m), isError: true });
+const err = (m: string) => ({ ...ok(localize(m)), isError: true });
 
 function errorText(e: unknown): string {
   if (e instanceof FileError || e instanceof CallError || e instanceof NeedsLoginError) return e.message;

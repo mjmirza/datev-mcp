@@ -40,6 +40,7 @@ The server reads these environment variables.
 | `DATEV_ENV` | No | `sandbox` (default) or `production` |
 | `DATEV_SCOPES` | No | Space separated scopes. By default every scope the index knows is requested |
 | `DATEV_MCP_HOME` | No | Where the session file lives. Default `~/.config/datev-mcp` |
+| `DATEV_MCP_LANG` | No | `de` gives German versions of the most common error messages. Default English |
 
 Inject the two credentials from your password manager when you start the server, for example with a small launcher script that reads them from the vault and then runs `node dist/index.js`. Do not write them into a committed file, and never paste them into an AI conversation.
 

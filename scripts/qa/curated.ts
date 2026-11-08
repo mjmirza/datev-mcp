@@ -21,7 +21,7 @@ export const CURATED: Section[] = [
     ["What is a good first question to ask?", "\"Which clients can I reach in DATEV?\" It calls `datev_list_clients` and shows your clients with their active data services, up to 5,000."],
     ["Is there a hosted version?", "No. It runs on your own machine, which keeps the DATEV session and any downloaded files local."],
     ["Does it cost anything?", "The software is source-available and free for an individual's personal evaluation. Business use needs a license from the author. DATEV charges separately for production access."],
-    ["Which language does it speak?", "The tools work with any language your assistant speaks. EXTF checks can report findings in German or English with `lang`."],
+    ["Which language does it speak?", "The tools work with any language your assistant speaks. EXTF checks report findings in German or English with `lang`. Set `DATEV_MCP_LANG=de` to get the most common error messages in German too: login, time-outs, confirm codes, unknown operations and DATEV HTTP errors."],
     ["Can I try it without real client data?", "Yes, that is the default. It talks to the DATEV sandbox, which holds test clients such as 455148-1."],
     ["What does the sandbox test data look like?", "Four test clients with made-up names, a fiscal year 2023, a chart of accounts with 2,061 accounts and 11,562 postings for client 455148-1. The README shows real answers."],
     ["Where are the screenshots of the results?", "In the README section \"What the answers look like\" and in `docs/images/`."],

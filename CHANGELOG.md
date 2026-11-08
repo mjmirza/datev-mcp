@@ -5,6 +5,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- German error messages. Previously only the EXTF check spoke German. Now `DATEV_MCP_LANG=de` translates the most common errors (login needed, time-outs, the five confirm code errors, too many confirmations, unknown operation, DATEV HTTP errors) where the tools hand them to the user. Errors stay English inside, so nothing that matches on them changes.
 - Error reasons in the live sweep. Previously the sweep stored only the status code and a body hash for a failed call. Now it also stores a short reason taken from DATEV's answer, with client ids, UUIDs, emails, tokens and long numbers removed, and shows it in the report.
 - Cost centres in the batch writer. Previously `datev_write_extf_batch` wrote only the common booking columns. Now each row takes optional `kost1` and `kost2`, written to the KOST1 and KOST2 columns, and values the EXTF check would flag are refused.
 - Unreadable rows are reported. Previously `datev_find_accounts` dropped malformed account rows and `datev_account_postings` dropped postings without an account number when filtering, so a bad answer could look like `matches: 0`. Now both count them (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is an error.
