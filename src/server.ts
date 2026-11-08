@@ -8,6 +8,7 @@ import { registerAccountingTools } from "./tools/accounting.js";
 import { registerDocumentTools } from "./tools/documents.js";
 import { registerExtfTools } from "./tools/extf.js";
 import { registerGenericTools } from "./tools/generic.js";
+import { registerUploadTools } from "./tools/upload.js";
 
 const VERSION = "0.0.1";
 
@@ -20,6 +21,7 @@ function createServer(cfg: Config): McpServer {
   registerAccountingTools(server, deps);
   registerExtfTools(server, deps);
   registerDocumentTools(server, deps);
+  registerUploadTools(server, deps);
   return server;
 }
 

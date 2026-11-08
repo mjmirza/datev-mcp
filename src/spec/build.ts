@@ -101,7 +101,15 @@ function toBody(raw: unknown, doc: SpecDoc): Operation["body"] {
   const rb = deref(raw, doc) as RawBody;
   const content: NonNullable<RawBody["content"]> = typeof rb === "object" && rb !== null && rb.content ? rb.content : {};
   const first = Object.keys(content)[0];
-  return { required: Boolean(rb.required), contentTypes: Object.keys(content), schema: first ? content[first]?.schema : undefined };
+  const multipart = Object.keys(content).find((c) => c.toLowerCase().startsWith("multipart/"));
+  const encoding = multipart ? (content[multipart] as { encoding?: Record<string, { contentType?: unknown }> }).encoding : undefined;
+  const partTypes = Object.fromEntries(Object.entries(encoding ?? {}).flatMap(([part, e]) => (typeof e?.contentType === "string" ? [[part, e.contentType]] : [])));
+  return {
+    required: Boolean(rb.required),
+    contentTypes: Object.keys(content),
+    schema: first ? content[first]?.schema : undefined,
+    ...(Object.keys(partTypes).length ? { partTypes } : {}),
+  };
 }
 
 export function buildIndex(files: SpecFile[]): OperationIndex {

@@ -1,16 +1,19 @@
 // Offline eval: scenarios generated from the spec index, each run against a simulated DATEV server.
 // Writes test/reports/eval-<time>.json and .md, exits 1 on any failure. Usage: npm run eval
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import fc from "fast-check";
 import { decodeBytes, encodeCp1252, validateExtf, writeBuchungsstapel, type BatchRow } from "@seamless-engineering/datev-extf";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, parseJsonOrLines, type CallDeps, type CallInput } from "../../src/api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, parseJsonOrLines, type CallDeps, type CallInput } from "../../src/api/client.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
 import type { Operation } from "../../src/spec/types.js";
 import { OPERATIONS, searchOperations } from "../../src/tools/catalog.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
+import { registerUploadTools } from "../../src/tools/upload.js";
 import { matchAccounts, type LedgerAccount } from "../../src/tools/accounts.js";
 import { fiscalYearIds, jobPhase } from "../../src/tools/accounting.js";
 
@@ -313,6 +316,76 @@ async function writeConfirmGate() {
   });
 }
 
+// Every multipart operation: the preview sends nothing, and the confirmed call sends each part in spec order with exact bytes.
+type PartSchema = { type?: string; format?: string; enum?: string[]; required?: string[]; properties?: Record<string, PartSchema>; items?: { format?: string }; allOf?: PartSchema[] };
+const flatPart = (s: PartSchema = {}): PartSchema =>
+  s.allOf ? s.allOf.map(flatPart).reduce((a, b) => ({ ...a, ...b, required: [...(a.required ?? []), ...(b.required ?? [])], properties: { ...a.properties, ...b.properties } }), { ...s, allOf: undefined }) : s;
+const sampleValue = (s: PartSchema): unknown =>
+  s.type === "object" || s.properties
+    ? Object.fromEntries((s.required ?? []).map((k) => [k, sampleValue(flatPart(s.properties?.[k]))]))
+    : (s.enum?.[0] ?? "eval");
+
+async function uploadShapes() {
+  const dir = mkdtempSync(join(tmpdir(), "datev-eval-up-"));
+  const fixture = (ext: string, n: number) => {
+    const p = join(dir, `eval-${n}.${ext}`);
+    writeFileSync(p, `eval file ${n} ${ext}`);
+    return p;
+  };
+  const ops = OPERATIONS.filter((o) => o.body?.contentTypes.some((t) => /^multipart\/form-data/i.test(t)));
+  for (const op of ops) {
+    const env = op.servers.sandbox ? "sandbox" : "production";
+    const calls: { body: unknown }[] = [];
+    const fetch: FetchLike = async (_u, init) => (calls.push({ body: init?.body }), json(201, {}));
+    const server = new McpServer({ name: "eval", version: "0" });
+    registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {} }));
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const c = new Client({ name: "eval", version: "0" });
+    await c.connect(b);
+    const schema = flatPart(op.body?.schema as PartSchema);
+    const props = Object.entries(schema.properties ?? {}).map(([n, s]) => [n, flatPart(s)] as const);
+    const extFor = (part: string) => (/xml/.test(op.body?.partTypes?.[part] ?? "") ? "xml" : /json/.test(op.body?.partTypes?.[part] ?? "") || part === "metadata" ? "json" : "pdf");
+    let n = 0;
+    const files = Object.fromEntries(
+      props.filter(([, s]) => (s.type === "array" ? s.items?.format : s.format) === "binary").map(([name, s]) => [name, s.type === "array" ? [fixture(extFor(name), n++), fixture(extFor(name), n++)] : fixture(extFor(name), n++)]),
+    );
+    const fields = Object.fromEntries(props.filter(([name]) => !(name in files) && (schema.required ?? []).includes(name)).map(([name, s]) => [name, sampleValue(s)]));
+    const g = validInput(op);
+    const args = { operation_id: op.id, path_params: g.pathParams, query: g.query, headers: g.headers, files, fields };
+    const preview = (await c.callTool({ name: "datev_upload_file", arguments: args })) as { content: { text: string }[]; isError?: boolean };
+    const p = preview.isError ? undefined : (JSON.parse(preview.content[0].text) as { preview?: boolean; confirm_token?: string });
+    record("upload.preview-no-send", op.id, p?.preview === true && calls.length === 0, preview.content[0].text.slice(0, 160));
+    if (!p?.confirm_token) continue;
+    await c.callTool({ name: "datev_upload_file", arguments: { ...args, confirm: true, confirm_token: p.confirm_token } });
+    const form = calls.length === 1 && calls[0].body instanceof FormData ? calls[0].body : undefined;
+    const problems: string[] = [];
+    if (!form) problems.push(`${calls.length} requests, expected one multipart request`);
+    else {
+      const expectOrder = props.map(([name]) => name).filter((name) => name in files || name in fields);
+      const sentOrder = [...new Set(form.keys())];
+      if (sentOrder.join() !== expectOrder.join()) problems.push(`order ${sentOrder.join()} instead of ${expectOrder.join()}`);
+      for (const [name, value] of Object.entries(files)) {
+        const want = Array.isArray(value) ? value : [value];
+        const got = form.getAll(name) as File[];
+        if (got.length !== want.length) problems.push(`${name}: ${got.length} files`);
+        for (const [i, path] of want.entries()) {
+          const f = got[i];
+          if (!f || f.name !== path.split("/").pop() || (await f.text()) !== readFileSync(path, "utf8")) problems.push(`${name}[${i}] bytes or name`);
+          const declared = op.body?.partTypes?.[name];
+          if (f && declared && !declared.split(",").some((d) => mediaMatches(d.trim(), f.type))) problems.push(`${name}[${i}] type ${f.type}`);
+        }
+      }
+      for (const [name, value] of Object.entries(fields)) {
+        const got = form.get(name);
+        const textOf = typeof got === "string" ? got : got ? await (got as File).text() : undefined;
+        if (textOf !== (typeof value === "string" ? value : JSON.stringify(value))) problems.push(`field ${name}`);
+      }
+    }
+    record("upload.parts-on-wire", op.id, problems.length === 0, problems.join(", "));
+  }
+}
+
 function properties() {
   const prop = (category: string, p: fc.IProperty<unknown>, runs = 2000) => {
     const out = fc.check(p, { numRuns: runs });
@@ -365,6 +438,7 @@ const started = Date.now();
 OPERATIONS.forEach(perOperation);
 await Promise.all(pending);
 await writeConfirmGate();
+await uploadShapes();
 properties();
 
 const byCat = new Map<string, { pass: number; fail: number }>();

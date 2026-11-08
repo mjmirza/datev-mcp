@@ -27,7 +27,7 @@ No. Apps start in the sandbox, each product is a separate subscription, and prod
 
 ### How do I create booking proposals from invoices?
 
-That is the Rechnungsdatenservice side of DATEV (the accounting-dxso-jobs product). Its job operations can be found with `datev_search_operations` and called with `datev_call`, which previews every write. Attaching the invoice file needs a file upload, which `datev_call` cannot send and no typed tool covers yet, so the full workflow does not work through this server today.
+That is the Rechnungsdatenservice side of DATEV (the accounting-dxso-jobs product). Its job operations can be found with `datev_search_operations` and called with `datev_call`, which previews every write. Attach the invoice file with `datev_upload_file` on `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files`, which also previews before sending.
 
 ### Can I export bookings from my ERP to DATEV automatically?
 

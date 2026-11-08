@@ -29,7 +29,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getjobstate` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getjobstate`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 133 ms with 1 items.
 
 ### Is `accounting-dataexchange.getfiscalyears` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getfiscalyears`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 253 ms with 1 items.
 
 ### Is `accounting-dataexchange.getfiscalyear` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getfiscalyear`?
 
@@ -125,7 +125,7 @@ The live tour of 2026-11-07 sent it to the DATEV sandbox through `datev_account_
 
 ### Is `accounting-dataexchange.postaccountpostingsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.postaccountpostingsjob`?
 
@@ -157,7 +157,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 63 ms with 111 items.
 
 ### Is `accounting-dataexchange.getaccountingsequences` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getaccountingsequences`?
 
@@ -189,7 +189,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 235 ms.
 
 ### Is `accounting-dataexchange.getgeneralledgeraccounts` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getgeneralledgeraccounts`?
 
@@ -221,7 +221,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 50 ms with 7 items.
 
 ### Is `accounting-dataexchange.gettermsofpayments` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.gettermsofpayments`?
 
@@ -253,7 +253,7 @@ The DATEV sandbox answered HTTP 404 on 2026-11-07. The test data has no such rec
 
 ### Is `accounting-dataexchange.getagriculturalfinancialstatement` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getagriculturalfinancialstatement`?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getaccountpostingsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getaccountpostingsjob`?
 
@@ -317,7 +317,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dataexchange.postopenitemsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.postopenitemsjob`?
 
@@ -349,7 +349,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getopenitemsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getopenitemsjob`?
 
@@ -381,7 +381,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 88 ms.
 
 ### Is `accounting-dataexchange.getsumsandbalances` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getsumsandbalances`?
 
@@ -413,7 +413,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dataexchange.postsumsandbalancesquantityandweightjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.postsumsandbalancesquantityandweightjob`?
 
@@ -445,7 +445,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getsumsandbalancesquantityandweightjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getsumsandbalancesquantityandweightjob`?
 

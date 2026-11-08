@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id_document_types` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id_document_types`?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id_duo_version` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id_duo_version`?
 
@@ -141,11 +141,11 @@ An operation of the `accounting-documents` product in the accounting (Rechnungsw
 
 ### How do I call `accounting-documents.post_clients_client_id_documents`?
 
-The typed tool `datev_upload_document` uses it for you and checks the answer. `datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only.
+The typed tool `datev_upload_document` uses it for you and checks the answer. Use `datev_upload_file` with `operation_id: "accounting-documents.post_clients_client_id_documents"` and `files` mapping the part `file` to local file paths, plus `fields` for `metadata`, `custom_metadata` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `accounting-documents.post_clients_client_id_documents` change data in DATEV?
 
-Yes. Through `datev_upload_document` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` and `datev_upload_document` send it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `accounting-documents.post_clients_client_id_documents` need?
 
@@ -157,7 +157,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.post_clients_client_id_documents` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.post_clients_client_id_documents`?
 
@@ -173,11 +173,11 @@ An operation of the `accounting-documents` product in the accounting (Rechnungsw
 
 ### How do I call `accounting-documents.put_clients_client_id_documents_document_id`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "accounting-documents.put_clients_client_id_documents_document_id"` and `files` mapping the part `file` to local file paths, plus `fields` for `metadata`, `custom_metadata` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `accounting-documents.put_clients_client_id_documents_document_id` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `accounting-documents.put_clients_client_id_documents_document_id` need?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.put_clients_client_id_documents_document_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.put_clients_client_id_documents_document_id`?
 
@@ -205,11 +205,11 @@ An operation of the `accounting-documents` product in the accounting (Rechnungsw
 
 ### How do I call `accounting-documents.put_clients_client_id_documents_stapled`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "accounting-documents.put_clients_client_id_documents_stapled"` and `files` mapping the part `files` to local file paths, plus `fields` for `metadata`, `custom_metadata` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `accounting-documents.put_clients_client_id_documents_stapled` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `accounting-documents.put_clients_client_id_documents_stapled` need?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.put_clients_client_id_documents_stapled` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.put_clients_client_id_documents_stapled`?
 

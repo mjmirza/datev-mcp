@@ -31,7 +31,7 @@ const MIME: Record<string, string> = {
 export function mimeFor(name: string): string {
   const ext = extname(name).slice(1).toLowerCase();
   if (ext === "zip") throw new FileError("DATEV does not accept ZIP files for documents. Upload the files one by one.");
-  const type = MIME[ext];
+  const type = Object.hasOwn(MIME, ext) ? MIME[ext] : undefined;
   if (!type) throw new FileError(`Unsupported file type ".${ext}". Use one of: ${Object.keys(MIME).join(", ")}.`);
   return type;
 }

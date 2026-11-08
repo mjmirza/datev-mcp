@@ -13,11 +13,11 @@ An operation of the `property-tax-file-upload-api` product in the property tax f
 
 ### How do I call `property-tax-file-upload-api.uploadfile`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "property-tax-file-upload-api.uploadfile"` and `files` mapping the part `file` to local file paths, plus `fields` for `metadata` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `property-tax-file-upload-api.uploadfile` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `property-tax-file-upload-api.uploadfile` need?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `property-tax-file-upload-api.uploadfile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `property-tax-file-upload-api.uploadfile`?
 

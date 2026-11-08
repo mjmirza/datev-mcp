@@ -5,7 +5,9 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- Stricter request checks. A header given twice in different case, or a header name HTTP does not allow, is refused before the preview. Files with more than one hard link, PuTTY keys and SSH host keys are never sent.
 - German error messages. Previously only the EXTF check spoke German. Now `DATEV_MCP_LANG=de` translates the most common errors (login needed, time-outs, the five confirm code errors, too many confirmations, unknown operation, DATEV HTTP errors) where the tools hand them to the user. Errors stay English inside, so nothing that matches on them changes.
+- File uploads for every operation. Previously 12 DATEV operations required a file that no tool could send, and 6 more could not attach one. Now `datev_upload_file` sends local files to any multipart operation. It checks part names, the file types the spec declares and field values against the schema, sends parts in spec order, applies DATEV's smaller per-part limits, and binds every file's name and SHA-256 into the confirmation code.
 - Error reasons in the live sweep. Previously the sweep stored only the status code and a body hash for a failed call. Now it also stores a short reason taken from DATEV's answer, with client ids, UUIDs, emails, tokens and long numbers removed, and shows it in the report.
 - Cost centres in the batch writer. Previously `datev_write_extf_batch` wrote only the common booking columns. Now each row takes optional `kost1` and `kost2`, written to the KOST1 and KOST2 columns, and values the EXTF check would flag are refused.
 - Unreadable rows are reported. Previously `datev_find_accounts` dropped malformed account rows and `datev_account_postings` dropped postings without an account number when filtering, so a bad answer could look like `matches: 0`. Now both count them (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is an error.
@@ -31,6 +33,8 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 - The chart of accounts cache is tied to the login. Previously a different login could be served the previous user's cached chart.
 
 ### Fixed
+- Header values. Previously a header DATEV declares with a format or length (for example the EXTF `Filename`, which must match `EXTF_*.csv`) was sent unchecked and refused by DATEV. Now it is checked against the spec before the request, and `datev_upload_extf` refuses a wrong file name in the preview instead of after confirmation.
+- Upload file names and key files. Previously a file name with a line break, quote, backslash or `< > : | ? *` went into the multipart header unchanged, the HR import accepted names over its 50 character limit, and `.p8`, `.pkcs8` and `.keystore` key files could be sent. All three are now refused before anything is sent. Text inside JSON parts is also checked against the lengths and formats the spec declares.
 - Refresh token reuse. Previously a refresh that failed could leave the spent token stored and try it again. Now a spent token is never written back.
 - Session lock. Previously any process could remove a lock it judged stale, even while the owner was still working. Now the lock records its owner and is only taken over when it is old and the owner is gone.
 - File safety. Previously any readable file could be uploaded and saves could follow a symlink. Now hidden folders and key-like files are refused, symlinks are resolved before the check, and new files are created exclusively with owner-only permissions.

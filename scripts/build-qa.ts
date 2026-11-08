@@ -81,7 +81,14 @@ function opQuestions(o: Op): QA[] {
   const reqHeaders = o.params.filter((p) => p.in === "header" && p.required).map((p) => p.name);
   const headerNote = reqHeaders.length ? ` It also needs ${code(`headers: {${reqHeaders.map((h) => `"${h}": "..."`).join(", ")}}`)}.` : "";
   const fileOnly = !!o.body && !o.body.contentTypes.some((c) => /json|text/i.test(c));
-  const call = fileOnly && !o.body!.required
+  const multipart = fileOnly && o.body!.contentTypes.some((c) => /^multipart\/form-data/i.test(c));
+  const props = Object.entries(((o.body?.schema ?? {}) as { properties?: Record<string, { type?: string; format?: string; items?: { format?: string } }> }).properties ?? {});
+  const fileParts = props.filter(([, s]) => (s.type === "array" ? s.items?.format : s.format) === "binary").map(([n]) => n);
+  const otherParts = props.filter(([n]) => !fileParts.includes(n)).map(([n]) => n);
+  const uploadHow = `Use ${code("datev_upload_file")} with ${code(`operation_id: "${o.id}"`)} and ${code("files")} mapping ${fileParts.length > 1 ? `the parts ${fileParts.map(code).join(", ")}` : `the part ${code(fileParts[0] ?? "file")}`} to local file paths${otherParts.length ? `, plus ${code("fields")} for ${otherParts.map(code).join(", ")} where needed` : ""}. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with ${code("confirm: true")} and that code.${headerNote}`;
+  const call = multipart
+    ? `${uploadHow}${o.body!.required ? "" : ` ${code("datev_call")} can also call it without a file.`}`
+    : fileOnly && !o.body!.required
     ? `${code("datev_call")} can call it without a body, but cannot send the file it takes (${o.body!.contentTypes.join(", ")}), because the generic tool sends JSON or text only.${typed ? "" : " No typed tool sends the file yet."}`
     : fileOnly
     ? `${code("datev_call")} cannot send it, because it needs a file upload (${o.body!.contentTypes.join(", ")}) and the generic tool sends JSON or text only.${typed ? "" : " No typed tool covers it yet."}`
@@ -89,6 +96,7 @@ function opQuestions(o: Op): QA[] {
     ? `Use ${code("datev_call")} with ${code(`operation_id: "${o.id}"`)}. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with ${code("confirm: true")} and that code.`
     : `Use ${code("datev_call")} with ${code(`operation_id: "${o.id}"`)} and the path and query values it needs.${headerNote}`;
   const callFull = o.write && !fileOnly ? call + headerNote : call;
+  const uploadWrite = `Yes. ${typed ? `${code("datev_upload_file")} and ${code(typed)} send it` : `${code("datev_upload_file")} sends it`} only after the preview and confirmation code, and it is never retried except after a 429.`;
   const optional = o.scopes.filter((x) => x !== "openid");
   const scopes = o.scopes.length
     ? `${o.scopes.map(code).join(" and ")}.${optional.length ? ` The server requests ${optional.length > 1 ? "them" : "it"} at login unless ${code("DATEV_SCOPES")} leaves ${optional.length > 1 ? "them" : "it"} out.` : ""}${o.scopes.includes("openid") ? ` ${code("openid")} is always requested.` : ""}`
@@ -98,7 +106,7 @@ function opQuestions(o: Op): QA[] {
   return [
     { q: `What is ${code(o.id)}?`, a: `An operation of the ${code(o.product)} product in the ${family(o.product)} area. It uses HTTP ${o.method.toUpperCase()} and ${kind}.${o.health ? " It is a health check that tells you whether the service is up." : ""}` },
     { q: `How do I call ${code(o.id)}?`, a: `${typed ? `The typed tool ${code(typed)} uses it for you and checks the answer. ` : ""}${callFull}` },
-    { q: `Does ${code(o.id)} change data in DATEV?`, a: o.write ? (fileOnly && !typed && !o.body!.required ? `Yes. ${code("datev_call")} can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.` : fileOnly && !typed ? `Yes, but ${code("datev_call")} cannot send it yet because it needs a file upload. No tool sends it today.` : o.id === "accounting-dataexchange.postaccountpostingsjob" ? `Not your bookings. It starts an export job on DATEV's side. ${code("datev_account_postings")} starts it directly without a preview, ${code("datev_call")} asks for a confirmation code first. It is never retried except after a 429.` : `Yes. Through ${fileOnly ? code(typed!) : `${code("datev_call")}${typed ? ` and ${code(typed)}` : ""}`} it goes through the preview and confirmation code, and it is never retried except after a 429.`) : "No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and network errors." },
+    { q: `Does ${code(o.id)} change data in DATEV?`, a: o.write ? (multipart ? uploadWrite : fileOnly && !typed && !o.body!.required ? `Yes. ${code("datev_call")} can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.` : fileOnly && !typed ? `Yes, but ${code("datev_call")} cannot send it yet because it needs a file upload. No tool sends it today.` : o.id === "accounting-dataexchange.postaccountpostingsjob" ? `Not your bookings. It starts an export job on DATEV's side. ${code("datev_account_postings")} starts it directly without a preview, ${code("datev_call")} asks for a confirmation code first. It is never retried except after a 429.` : `Yes. Through ${fileOnly ? code(typed!) : `${code("datev_call")}${typed ? ` and ${code(typed)}` : ""}`} it goes through the preview and confirmation code, and it is never retried except after a 429.`) : "No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and network errors." },
     { q: `Which scope does ${code(o.id)} need?`, a: scopes },
     { q: `What did ${code(o.id)} return in the DATEV sandbox?`, a: liveAnswer(o) },
     { q: `Is ${code(o.id)} covered by the offline tests?`, a: failedOps.has(o.id) ? `Not fully. Some scenarios failed for it in the run of ${evalDay}. See the eval report.` : `Yes. Every scenario that applies to it passed in the run of ${evalDay}, part of ${evalRun.total.toLocaleString("en")} scenarios over ${OPERATIONS.length} operations.` },

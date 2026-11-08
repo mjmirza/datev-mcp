@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, existsSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -84,4 +84,10 @@ test("the upload tools say when DATEV's answer was cut at the size cap", async (
   const extf = JSON.parse(text(await c.callTool({ name: "datev_upload_extf", arguments: { ...extfArgs, confirm: true, confirm_token: extfPreview.confirm_token } })));
   assert.equal(extf.uploaded, true);
   assert.equal(extf.truncated, true, "EXTF upload hid a cut answer");
+  // A name DATEV refuses is caught in the preview, so no confirm code is ever issued for it.
+  const badPath = join(dir, "buchungen.csv");
+  copyFileSync(extfPath, badPath);
+  const bad = (await c.callTool({ name: "datev_upload_extf", arguments: { client_id: "455148-1", file_path: badPath } })) as { isError?: boolean; content: { text: string }[] };
+  assert.equal(bad.isError, true);
+  assert.match(bad.content[0].text, /Filename/);
 });

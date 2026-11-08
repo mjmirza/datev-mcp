@@ -14,7 +14,7 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { callOperation, CallError, type CallDeps } from "../api/client.js";
+import { buildHeaders, callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -176,6 +176,10 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const file = readLocalFile(file_path, MAX_EXTF_BYTES);
         const summary = summarizeReport(validateBytes(file.bytes), "de");
         if (!summary.valid) return { ...ok({ uploaded: false, reason: "Fix the EXTF errors before uploading", ...summary }), isError: true };
+        const op = getOperation("accounting-extf-files.importextffile");
+        if (!op) return err("EXTF import operation missing from the index");
+        // DATEV requires the name pattern EXTF_*.csv; checked here so a preview is never confirmed for a file DATEV refuses.
+        buildHeaders(op, { headers: { Filename: file.name } });
         const d = deps(extra.signal);
         const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256: createHash("sha256").update(file.bytes).digest("hex") };
         if (confirm !== true) {
@@ -190,8 +194,6 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const op = getOperation("accounting-extf-files.importextffile");
-        if (!op) return err("EXTF import operation missing from the index");
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
         const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };

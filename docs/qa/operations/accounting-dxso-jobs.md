@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 352 ms with 6 items.
 
 ### Is `accounting-dxso-jobs.get_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 479 ms.
 
 ### Is `accounting-dxso-jobs.get_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id`?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.post_clients_client_id_dxso_jobs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.post_clients_client_id_dxso_jobs`?
 
@@ -109,11 +109,11 @@ An operation of the `accounting-dxso-jobs` product in the accounting (Rechnungsw
 
 ### How do I call `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files"` and `files` mapping the part `files` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` need?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id`?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id`?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id`?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries`?
 

@@ -21,7 +21,8 @@ export interface Operation {
   scopes: string[];
   clientSecretHeader: boolean;
   params: OperationParam[];
-  body?: { required: boolean; contentTypes: string[]; schema?: unknown };
+  /** partTypes: the content type each multipart part must have, where the spec declares one. */
+  body?: { required: boolean; contentTypes: string[]; schema?: unknown; partTypes?: Record<string, string> };
   servers: { production?: string; sandbox?: string };
 }
 

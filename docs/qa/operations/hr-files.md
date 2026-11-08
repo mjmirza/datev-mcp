@@ -13,11 +13,11 @@ An operation of the `hr-files` product in the payroll and HR (Lohn) area. It use
 
 ### How do I call `hr-files.post_v1_clients_client_id_files`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "hr-files.post_v1_clients_client_id_files"` and `files` mapping the part `file` to local file paths, plus `fields` for `file_provider`, `import_file_type`, `creation_time`, `target_system`, `payroll_accounting_month`, `mail_address` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `hr-files.post_v1_clients_client_id_files` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `hr-files.post_v1_clients_client_id_files` need?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-files.post_v1_clients_client_id_files` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.post_v1_clients_client_id_files`?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `hr-files.get_v1_clients_client_id_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.get_v1_clients_client_id_jobs_job_id`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 363 ms with 6 items.
 
 ### Is `hr-files.get_v1_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.get_v1_clients`?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 251 ms.
 
 ### Is `hr-files.get_v1_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.get_v1_clients_client_id`?
 

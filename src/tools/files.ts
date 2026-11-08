@@ -16,7 +16,7 @@ export function expandPath(p: string): string {
   return resolve(withHome);
 }
 
-const SECRET_NAME = /^\.env|\.(pem|key|p12|pfx|kdbx|jks)$|^id_(rsa|ed25519|ecdsa|dsa)|^credentials(\.json)?$|^session-.*\.json$/i;
+const SECRET_NAME = /^\.env|\.(pem|key|p12|pfx|kdbx|jks|ppk|p8|pkcs8|keystore)$|^id_(rsa|ed25519|ecdsa|dsa)|^ssh_host_.*_key$|^credentials(\.json)?$|^session-.*\.json$/i;
 
 // Files a tool may send to DATEV: never hidden folders (the DATEV session, ~/.ssh, ~/.aws) and never key or secret files.
 export function assertShareable(path: string): void {
@@ -47,6 +47,8 @@ export function readLocalFile(p: string, maxBytes: number): { path: string; name
     const now = lstatSync(path);
     if (now.ino !== st.ino || now.dev !== st.dev || realpathSync(path) !== path) throw new FileError(`${path} changed while it was being opened`);
     if (!st.isFile()) throw new FileError(`Not a regular file: ${path}`);
+    // A hard link can give a key file an innocent name and folder, so files with more than one link are refused.
+    if (st.nlink > 1) throw new FileError(`Refusing ${path}: it has more than one hard link, so its real location cannot be checked`);
     if (st.size === 0) throw new FileError(`File is empty: ${path}`);
     if (st.size > maxBytes) throw new FileError(`File is ${st.size} bytes, the limit is ${maxBytes}: ${path}`);
     // Read the open descriptor to its end in chunks; a file that grows past the limit meanwhile is refused, never cut.

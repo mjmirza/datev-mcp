@@ -21,7 +21,7 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 
 - **Answers without clicking.** Clients, fiscal years, sums and balances, account postings and the chart of accounts come straight from DATEV into the conversation.
 - **Nothing changes behind your back.** Every write that changes bookings, files or records returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client. The one exception is `datev_account_postings`, which starts DATEV's read-only postings export job directly.
-- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with twelve focused tools for the everyday cases. Operations that need a file upload work only where a typed tool exists (EXTF import and documents). The rest are listed on the project board.
+- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with thirteen focused tools for the everyday cases. Every operation that takes a file upload can be sent with `datev_upload_file`, after a preview.
 - **Your files stay yours.** The server refuses to send anything from hidden folders (where SSH keys and cloud logins live) or anything that looks like a key or credentials file.
 - **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Rows the tools cannot read are counted in the answer (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is refused.
 
@@ -137,9 +137,10 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 | `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe, cost centres included | No, writes a local file |
 | `datev_upload_extf` | Imports an EXTF booking file into a client | Yes, preview first |
 | `datev_upload_document` | Uploads a receipt or invoice to the Belegbilderservice | Yes, preview first |
+| `datev_upload_file` | Sends local files to any DATEV operation that takes a multipart upload | Yes, preview first |
 | `datev_search_operations` | Finds DATEV operations by words (health checks with `include_health`) | No |
 | `datev_describe_operation` | Shows the parameters an operation needs | No |
-| `datev_call` | Calls a DATEV operation by id, reads directly, writes with preview. Sends JSON or text, never a file | Writes need confirmation |
+| `datev_call` | Calls a DATEV operation by id, reads directly, writes with preview. Sends JSON or text. Files go through `datev_upload_file` | Writes need confirmation |
 
 ## How well it is tested
 
@@ -147,7 +148,7 @@ Every number below comes from a real run on 2026-11-07. The method and how to re
 
 | Check | Result |
 |---|---|
-| Offline scenarios across all 209 operations | 28,462 of 28,462 passing |
+| Offline scenarios across all 209 operations | 28,496 of 28,496 passing |
 | Planted bugs the scenarios had to catch | 3 of 3 caught, 440 failing scenarios |
 | Unit and integration tests | 101 of 101 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
@@ -174,7 +175,7 @@ Operation calls only go to the DATEV hosts named in DATEV's specs and never foll
 src/
   api/client.ts      builds, sends and reads every DATEV request
   auth/              OAuth login, token refresh, session file and its lock
-  tools/             the twelve MCP tools
+  tools/             the thirteen MCP tools
   setup/             login and doctor commands
 scripts/             spec download, operation index, endpoint audit
 test/unit/           unit and integration tests

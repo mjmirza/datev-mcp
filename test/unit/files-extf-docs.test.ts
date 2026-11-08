@@ -58,8 +58,9 @@ test("a non-EXTF file is rejected by the validator", () => {
 test("required header params are enforced and auth headers cannot be overridden", () => {
   const op = getOperation("accounting-extf-files.importextffile")!;
   assert.throws(() => buildHeaders(op, {}), /Missing required header "Filename"/);
-  assert.deepEqual(buildHeaders(op, { headers: { Filename: "a.csv" } }), { Filename: "a.csv" });
-  assert.throws(() => buildHeaders(op, { headers: { Filename: "a.csv", Authorization: "Bearer x" } }), /cannot be overridden/);
+  assert.deepEqual(buildHeaders(op, { headers: { Filename: "EXTF_a.csv" } }), { Filename: "EXTF_a.csv" });
+  assert.throws(() => buildHeaders(op, { headers: { Filename: "a.csv" } }), /format DATEV expects/);
+  assert.throws(() => buildHeaders(op, { headers: { Filename: "EXTF_a.csv", Authorization: "Bearer x" } }), /cannot be overridden/);
   assert.throws(() => buildHeaders(op, { headers: { Filename: "a\r\nX-Evil: 1" } }), /line break/);
 });
 
