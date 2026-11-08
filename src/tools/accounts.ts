@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { callOperation, CallError, type CallDeps } from "../api/client.js";
+import { bounded, callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 
@@ -40,14 +40,17 @@ export function matchAccounts(accounts: LedgerAccount[], query: string, limit = 
 
 export async function loadAccounts(clientId: string, fiscalYearId: string, deps: CallDeps, now = Date.now()): Promise<LedgerAccount[]> {
   // The key carries who is asking: a login or app change must never be served the previous user's cached chart.
-  const who = createHash("sha256").update(`${deps.creds.clientId}|${await deps.token()}`).digest("hex").slice(0, 16);
+  // The budget starts before the token wait, so a held session lock cannot push the call past the client timeout.
+  const deadline = Date.now() + (deps.deadlineMs ?? 55_000);
+  const token = await bounded(deps.token(), deadline, deps.signal, "while getting a DATEV access token");
+  const who = createHash("sha256").update(`${deps.creds.clientId}|${token}`).digest("hex").slice(0, 16);
   const key = `${deps.env}|${who}|${clientId}|${fiscalYearId}`;
   const hit = cache.get(key);
   if (hit && now - hit.at < CACHE_MS) return hit.accounts;
   const op = getOperation("accounting-dataexchange.getgeneralledgeraccounts");
   if (!op) throw new CallError("The general ledger operation is missing from the index");
   // A full chart easily exceeds the generic response cap, so read it whole and filter here.
-  const r = await callOperation(op, { pathParams: { clientId, fiscalYearId } }, { ...deps, maxBodyChars: Number.MAX_SAFE_INTEGER });
+  const r = await callOperation(op, { pathParams: { clientId, fiscalYearId } }, { ...deps, maxBodyChars: Number.MAX_SAFE_INTEGER, deadlineMs: Math.max(0, deadline - Date.now()) });
   if (r.status !== 200) throw new CallError(`DATEV returned HTTP ${r.status} for the chart of accounts: ${JSON.stringify(r.body).slice(0, 300)}`);
   if (!Array.isArray(r.body)) throw new CallError("DATEV returned the chart of accounts in an unexpected format");
   const accounts = (r.body as LedgerAccount[])

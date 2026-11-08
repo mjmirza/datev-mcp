@@ -35,7 +35,7 @@ Yes. Cancellation aborts the DATEV request in flight.
 
 ### Why do some clients cut calls at 60 seconds?
 
-That is the client's own limit. The server's 55 second budget covers each DATEV call, including getting a token. `datev_find_accounts` gets its token before that budget starts, which can take up to 90 seconds if another process holds the session lock.
+That is the client's own limit. The server's 55 second budget covers each DATEV call, including getting a token.
 
 ### Should my client ask before tool calls?
 

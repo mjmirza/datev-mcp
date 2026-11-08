@@ -5,6 +5,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- Bounded token wait in the account search. Previously `datev_find_accounts` fetched its token before the 55 second budget started and could wait up to 90 seconds for the session lock. Now the token wait counts against the budget.
 - Searchable health checks. Previously `datev_search_operations` always left out the 6 health check operations, so 5 health-only products could only be reached by id. Now `include_health: true` returns them too.
 - Questions and answers. Previously docs/FAQ.md had a short list. Now `docs/qa/` holds 2,000+ answered questions, from curated pages for setup, safety and troubleshooting plus generated pages for every product and operation built by `npm run qa` from the operation index, the live sweep ledger and the eval report. Every answer was checked against the code by a second model before publishing, and false claims it found were corrected.
 - Community. The README links Discussions, the project board and the Q&A, and the issue form offers Discussions for questions and private reports for security problems.

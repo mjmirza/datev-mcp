@@ -80,3 +80,13 @@ test("the chart cache is keyed by who asks: a different login is never served an
   assert.equal(fetched, 2);
   assert.notEqual(a[0].caption, b[0].caption);
 });
+
+test("the token wait in loadAccounts counts against the call budget", async () => {
+  const stuck = () => new Promise<string>(() => {});
+  const started = Date.now();
+  await assert.rejects(
+    loadAccounts("1-1", "20260101", { env: "sandbox", creds: { clientId: "budget", clientSecret: "s" }, token: stuck, deadlineMs: 80, fetch: async () => new Response("[]") }),
+    /Ran out of time while getting a DATEV access token/,
+  );
+  assert.ok(Date.now() - started < 1000, "gave up inside the budget");
+});
