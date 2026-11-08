@@ -7,7 +7,7 @@ Time budgets, retries and size caps.
 
 ### How long can one call take?
 
-55 seconds per DATEV call by default, token included, and retries only start if they still fit. The one exception is `datev_find_accounts`, which fetches its token first and can wait up to 90 seconds for the session lock.
+55 seconds per DATEV call by default, token included, and retries only start if they still fit. This includes `datev_find_accounts`.
 
 ### Which errors are retried?
 

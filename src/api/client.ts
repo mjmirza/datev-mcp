@@ -190,7 +190,7 @@ export function retryDelay(attempt: number, retryAfter: string | null, now = Dat
 }
 
 // Waits for a promise, but gives up at the deadline or on cancel. The promise itself (a shared token refresh) keeps running.
-async function bounded<T>(work: Promise<T>, deadline: number, signal: AbortSignal | undefined, what: string): Promise<T> {
+export async function bounded<T>(work: Promise<T>, deadline: number, signal: AbortSignal | undefined, what: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let onAbort: (() => void) | undefined;
   const stop = new Promise<never>((_, reject) => {
