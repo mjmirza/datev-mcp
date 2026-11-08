@@ -3,9 +3,10 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { callOperation, CallError, type CallDeps, type CallInput } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
+import { localize } from "../i18n.js";
 
 const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
-const err = (m: string) => ({ content: [{ type: "text" as const, text: m }], isError: true });
+const err = (m: string) => ({ content: [{ type: "text" as const, text: localize(m) }], isError: true });
 const UNCAPPED = Number.MAX_SAFE_INTEGER;
 
 function errorText(e: unknown): string {

@@ -67,7 +67,7 @@ The software is source-available and free for an individual's personal evaluatio
 
 ### Which language does it speak?
 
-The tools work with any language your assistant speaks. EXTF checks can report findings in German or English with `lang`.
+The tools work with any language your assistant speaks. EXTF checks report findings in German or English with `lang`. Set `DATEV_MCP_LANG=de` to get the most common error messages in German too: login, time-outs, confirm codes, unknown operations and DATEV HTTP errors.
 
 ### Can I try it without real client data?
 

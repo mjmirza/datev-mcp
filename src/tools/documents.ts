@@ -7,10 +7,11 @@ import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
 import { FileError, readLocalFile } from "./files.js";
+import { localize } from "../i18n.js";
 
 const MAX_DOC_BYTES = 20 * 1024 * 1024;
 const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: typeof v === "string" ? v : JSON.stringify(v, null, 2) }] });
-const err = (m: string) => ({ ...ok(m), isError: true });
+const err = (m: string) => ({ ...ok(localize(m)), isError: true });
 
 // DATEV requires the part's content type to match the file. ZIP is refused by the spec.
 const MIME: Record<string, string> = {

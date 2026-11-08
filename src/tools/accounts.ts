@@ -4,6 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { bounded, callOperation, CallError, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
+import { localize } from "../i18n.js";
 
 // Reads the client's own chart of accounts (SKR03, SKR04 or custom) live from DATEV,
 // so no DATEV-owned account data ships with this package.
@@ -95,7 +96,7 @@ export function registerAccountTools(server: McpServer, deps: (signal?: AbortSig
         return { content: [{ type: "text" as const, text }] };
       } catch (e) {
         const message = e instanceof NeedsLoginError || e instanceof CallError ? e.message : `Account lookup failed: ${e instanceof Error ? e.message : String(e)}`;
-        return { content: [{ type: "text" as const, text: message }], isError: true };
+        return { content: [{ type: "text" as const, text: localize(message) }], isError: true };
       }
     },
   );

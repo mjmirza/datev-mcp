@@ -4,10 +4,11 @@ import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, type 
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
+import { localize } from "../i18n.js";
 import { describe, getOperation, products, searchOperations, summarize } from "./catalog.js";
 
 const text = (value: unknown) => ({ content: [{ type: "text" as const, text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }] });
-const fail = (message: string) => ({ ...text(message), isError: true });
+const fail = (message: string) => ({ ...text(localize(message)), isError: true });
 
 const INLINE_BINARY_MAX = 256 * 1024;
 const scalar = z.union([z.string(), z.number(), z.boolean()]);
