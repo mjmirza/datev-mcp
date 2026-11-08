@@ -202,7 +202,7 @@ function perOperation(op: Operation) {
       if (c.url !== want) return `fetched ${c.url}, built ${want}`;
       if (/SECRET|TOK/.test(c.url)) return "credential in the URL";
       const h = (c.init?.headers ?? {}) as Record<string, string>;
-      if (!h.accept) return "no accept header";
+      if (!Object.entries(h).some(([k, v]) => k.toLowerCase() === "accept" && String(v).trim() !== "")) return "no accept header"; // names are case-insensitive, the value must not be empty
       if (input.body === marker) {
         if (c.init?.body !== JSON.stringify(marker)) return "JSON body changed on the wire";
         if (h["content-type"] !== ct) return `content type ${h["content-type"]}, spec ${ct}`;

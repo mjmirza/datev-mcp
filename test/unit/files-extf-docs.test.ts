@@ -128,15 +128,79 @@ test("the uploaded file part carries the content type DATEV requires, and ZIP is
   assert.throws(() => mimeFor("tool.exe"), /Unsupported/);
 });
 
+// Confirm tests share module state and a forward-only clock, so each gets its own window after T0.
+const T0 = Date.now() + 1_000_000_000;
+
 test("a confirm token only fits the exact request it was issued for, and expires", async () => {
   const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
   const req = { tool: "x", file: "/a.pdf", sha256: "abc", metadata: { b: 1, a: 2 } };
-  const t = issueConfirmToken(req, 1_000);
-  assert.equal(checkConfirmToken(t, { metadata: { a: 2, b: 1 }, sha256: "abc", file: "/a.pdf", tool: "x" }, 2_000), undefined);
-  assert.match(checkConfirmToken(t, { ...req, sha256: "changed" }, 2_000)!, /does not match/);
-  assert.match(checkConfirmToken(undefined, req, 2_000)!, /preview first/i);
-  assert.match(checkConfirmToken(t, req, 1_000 + 16 * 60_000)!, /expired/);
-  assert.match(checkConfirmToken("garbage", req, 2_000)!, /malformed/);
+  const t = issueConfirmToken(req, T0 + 1 * 100_000_000 + 1_000);
+  assert.equal(checkConfirmToken(t, { metadata: { a: 2, b: 1 }, sha256: "abc", file: "/a.pdf", tool: "x" }, T0 + 1 * 100_000_000 + 2_000), undefined);
+  assert.match(checkConfirmToken(t, { ...req, sha256: "changed" }, T0 + 1 * 100_000_000 + 2_000)!, /does not match/);
+  assert.match(checkConfirmToken(undefined, req, T0 + 1 * 100_000_000 + 2_000)!, /preview first/i);
+  assert.match(checkConfirmToken(t, req, T0 + 1 * 100_000_000 + 1_000 + 16 * 60_000)!, /expired/);
+  assert.match(checkConfirmToken("garbage", req, T0 + 1 * 100_000_000 + 2_000)!, /malformed/);
+});
+
+test("a confirm token works once, so one approval can never send a write twice", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const req = { tool: "datev_upload_extf", file: "/b.csv", sha256: "def" };
+  const t = issueConfirmToken(req, T0 + 2 * 100_000_000 + 5_000);
+  assert.equal(checkConfirmToken(t, req, T0 + 2 * 100_000_000 + 6_000), undefined);
+  assert.match(checkConfirmToken(t, req, T0 + 2 * 100_000_000 + 7_000)!, /already used/);
+  const fresh = issueConfirmToken(req, T0 + 2 * 100_000_000 + 8_000);
+  assert.equal(checkConfirmToken(fresh, req, T0 + 2 * 100_000_000 + 9_000), undefined);
+});
+
+test("a spent confirm token cannot be replayed in another spelling", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const req = { tool: "datev_call", op: "x" };
+  const t = issueConfirmToken(req, T0 + 3 * 100_000_000 + 10_000);
+  assert.equal(checkConfirmToken(t, req, T0 + 3 * 100_000_000 + 11_000), undefined);
+  for (const variant of [`${t}.a`, `0${t}`, t.toUpperCase(), ` ${t}`]) assert.ok(checkConfirmToken(variant, req, T0 + 3 * 100_000_000 + 11_500), `accepted ${variant}`);
+});
+
+test("two previews of the same request in the same millisecond get different tokens", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const req = { tool: "datev_call", op: "same" };
+  const a = issueConfirmToken(req, T0 + 4 * 100_000_000 + 20_000);
+  const b = issueConfirmToken(req, T0 + 4 * 100_000_000 + 20_000);
+  assert.notEqual(a, b);
+  assert.equal(checkConfirmToken(a, req, T0 + 4 * 100_000_000 + 21_000), undefined);
+  assert.equal(checkConfirmToken(b, req, T0 + 4 * 100_000_000 + 21_000), undefined);
+});
+
+test("a clock that jumps back cannot bring a spent confirm token back to life", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const req = { tool: "datev_call", op: "rollback" };
+  const issued = T0 + 5 * 100_000_000;
+  const t = issueConfirmToken(req, issued);
+  assert.equal(checkConfirmToken(t, req, issued + 1_000), undefined);
+  assert.ok(checkConfirmToken("x", req, issued + 900_001)); // a later check that prunes old entries
+  assert.ok(checkConfirmToken(t, req, issued + 899_999), "spent token accepted after the clock went back");
+});
+
+test("a clock that jumps forward and back does not block new confirmations", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const req = { tool: "datev_call", op: "jump" };
+  const base = T0 + 6 * 100_000_000;
+  assert.ok(checkConfirmToken("x", req, base + 50 * 24 * 60 * 60_000)); // a check far in the future
+  const t = issueConfirmToken(req, base);
+  assert.equal(checkConfirmToken(t, req, base + 1_000), undefined);
+});
+
+test("a burst of confirmations only blocks new ones until the burst expires", async () => {
+  const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
+  const base = T0 + 7 * 100_000_000;
+  for (let i = 0; i < 10_000; i++) {
+    const req = { tool: "burst", i };
+    assert.equal(checkConfirmToken(issueConfirmToken(req, base), req, base + 1), undefined);
+  }
+  const late = { tool: "burst", i: "late" };
+  assert.match(checkConfirmToken(issueConfirmToken(late, base + 2), late, base + 3)!, /Too many/);
+  const after = { tool: "burst", i: "after" };
+  const at = base + 15 * 60_000 + 10;
+  assert.equal(checkConfirmToken(issueConfirmToken(after, at), after, at + 1), undefined);
 });
 
 test("a failed save leaves no temp file behind, so the next attempt works", async () => {
@@ -157,9 +221,10 @@ test("a failed save leaves no temp file behind, so the next attempt works", asyn
 
 test("a missing body and a null body never share a confirm token", async () => {
   const { issueConfirmToken, checkConfirmToken } = await import("../../src/tools/confirm.js");
-  const t = issueConfirmToken({ op: "x", body: undefined });
-  assert.match(checkConfirmToken(t, { op: "x", body: null }) ?? "", /does not match/);
-  assert.equal(checkConfirmToken(t, { op: "x", body: undefined }), undefined);
+  const at = T0 + 8 * 100_000_000;
+  const t = issueConfirmToken({ op: "x", body: undefined }, at);
+  assert.match(checkConfirmToken(t, { op: "x", body: null }, at + 1) ?? "", /does not match/);
+  assert.equal(checkConfirmToken(t, { op: "x", body: undefined }, at + 1), undefined);
 });
 
 test("a named pipe is refused at once instead of hanging the server", async () => {

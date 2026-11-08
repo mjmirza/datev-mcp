@@ -21,7 +21,8 @@
     "specs": "bash scripts/fetch-specs.sh",
     "eval": "tsx test/evals/run.ts",
     "sweep": "tsx test/live-sweep.ts",
-    "audit:endpoints": "tsx scripts/endpoint-audit.ts"
+    "audit:endpoints": "tsx scripts/endpoint-audit.ts",
+    "qa": "tsx scripts/build-qa.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

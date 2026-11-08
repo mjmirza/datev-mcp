@@ -34,7 +34,7 @@ const summaryRows = products.map((p) => {
     const e = latest.get(o.id);
     return e && typeof e.status === "number";
   }).length;
-  return `| ${p} | ${ops.length} | ${reads.length} | ${ops.length - reads.length} | ${ops.every((o) => o.servers.sandbox) ? "yes" : "partly"} | ${ops.some((o) => evalFailedOps.has(o.id)) ? "FAIL" : "pass"} | ${reached}/${reads.length} | ${ok} |`;
+  return `| ${p} | ${ops.length} | ${reads.length} | ${ops.length - reads.length} | ${ops.every((o) => o.servers.sandbox) ? "yes" : ops.some((o) => o.servers.sandbox) ? "partly" : "no"} | ${ops.some((o) => evalFailedOps.has(o.id)) ? "FAIL" : "pass"} | ${reached}/${reads.length} | ${ok} |`;
 });
 
 const detail = products.flatMap((p) => [

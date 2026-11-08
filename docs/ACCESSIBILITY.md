@@ -8,14 +8,14 @@ datev-mcp has no screens of its own. People use it through an AI client, by typi
 - **Plain sentences for every error.** Each error says what went wrong and what to do next, for example "DATEV login needed. Run datev-mcp login." There are no bare error codes without an explanation.
 - **Text only.** Answers are JSON or short sentences. Nothing relies on colour, icons or position, so a screen reader reads them in a sensible order.
 - **No time pressure on people.** Confirmation codes for writes stay valid for 15 minutes, long enough to have a preview read aloud and think it over.
-- **Small answers by default.** List tools return 50 rows unless asked for more, so a screen reader user is not handed thousands of lines.
+- **Smaller answers by default.** Sums and balances and postings return 50 rows unless asked for more, and account search returns 25. The client list has no row limit, up to 5,000 clients, and can be long for large firms.
 - **Command line output.** `doctor` prints one check per line, starting with `OK` or `FAIL`, which reads well with VoiceOver and NVDA.
 
 ## Known gaps
 
 | Gap | Plan |
 |---|---|
-| Messages are English only | German messages for the most common errors, since most users work in German |
+| Messages are mostly English. Only the EXTF check reports in German (the default) or English | German messages for the most common errors, since most users work in German |
 | JSON field names are English and technical | One sentence in everyday words before each JSON answer |
 | The login opens a DATEV web page | That page belongs to DATEV and follows DATEV's own accessibility work. The login URL is also printed, so it can be opened in any browser |
 

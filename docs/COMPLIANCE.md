@@ -18,7 +18,7 @@ This page explains which rules apply when you use datev-mcp and what the project
 Answers from DATEV can contain personal data, for example employee payroll records, names on invoices or bank details in postings.
 
 - **Where the data goes.** The server passes DATEV's answer to your AI client. From there it goes wherever that client sends it, which is usually the AI provider. Check that you have a data processing agreement with that provider and that sending this category of data to it is permitted for your clients.
-- **What the server keeps.** Nothing on disk except the login session. The chart of accounts is cached in memory for 10 minutes. Files you save with `save_to` are written where you tell it, owner-only.
+- **What the server keeps.** On disk, only the login session and the files you ask for: downloads saved with `save_to` and EXTF files written by `datev_write_extf_batch`, both where you tell it. Charts of accounts are kept in memory while the server runs, reused for 10 minutes, and dropped when the server stops.
 - **Least access.** Request only the scopes you need with `DATEV_SCOPES`, and subscribe your app only to the products you use.
 - **Payroll and special categories.** Payroll data can include health related or religious information (sick days, church tax). Treat the HR products as high risk and keep them out of conversations that do not need them.
 

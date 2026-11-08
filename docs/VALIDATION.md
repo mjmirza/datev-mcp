@@ -25,7 +25,7 @@ On top of that, a second AI model reviewed the code four times, described under 
 | Path values | 5 | `..`, `/`, empty values and values DATEV's schema forbids are refused. Odd but allowed values (umlauts, emoji, `#`, `?`, quotes) are encoded and cannot leak into the query |
 | Query and headers | 6 | Required values are enforced, arrays repeat correctly, injected `&` or line breaks cannot split a value, server headers cannot be overridden |
 | Wire request | 1 | The exact URL, body bytes and content type that leave the machine match the request, and no credential is in the URL |
-| Auth | 1 | Bearer token, client id, client secret only where DATEV requires it, redirects never followed |
+| Auth | 1 | Bearer token, client id, client secret only where DATEV requires it, redirects never followed for operation calls |
 | Retries and network | 7 | Reads retry 429, 502, 503, 504 and network errors up to three attempts. Writes retry only 429 |
 | Status codes | 10 | 400 to 500 come back as the real status, never retried, never hidden |
 | Parsing | 10 | JSON, single and multi-line NDJSON, invalid JSON, plain text, empty bodies and truncation are each read correctly |
@@ -33,7 +33,7 @@ On top of that, a second AI model reviewed the code four times, described under 
 | Body rules | 3 | A required body is enforced, an unexpected body is refused, a file upload cannot be sent as JSON |
 | Writes | 1 | Through the real MCP protocol, a write without confirmation sends nothing and returns a preview |
 | Search | 1 | Each operation is found by its own summary |
-| Properties | 7 | Randomised inputs, 1,000 to 2,000 runs each, for encoding, header safety, parsing and fiscal year ids |
+| Properties | 7 | Randomised inputs, 1,000 to 2,000 runs each, for NDJSON parsing, fiscal year id shapes, job phases, account prefixes, path encoding and EXTF batches |
 
 The report of every run is written to `test/reports/eval-<time>.md` and `.json`.
 
@@ -53,7 +53,7 @@ A scenario set that never fails proves nothing. Three bugs were put into the cli
 
 `npm run test:live` runs a short tour against the real DATEV sandbox. It lists clients, reads a fiscal year, looks up accounts, previews an EXTF import and checks that a confirm without its code is refused.
 
-`npm run sweep` crawls every read operation slowly, three seconds apart, at most 150 calls a day, and stops on the first 429. It learns ids from list answers and uses them for the detail operations on later runs. Write operations are never swept live.
+`npm run sweep` crawls every read operation slowly, three seconds apart, at most 150 operations a day, and stops the run when an operation still answers 429 after its retries. Each read can itself retry up to three times, so the number of HTTP requests can be higher than the operation count. It learns ids from list answers and uses them for the detail operations on later runs. Write operations are never swept live.
 
 | Live result (latest per operation) | Operations |
 |---|---|
@@ -66,7 +66,7 @@ A scenario set that never fails proves nothing. Three bugs were put into the cli
 | 501 | 1 |
 | Not called, needs an id or API key the sandbox does not provide | 55 |
 
-The 500 answers (smart transfer outbound and one master data health endpoint) carry DATEV's own message "Sandboxing policy error", which means the sandbox gateway refuses that product for this app. The 400 answers on the documents and HR export products come from DATEV's server before any request checking. Changing the accept header or adding the client secret header does not change them, so they point to products not yet enabled for this sandbox app rather than a defect here. The 401 answers are HR documents and four health endpoints (HR documents, HR exchange, HR files, income tax documents). The 404 answers are lookups where the sandbox test data has no such record. The per operation table is in [ENDPOINT-AUDIT.md](ENDPOINT-AUDIT.md).
+The 500 answers (smart transfer outbound and one master data health endpoint) carry DATEV's own message "Sandboxing policy error", which means the sandbox gateway refuses that product for this app. The sweep recorded the 400 answers on the documents and HR export products by status and body hash only, so their cause is not proven. Changing the accept header or adding the client secret header did not change them, which fits a product not enabled for this sandbox app, but that is not confirmed. The 401 answers are HR documents and four health endpoints (HR documents, HR exchange, HR files, income tax documents). The 404 answers are lookups where the sandbox test data has no such record. The per operation table is in [ENDPOINT-AUDIT.md](ENDPOINT-AUDIT.md).
 
 The sweep was run twice on 2026-11-07, the second time on the final code after all four review passes, with 142 real calls in total. Both runs gave the same result per operation. The live tour on the final code passed all 11 of its checks, including a real EXTF import into the sandbox that DATEV accepted with HTTP 202. Its output is kept as [docs/evidence/live-tour-2026-11-07.txt](evidence/live-tour-2026-11-07.txt), next to the [sweep report](evidence/live-sweep-2026-11-07.md) and the [final eval report](evidence/eval-2026-11-07.md).
 
@@ -93,8 +93,8 @@ Two findings cannot be closed in Node.js and are documented rather than hidden.
 ## What is not proven
 
 - Behavior with real client data in production. That needs DATEV's technical review first.
-- Products the sandbox app is not enabled for. The 400, 401 and 500 answers above are DATEV's gateway, and those operations have only been checked offline.
-- Write operations other than the EXTF import. The EXTF import was confirmed live (HTTP 202). Every other write is checked offline and through the MCP preview flow only.
+- Operations that answered 400, 401 or 500 in the sweep. Their cause was not recorded (see above), and those operations have only been checked offline.
+- Write operations other than the EXTF import and the postings export job. The EXTF import was confirmed live (HTTP 202) and the postings job ran to completion live. The other writes are checked offline only. The preview step is checked for the 79 writes that have a sandbox server. The 2 cashregister writes have none and are refused in the sandbox.
 - DATEV's rate limit. DATEV publishes no number, so the sweep paces itself conservatively.
 
 ## Repeat it yourself

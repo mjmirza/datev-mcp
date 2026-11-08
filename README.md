@@ -20,10 +20,10 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 ## What you get
 
 - **Answers without clicking.** Clients, fiscal years, sums and balances, account postings and the chart of accounts come straight from DATEV into the conversation.
-- **Nothing changes behind your back.** Every write returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client.
-- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are reachable, with twelve focused tools for the everyday cases.
+- **Nothing changes behind your back.** Every write that changes bookings, files or records returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client. The one exception is `datev_account_postings`, which starts DATEV's read-only postings export job directly.
+- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be described, 203 of them searched (health checks left out), with twelve focused tools for the everyday cases. Operations that need a file upload work only where a typed tool exists (EXTF import and documents). The rest are listed on the project board.
 - **Your files stay yours.** The server refuses to send anything from hidden folders (where SSH keys and cloud logins live) or anything that looks like a key or credentials file.
-- **Honest answers.** If DATEV returns an error, an incomplete page or a format the tool does not understand, you get told. You never get an empty list that looks like a real answer.
+- **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Two limits: the account search skips single account rows it cannot read, and the postings filter skips posting rows without a readable account number.
 
 ## From zero to your first answer
 
@@ -137,9 +137,9 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 | `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe | No, writes a local file |
 | `datev_upload_extf` | Imports an EXTF booking file into a client | Yes, preview first |
 | `datev_upload_document` | Uploads a receipt or invoice to the Belegbilderservice | Yes, preview first |
-| `datev_search_operations` | Finds any of the 209 DATEV operations by words | No |
+| `datev_search_operations` | Finds DATEV operations by words (203 of 209, health checks left out) | No |
 | `datev_describe_operation` | Shows the parameters an operation needs | No |
-| `datev_call` | Calls any DATEV operation by id, reads directly, writes with preview | Writes need confirmation |
+| `datev_call` | Calls a DATEV operation by id, reads directly, writes with preview. Sends JSON or text, never a file | Writes need confirmation |
 
 ## How well it is tested
 
@@ -157,7 +157,7 @@ Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
 ## Safety in one paragraph
 
-The server only ever talks to DATEV's own hosts and never follows a redirect, so your credentials cannot be forwarded elsewhere. Logins use OAuth with PKCE and the session is stored on your machine with owner-only permissions. Writes need a preview-bound confirmation code. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
+Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. The login token request and `doctor` use fetch's default redirect handling. Logins use OAuth with PKCE and the session is stored on your machine with owner-only permissions. Writes need a preview-bound confirmation code. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## For developers
 
@@ -166,7 +166,7 @@ The server only ever talks to DATEV's own hosts and never follows a redirect, so
 | Language | TypeScript, strict mode, Node.js 22+ |
 | Protocol | Model Context Protocol SDK 1.32, stdio transport |
 | Validation | zod for tool inputs, DATEV's own schema for path values |
-| DATEV auth | OpenID Connect authorization code flow with PKCE, refresh tokens rotated and never reused |
+| DATEV auth | OpenID Connect authorization code flow with PKCE, refresh tokens rotated, refreshes across processes serialized by a file lock |
 | EXTF files | `@seamless-engineering/datev-extf` (MIT) |
 | Tests | Node test runner, fast-check property tests, a generated offline eval, a paced live sandbox sweep |
 
@@ -191,6 +191,14 @@ docs/                setup, security, validation, compliance and more
 | `npm run test:live` | A short live check against the DATEV sandbox |
 | `npm run sweep` | The paced live crawl, resumes where it stopped |
 
+## Community
+
+- **Got a question?** Search the [2,000+ answered questions](docs/qa/README.md) first. They cover setup, login, safety, every tool, every DATEV operation with its measured sandbox result, and the questions people ask about the DATEV API in DATEV's community, on Reddit and in YouTube walkthroughs.
+- **Still stuck?** Ask in [Discussions, Q&A](https://github.com/mjmirza/datev-mcp/discussions/categories/q-a).
+- **An idea for a tool or a DATEV product?** Post it in [Discussions, Ideas](https://github.com/mjmirza/datev-mcp/discussions/categories/ideas).
+- **What is planned?** See the [project board](https://github.com/users/mjmirza/projects/4).
+- **A security problem?** Report it privately through the Security tab.
+
 ## Before you use real client data
 
 The sandbox may only hold test data. Using this with real clients needs DATEV's paid technical review (Technische Prüfung) for production access. Read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) before that step.
@@ -203,7 +211,8 @@ The sandbox may only hold test data. Using this with real clients needs DATEV's 
 - [Endpoint audit](docs/ENDPOINT-AUDIT.md)
 - [Compliance](docs/COMPLIANCE.md)
 - [Accessibility](docs/ACCESSIBILITY.md)
-- [Questions and answers](docs/FAQ.md)
+- [Questions and answers, short FAQ](docs/FAQ.md)
+- [Over 2,000 answered questions](docs/qa/README.md)
 - [Credits](docs/CREDITS.md)
 - [Changelog](CHANGELOG.md)
 
