@@ -7,7 +7,7 @@ What protects your clients' data and your machine.
 
 ### Can the assistant change data without me seeing it?
 
-Through `datev_call`, `datev_upload_extf` and `datev_upload_document`, no. A write first returns a preview and a confirmation code, and runs only when called again with that exact code. Each code is accepted once, and a failed send needs a new preview. One exception: `datev_account_postings` starts DATEV's postings export job directly, because that job only builds a report and changes no bookings.
+Through `datev_call`, `datev_upload_file`, `datev_upload_extf` and `datev_upload_document`, no. A write first returns a preview and a confirmation code, and runs only when called again with that exact code. Each code is accepted once, and a failed send needs a new preview. One exception: `datev_account_postings` starts DATEV's postings export job directly, because that job only builds a report and changes no bookings.
 
 ### What is the confirmation code bound to?
 
@@ -79,7 +79,7 @@ No. Server-set headers cannot be overridden and any header value with a line bre
 
 ### Is there a kill switch for writes?
 
-Writes through `datev_call`, `datev_upload_extf` and `datev_upload_document` never run without a confirmation code, so declining the preview stops them. `datev_account_postings` starts DATEV's read-only postings export job without a preview. Your MCP client can also require approval per tool call.
+Writes through `datev_call`, `datev_upload_file`, `datev_upload_extf` and `datev_upload_document` never run without a confirmation code, so declining the preview stops them. `datev_account_postings` starts DATEV's read-only postings export job without a preview. Your MCP client can also require approval per tool call.
 
 ### Are the dependencies audited?
 

@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 324 ms with 11 items.
 
 ### Is `my-tax-income-tax-documents.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getclients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 376 ms.
 
 ### Is `my-tax-income-tax-documents.getclient` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getclient`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 57 ms.
 
 ### Is `my-tax-income-tax-documents.getincometaxyears` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getincometaxyears`?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `my-tax-income-tax-documents.createincometaxyear` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.createincometaxyear`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "tax-year" that no list call has returne
 
 ### Is `my-tax-income-tax-documents.getincometaxfolders` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getincometaxfolders`?
 
@@ -173,11 +173,11 @@ An operation of the `my-tax-income-tax-documents` product in the income tax docu
 
 ### How do I call `my-tax-income-tax-documents.saveincometaxdocument`?
 
-`datev_call` can call it without a body, but cannot send the file it takes (multipart/form-data), because the generic tool sends JSON or text only. No typed tool sends the file yet.
+Use `datev_upload_file` with `operation_id: "my-tax-income-tax-documents.saveincometaxdocument"` and `files` mapping the part `file` to local file paths, plus `fields` for `document` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. `datev_call` can also call it without a file.
 
 ### Does `my-tax-income-tax-documents.saveincometaxdocument` change data in DATEV?
 
-Yes. `datev_call` can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `my-tax-income-tax-documents.saveincometaxdocument` need?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `my-tax-income-tax-documents.saveincometaxdocument` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.saveincometaxdocument`?
 

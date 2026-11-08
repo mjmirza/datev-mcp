@@ -29,7 +29,7 @@ It has not been called live yet.
 
 ### Is `cashregister.gettenants` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.gettenants`?
 
@@ -61,7 +61,7 @@ It was not called live, and it has no sandbox server, so the server refuses it i
 
 ### Is `cashregister.createreport` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.createreport`?
 
@@ -77,11 +77,11 @@ An operation of the `cashregister` product in the cash register (Kasse) area. It
 
 ### How do I call `cashregister.importfile`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "cashregister.importfile"` and `files` mapping the parts `metadata`, `file` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. It also needs `headers: {"Request-Id": "..."}`.
 
 ### Does `cashregister.importfile` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `cashregister.importfile` need?
 
@@ -93,7 +93,7 @@ It was not called live, and it has no sandbox server, so the server refuses it i
 
 ### Is `cashregister.importfile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.importfile`?
 
@@ -125,7 +125,7 @@ It has not been called live yet.
 
 ### Is `cashregister.gettselogsinfo` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.gettselogsinfo`?
 

@@ -54,7 +54,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
     {
       title: "Call a DATEV API operation",
       description:
-        "Call a DATEV operation by id. Operations that need a file upload are refused; use datev_upload_extf or datev_upload_document where they apply. Read operations run directly. Operations that change data return a preview and a confirm_token first, and only run when called again with confirm: true and that token.",
+        "Call a DATEV operation by id. Operations that need a file upload are refused; use datev_upload_file (or datev_upload_extf for EXTF). Read operations run directly. Operations that change data return a preview and a confirm_token first, and only run when called again with confirm: true and that token.",
       inputSchema: {
         operation_id: z.string(),
         path_params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),

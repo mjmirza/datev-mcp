@@ -1,6 +1,8 @@
 // Offline eval: scenarios generated from the spec index, each run against a simulated DATEV server.
 // Writes test/reports/eval-<time>.json and .md, exits 1 on any failure. Usage: npm run eval
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import fc from "fast-check";
 import { decodeBytes, encodeCp1252, validateExtf, writeBuchungsstapel, type BatchRow } from "@seamless-engineering/datev-extf";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -11,6 +13,7 @@ import type { FetchLike } from "../../src/auth/token-client.js";
 import type { Operation } from "../../src/spec/types.js";
 import { OPERATIONS, searchOperations } from "../../src/tools/catalog.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
+import { registerUploadTools } from "../../src/tools/upload.js";
 import { matchAccounts, type LedgerAccount } from "../../src/tools/accounts.js";
 import { fiscalYearIds, jobPhase } from "../../src/tools/accounting.js";
 
@@ -313,6 +316,46 @@ async function writeConfirmGate() {
   });
 }
 
+// Every multipart operation: the preview sends nothing, and the confirmed call puts each declared part on the wire.
+async function uploadShapes() {
+  const server = new McpServer({ name: "eval", version: "0" });
+  const forms: FormData[] = [];
+  const fetch: FetchLike = async (_u, init) => (init?.body instanceof FormData && forms.push(init.body), json(201, {}));
+  registerUploadTools(server, () => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {} }));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "eval", version: "0" });
+  await c.connect(b);
+  const dir = mkdtempSync(join(tmpdir(), "datev-eval-up-"));
+  const one = join(dir, "eval.pdf");
+  const two = join(dir, "eval2.pdf");
+  writeFileSync(one, "%PDF eval");
+  writeFileSync(two, "%PDF eval 2");
+  const ops = OPERATIONS.filter((o) => o.servers.sandbox && o.body?.contentTypes.some((t) => /^multipart\/form-data/i.test(t)));
+  for (const op of ops) {
+    const props = Object.entries(((op.body?.schema ?? {}) as { properties?: Record<string, { type?: string; format?: string; items?: { format?: string } }> }).properties ?? {});
+    const required = ((op.body?.schema ?? {}) as { required?: string[] }).required ?? [];
+    const files = Object.fromEntries(props.filter(([, s]) => (s.type === "array" ? s.items?.format : s.format) === "binary").map(([n, s]) => [n, s.type === "array" ? [one, two] : one]));
+    const fields = Object.fromEntries(props.filter(([n]) => !(n in files) && required.includes(n)).map(([n]) => [n, "eval"]));
+    const g = validInput(op);
+    const args = { operation_id: op.id, path_params: g.pathParams, query: g.query, headers: g.headers, files, fields };
+    const before = forms.length;
+    const preview = (await c.callTool({ name: "datev_upload_file", arguments: args })) as { content: { text: string }[]; isError?: boolean };
+    const p = preview.isError ? undefined : (JSON.parse(preview.content[0].text) as { preview?: boolean; confirm_token?: string });
+    record("upload.preview-no-send", op.id, p?.preview === true && forms.length === before, preview.content[0].text.slice(0, 160));
+    if (!p?.confirm_token) continue;
+    await c.callTool({ name: "datev_upload_file", arguments: { ...args, confirm: true, confirm_token: p.confirm_token } });
+    const form = forms.length === before + 1 ? forms[forms.length - 1] : undefined;
+    const wrong = !form
+      ? "nothing was sent"
+      : [
+          ...Object.entries(files).filter(([n, v]) => form.getAll(n).length !== (Array.isArray(v) ? v.length : 1)).map(([n]) => `file part ${n}`),
+          ...Object.keys(fields).filter((n) => form.get(n) !== "eval").map((n) => `field ${n}`),
+        ].join(", ");
+    record("upload.parts-on-wire", op.id, wrong === "", wrong);
+  }
+}
+
 function properties() {
   const prop = (category: string, p: fc.IProperty<unknown>, runs = 2000) => {
     const out = fc.check(p, { numRuns: runs });
@@ -365,6 +408,7 @@ const started = Date.now();
 OPERATIONS.forEach(perOperation);
 await Promise.all(pending);
 await writeConfirmGate();
+await uploadShapes();
 properties();
 
 const byCat = new Map<string, { pass: number; fail: number }>();

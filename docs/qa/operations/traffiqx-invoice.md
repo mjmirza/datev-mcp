@@ -29,7 +29,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.downloadreceiveddocumentbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.downloadreceiveddocumentbyid`?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getinboxdocumentids` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getinboxdocumentids`?
 
@@ -93,7 +93,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getinboxdocumentmetadatabyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getinboxdocumentmetadatabyid`?
 
@@ -109,11 +109,11 @@ An operation of the `traffiqx-invoice` product in the invoice exchange (TRAFFIQX
 
 ### How do I call `traffiqx-invoice.uploadzugferddata`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "traffiqx-invoice.uploadzugferddata"` and `files` mapping the part `data` to local file paths, plus `fields` for `delivery_params` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. It also needs `headers: {"X-App-Display-Name": "..."}`.
 
 ### Does `traffiqx-invoice.uploadzugferddata` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `traffiqx-invoice.uploadzugferddata` need?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `traffiqx-invoice.uploadzugferddata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.uploadzugferddata`?
 
@@ -141,11 +141,11 @@ An operation of the `traffiqx-invoice` product in the invoice exchange (TRAFFIQX
 
 ### How do I call `traffiqx-invoice.uploadstructureddata`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "traffiqx-invoice.uploadstructureddata"` and `files` mapping the parts `data`, `view_component` to local file paths, plus `fields` for `delivery_params` where needed. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. It also needs `headers: {"X-App-Display-Name": "..."}`.
 
 ### Does `traffiqx-invoice.uploadstructureddata` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `traffiqx-invoice.uploadstructureddata` need?
 
@@ -157,7 +157,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `traffiqx-invoice.uploadstructureddata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.uploadstructureddata`?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getdocumentstatusbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getdocumentstatusbyid`?
 
@@ -221,7 +221,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.downloadsentdocumentbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.downloadsentdocumentbyid`?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getoutboxdocumentids` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getoutboxdocumentids`?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getoutboxdocumentmetadatabyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getoutboxdocumentmetadatabyid`?
 

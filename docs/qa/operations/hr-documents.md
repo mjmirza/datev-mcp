@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `hr-documents.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.getclients`?
 
@@ -45,11 +45,11 @@ An operation of the `hr-documents` product in the payroll and HR (Lohn) area. It
 
 ### How do I call `hr-documents.uploaddocument`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "hr-documents.uploaddocument"` and `files` mapping the part `file` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `hr-documents.uploaddocument` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `hr-documents.uploaddocument` need?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-documents.uploaddocument` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.uploaddocument`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `hr-documents.getclientbyconsultantclientnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.getclientbyconsultantclientnumber`?
 
@@ -109,11 +109,11 @@ An operation of the `hr-documents` product in the payroll and HR (Lohn) area. It
 
 ### How do I call `hr-documents.uploaddocumentbyconsultantclientnumber`?
 
-`datev_call` cannot send it, because it needs a file upload (multipart/form-data) and the generic tool sends JSON or text only. No typed tool covers it yet.
+Use `datev_upload_file` with `operation_id: "hr-documents.uploaddocumentbyconsultantclientnumber"` and `files` mapping the part `file` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code.
 
 ### Does `hr-documents.uploaddocumentbyconsultantclientnumber` change data in DATEV?
 
-Yes, but `datev_call` cannot send it yet because it needs a file upload. No tool sends it today.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `hr-documents.uploaddocumentbyconsultantclientnumber` need?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-documents.uploaddocumentbyconsultantclientnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.uploaddocumentbyconsultantclientnumber`?
 

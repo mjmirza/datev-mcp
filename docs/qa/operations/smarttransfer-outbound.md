@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_documents_outbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_outbox`?
 
@@ -45,11 +45,11 @@ An operation of the `smarttransfer-outbound` product in the smart transfer area.
 
 ### How do I call `smarttransfer-outbound.post_documents_outbox`?
 
-`datev_call` can call it without a body, but cannot send the file it takes (multipart/form-data), because the generic tool sends JSON or text only. No typed tool sends the file yet.
+Use `datev_upload_file` with `operation_id: "smarttransfer-outbound.post_documents_outbox"` and `files` mapping the part `files` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. `datev_call` can also call it without a file.
 
 ### Does `smarttransfer-outbound.post_documents_outbox` change data in DATEV?
 
-Yes. `datev_call` can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `smarttransfer-outbound.post_documents_outbox` need?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_documents_outbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_documents_outbox`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_documents_sentbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_sentbox`?
 
@@ -125,7 +125,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_documents_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_id`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_documents_id_types` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_id_types`?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_documents_id_info` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_id_info`?
 
@@ -205,11 +205,11 @@ An operation of the `smarttransfer-outbound` product in the smart transfer area.
 
 ### How do I call `smarttransfer-outbound.post_documents_id_privateattachment`?
 
-`datev_call` can call it without a body, but cannot send the file it takes (multipart/form-data), because the generic tool sends JSON or text only. No typed tool sends the file yet.
+Use `datev_upload_file` with `operation_id: "smarttransfer-outbound.post_documents_id_privateattachment"` and `files` mapping the part `attachment` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. `datev_call` can also call it without a file.
 
 ### Does `smarttransfer-outbound.post_documents_id_privateattachment` change data in DATEV?
 
-Yes. `datev_call` can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `smarttransfer-outbound.post_documents_id_privateattachment` need?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_documents_id_privateattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_documents_id_privateattachment`?
 
@@ -253,7 +253,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.delete_documents_id_privateattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.delete_documents_id_privateattachment`?
 
@@ -269,11 +269,11 @@ An operation of the `smarttransfer-outbound` product in the smart transfer area.
 
 ### How do I call `smarttransfer-outbound.post_documents_id_publicattachment`?
 
-`datev_call` can call it without a body, but cannot send the file it takes (multipart/form-data), because the generic tool sends JSON or text only. No typed tool sends the file yet.
+Use `datev_upload_file` with `operation_id: "smarttransfer-outbound.post_documents_id_publicattachment"` and `files` mapping the part `attachment` to local file paths. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with `confirm: true` and that code. `datev_call` can also call it without a file.
 
 ### Does `smarttransfer-outbound.post_documents_id_publicattachment` change data in DATEV?
 
-Yes. `datev_call` can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
 
 ### Which scope does `smarttransfer-outbound.post_documents_id_publicattachment` need?
 
@@ -285,7 +285,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_documents_id_publicattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_documents_id_publicattachment`?
 
@@ -317,7 +317,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.delete_documents_id_publicattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.delete_documents_id_publicattachment`?
 
@@ -349,7 +349,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_release` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_release`?
 
@@ -381,7 +381,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_hold` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_hold`?
 
@@ -413,7 +413,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_send` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_send`?
 
@@ -445,7 +445,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_markdeleted` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_markdeleted`?
 
@@ -477,7 +477,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_reprocess` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_reprocess`?
 
@@ -509,7 +509,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_movetoallbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_movetoallbox`?
 
@@ -541,7 +541,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_restorefromallbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_restorefromallbox`?
 
@@ -573,7 +573,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_resetvalidationerror` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_resetvalidationerror`?
 
@@ -605,7 +605,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_logs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_logs`?
 
@@ -637,7 +637,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_logs_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_logs_id`?
 
@@ -669,7 +669,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_notifications` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_notifications`?
 
@@ -701,7 +701,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_notifications_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_notifications_id`?
 
@@ -733,7 +733,7 @@ The live sweep skipped it: needs a real "documentId" that no list call has retur
 
 ### Is `smarttransfer-outbound.get_gov_poland_documents_sent_documentid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_gov_poland_documents_sent_documentid`?
 
@@ -765,7 +765,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_gov_serbia_documents_sent` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_gov_serbia_documents_sent`?
 
@@ -797,7 +797,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_gov_serbia_documents_sent` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_gov_serbia_documents_sent`?
 
@@ -829,7 +829,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_users` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_users`?
 
@@ -861,7 +861,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_users_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_users_id`?
 
@@ -893,7 +893,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_users_current` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,462 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,494 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_users_current`?
 
