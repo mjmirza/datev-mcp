@@ -1,3 +1,4 @@
+process.env.DATEV_MCP_SESSION_KEY ??= "11".repeat(32); // tests never touch the real credential store
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, statSync, writeFileSync, readdirSync } from "node:fs";

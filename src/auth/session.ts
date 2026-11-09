@@ -1,4 +1,6 @@
 import type { Endpoints } from "./endpoints.js";
+import type { HttpLogEntry } from "../api/http-log.js";
+import { tokenLog } from "../setup/token-log.js";
 import { refreshTokens, TokenError, type ClientCredentials, type FetchLike } from "./token-client.js";
 import type { TokenStore } from "./token-store.js";
 
@@ -20,7 +22,7 @@ export class Session {
     private readonly store: TokenStore,
     private readonly endpoints: Endpoints,
     private readonly creds: ClientCredentials,
-    private readonly opts: { fetch?: FetchLike; now?: () => number } = {},
+    private readonly opts: { fetch?: FetchLike; now?: () => number; log?: (e: HttpLogEntry) => void } = {},
   ) {}
 
   private now(): number {
@@ -47,7 +49,7 @@ export class Session {
       if (!s.tokens.refreshToken) throw new NeedsLoginError("session expired and has no refresh token");
       // On a dropped connection the token is kept on purpose: if DATEV never received it a retry succeeds, and if it did the session is lost either way.
       try {
-        const next = await refreshTokens(this.endpoints.token, s.tokens.refreshToken, this.creds, { fetch: this.opts.fetch, now: this.opts.now });
+        const next = await refreshTokens(this.endpoints.token, s.tokens.refreshToken, this.creds, { fetch: this.opts.fetch, now: this.opts.now, log: this.opts.log && tokenLog(this.opts.log) });
         // DATEV refresh tokens are single-use. The one just sent is spent, so it is never kept, even if no new one came back.
         this.store.write({ ...s, tokens: { ...next, refreshToken: next.refreshToken } });
         return next.accessToken;

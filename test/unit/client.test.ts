@@ -29,6 +29,7 @@ const deps = (f: FetchLike, extra: Partial<CallDeps> = {}): CallDeps => ({
   token: async () => "TOKEN",
   fetch: f,
   sleep: async () => undefined,
+  cooldowns: new Map(),
   ...extra,
 });
 
@@ -155,12 +156,26 @@ test("catalog search finds the clients list and hides health checks by default",
   assert.ok(OPERATIONS.some((o) => o.clientSecretHeader), "smarttransfer and master-data need the secret header");
 });
 
-test("chaos: a write retries a 429, because DATEV refused it and cannot have applied it", async () => {
+test("fault injection: a write is never sent twice, not even after a 429, and the 429 is handed back", async () => {
   let n = 0;
   const w = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/json"] } });
   const r = await callOperation(w, { body: { a: 1 } }, deps(async () => (++n < 3 ? json(429, {}, { "retry-after": "0" }) : json(201, { ok: true }))));
-  assert.equal(n, 3);
-  assert.equal(r.status, 201);
+  assert.equal(n, 1);
+  assert.equal(r.status, 429);
+});
+
+test("a long Retry-After pauses the next call to that service without asking DATEV, and the pause ends on time", async () => {
+  const cooldowns = new Map<string, number>();
+  let n = 0;
+  const f: FetchLike = async () => (n++, json(429, {}, { "retry-after": "3600" }));
+  const r = await callOperation(op(), { pathParams: { "client-id": "1" } }, deps(f, { cooldowns }));
+  assert.equal(r.status, 429);
+  assert.equal(n, 1, "a wait longer than the budget is not slept through");
+  await assert.rejects(callOperation(op(), { pathParams: { "client-id": "1" } }, deps(f, { cooldowns })), /pause requests to this service/);
+  assert.equal(n, 1, "the second call never reached DATEV");
+  for (const k of cooldowns.keys()) cooldowns.set(k, Date.now() - 1);
+  await callOperation(op(), { pathParams: { "client-id": "1" } }, deps(f, { cooldowns }));
+  assert.equal(n, 2, "after the pause, calls go out again");
 });
 
 test("never follows redirects, so the client secret header cannot reach another host", async () => {

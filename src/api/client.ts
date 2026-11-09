@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { bodyFingerprint, clip, iso, keepResponseBody, redactHeaders, type HttpLogEntry } from "./http-log.js";
 import type { DatevEnv } from "../auth/endpoints.js";
 import type { ClientCredentials, FetchLike } from "../auth/token-client.js";
 import type { Operation } from "../spec/types.js";
@@ -13,7 +14,7 @@ export interface CallInput {
   contentType?: string;
 }
 
-const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secret|host|content-length|content-type|content-encoding|transfer-encoding|cookie)$/i;
+const RESERVED_HEADERS = /^(authorization|x-datev-client-id|x-datev-client-secret|x-api-key|host|content-length|content-type|content-encoding|transfer-encoding|cookie)$/i;
 
 export function buildHeaders(op: Operation, input: CallInput): Record<string, string> {
   const out: Record<string, string> = {};
@@ -31,7 +32,7 @@ export function buildHeaders(op: Operation, input: CallInput): Record<string, st
     }
     out[k] = v;
   }
-  for (const p of op.params.filter((x) => x.in === "header" && x.required)) {
+  for (const p of op.params.filter((x) => x.in === "header" && x.required && !SERVER_HEADERS.has(x.name.toLowerCase()))) {
     const has = Object.keys(out).some((k) => k.toLowerCase() === p.name.toLowerCase());
     if (!has) throw new CallError(`Missing required header "${p.name}"`);
   }
@@ -77,6 +78,39 @@ export interface CallDeps {
   deadlineMs?: number;
   /** Byte budget for a binary answer (PDF, image). Default and maximum 50 MB. */
   maxBinaryBytes?: number;
+  /** Scopes of the saved login. An operation outside them is refused before DATEV is asked. */
+  grantedScopes?: ReadonlySet<string>;
+  /** Writes one line of the technical HTTP log DATEV requires. Tests leave it out. */
+  httpLog?: (entry: HttpLogEntry) => void;
+  /** Service keys the server adds itself, by header name, so the model never sees them (SmartTransfer's X-API-Key). */
+  serviceKeys?: Record<string, string | undefined>;
+  /** Per host: until when DATEV asked us to wait. Shared across calls, so a long Retry-After is honored by the next call too. */
+  cooldowns?: Map<string, number>;
+}
+
+const defaultCooldowns = new Map<string, number>();
+
+// Headers the server sets from its own configuration. The model can neither pass nor see them.
+const SERVER_HEADERS = new Set(["x-api-key"]);
+
+const SERVICE_KEY_ENV: Record<string, string> = { "x-api-key": "DATEV_SMARTTRANSFER_API_KEY" };
+
+function serverHeadersOf(op: Operation): string[] {
+  return op.params.filter((p) => p.in === "header" && SERVER_HEADERS.has(p.name.toLowerCase())).map((p) => p.name);
+}
+
+function serviceKey(name: string, deps: CallDeps): string | undefined {
+  const key = name.toLowerCase();
+  const v = deps.serviceKeys ? deps.serviceKeys[key] : process.env[SERVICE_KEY_ENV[key] ?? ""];
+  return v?.trim() ? v.trim() : undefined;
+}
+
+/** Refuses an operation whose scopes the saved login does not hold. openid is part of every login. */
+export function checkGranted(op: Operation, granted: ReadonlySet<string> | undefined): void {
+  if (!granted) return;
+  const missing = op.scopes.filter((s) => s !== "openid" && !granted.has(s));
+  if (missing.length)
+    throw new CallError(`${op.id} needs the scope ${missing.join(", ")}, which is not part of the connected data services. Run "datev-mcp login --services ..." with the data service it belongs to.`);
 }
 
 export class CallError extends Error {
@@ -149,7 +183,13 @@ export function buildUrl(op: Operation, env: DatevEnv, input: CallInput): URL {
     if (input.query?.[p.name] === undefined) throw new CallError(`Missing required query parameter "${p.name}"`);
   }
   for (const [k, v] of Object.entries(input.query ?? {})) {
-    for (const item of Array.isArray(v) ? v : [v]) url.searchParams.append(k, String(item));
+    const declared = op.params.find((p) => p.in === "query" && p.name === k);
+    const items = Array.isArray(v) ? v : [v];
+    const itemSchema = (declared?.schema as { type?: string; items?: unknown } | undefined)?.type === "array" ? (declared!.schema as { items?: unknown }).items : declared?.schema;
+    for (const item of items) {
+      checkAgainstSchema(k, String(item), itemSchema);
+      url.searchParams.append(k, String(item));
+    }
   }
   return url;
 }
@@ -321,18 +361,34 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   // The caller's Accept wins, e.g. application/pdf for a PDF report. Otherwise ask for JSON first.
   if (!Object.keys(headers).some((k) => k.toLowerCase() === "accept")) headers.accept = "application/json, */*;q=0.5";
   if (op.clientSecretHeader) headers["X-DATEV-Client-Secret"] = deps.creds.clientSecret;
+  for (const name of serverHeadersOf(op)) headers[name] = serviceKey(name, deps)!;
   if (p.contentType) headers["content-type"] = p.contentType;
+  const cooldowns = deps.cooldowns ?? defaultCooldowns;
+  const waitUntil = cooldowns.get(url.host) ?? 0;
+  if (waitUntil > Date.now()) throw new CallError(`DATEV asked to pause requests to this service until ${new Date(waitUntil).toISOString().slice(11, 19)} UTC. Try again after that.`);
   let res: Response | undefined;
   let netErr: unknown;
   let read: Awaited<ReturnType<typeof readBody>> | undefined;
+  const sentAt = Date.now();
+  const logLine = (extra: Partial<HttpLogEntry>) =>
+    deps.httpLog?.({
+      ts_request: iso(sentAt),
+      ts_response: iso(),
+      method: op.method.toUpperCase(),
+      url: url.toString(),
+      request_headers: redactHeaders(headers),
+      request_body: bodyFingerprint(p.body),
+      ...(res ? { status: res.status, status_text: res.statusText, response_headers: redactHeaders(res.headers) } : {}),
+      ...extra,
+    });
   try {
     // redirect "manual": fetch would forward X-DATEV-Client-Secret to whatever host a redirect names.
     res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.any([AbortSignal.timeout(Math.min(30_000, left)), ...(deps.signal ? [deps.signal] : [])]) });
   } catch (e) {
     netErr = e;
   }
-  // Reads retry transient failures. Writes retry only a 429: DATEV refused it, so it cannot have been applied.
-  const statusRetry = res !== undefined && (op.method === "get" ? RETRYABLE.has(res.status) : res.status === 429);
+  // Only reads are retried. A write is never sent twice: without an idempotency key, even a 429 is no proof it was not applied.
+  const statusRetry = res !== undefined && op.method === "get" && RETRYABLE.has(res.status);
   if (res && !statusRetry) {
     try {
       read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
@@ -341,10 +397,19 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
       if (op.method !== "get" || deps.signal?.aborted) throw new CallError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
+  if (!res) logLine({ error: netErr instanceof Error ? netErr.message : String(netErr) });
+  else if (!read) logLine(netErr !== undefined ? { error: `answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}` } : {});
+  else logLine(keepResponseBody(res.status, url.toString()) ? { response_body: clip(typeof read.body === "string" ? read.body : JSON.stringify(read.body)) } : {});
+  const retryAfter = res?.headers.get("retry-after") ?? null;
+  if (res && retryAfter && (res.status === 429 || res.status === 503)) {
+    const until = Date.now() + retryDelay(0, retryAfter);
+    if (until > (cooldowns.get(url.host) ?? 0)) cooldowns.set(url.host, until);
+  }
   const retryable = n < MAX_ATTEMPTS && (statusRetry || (op.method === "get" && netErr !== undefined));
-  const delay = retryDelay(n - 1, res?.headers.get("retry-after") ?? null);
+  const delay = retryDelay(n - 1, retryAfter);
   // A retry only makes sense if it can still finish inside the budget, and never after a cancel.
   if (retryable && !deps.signal?.aborted && Date.now() + delay + 1000 < p.deadline) {
+    if (retryAfter) cooldowns.delete(url.host); // this call honors the wait itself
     if (!read) await discard(res);
     const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     await bounded(sleep(delay), p.deadline, deps.signal, "while waiting to retry");
@@ -380,6 +445,9 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
 
 // async so validation errors surface as a rejected promise, never a synchronous throw.
 export async function callOperation(op: Operation, input: CallInput, deps: CallDeps): Promise<CallResult> {
+  checkGranted(op, deps.grantedScopes);
+  for (const name of serverHeadersOf(op))
+    if (!serviceKey(name, deps)) throw new CallError(`${op.id} needs the ${name} header. Set ${SERVICE_KEY_ENV[name.toLowerCase()] ?? name} in the server's environment; it is never passed through the assistant.`);
   const url = buildUrl(op, deps.env, input);
   return attempt({ op, url, deps, deadline: Date.now() + (deps.deadlineMs ?? 55_000), extraHeaders: buildHeaders(op, input), ...encodeBody(op, input) }, 1);
 }

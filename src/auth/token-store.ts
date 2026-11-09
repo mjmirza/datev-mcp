@@ -1,20 +1,34 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, renameSync, writeFileSync, rmSync, statSync, existsSync } from "node:fs";
-import { randomBytes } from "node:crypto";
-import { homedir } from "node:os";
+import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync, rmSync, statSync, existsSync } from "node:fs";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { join, dirname } from "node:path";
+import { storeDir } from "../paths.js";
 import type { DatevEnv } from "./endpoints.js";
+import { defaultKeyStore, loadOrCreateKey, type KeyStore } from "./session-key.js";
 import type { TokenSet } from "./token-client.js";
 
 export interface StoredSession {
   env: DatevEnv;
   clientId: string;
   tokens: TokenSet;
+  /** Who signed in, from DATEV's userinfo, for the connection status DATEV requires. */
+  identity?: { sub: string; name?: string };
+  /** The data services chosen at login, and the scopes requested for them. */
+  services?: string[];
+  scopes?: string[];
+  /** When the refresh token from this login stops working. DATEV does not extend it on refresh. */
+  refreshExpiresAt?: number;
 }
 
-function defaultStoreDir(): string {
-  return process.env.DATEV_MCP_HOME ?? join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "datev-mcp");
+interface Sealed {
+  v: 2;
+  alg: "A256GCM";
+  iv: string;
+  tag: string;
+  data: string;
 }
+
+const isSealed = (v: unknown): v is Sealed => !!v && typeof v === "object" && (v as Sealed).v === 2 && (v as Sealed).alg === "A256GCM";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -41,32 +55,72 @@ function pidAlive(pid: number): boolean {
 export class TokenStore {
   readonly file: string;
   private readonly lockDir: string;
+  private readonly keys: KeyStore;
+  private key?: Buffer;
 
   constructor(
     readonly env: DatevEnv,
-    dir = defaultStoreDir(),
+    dir = storeDir(),
+    keys?: KeyStore,
   ) {
     this.file = join(dir, `session-${env}.json`);
     this.lockDir = join(dir, `session-${env}.lock`);
+    this.keys = keys ?? defaultKeyStore(dir);
+  }
+
+  private aad = () => Buffer.from(`datev-mcp:${this.env}`);
+
+  private seal(s: StoredSession): Sealed {
+    this.key ??= loadOrCreateKey(this.keys);
+    const iv = randomBytes(12);
+    const c = createCipheriv("aes-256-gcm", this.key, iv);
+    c.setAAD(this.aad());
+    const data = Buffer.concat([c.update(JSON.stringify(s), "utf8"), c.final()]);
+    return { v: 2, alg: "A256GCM", iv: iv.toString("base64"), tag: c.getAuthTag().toString("base64"), data: data.toString("base64") };
+  }
+
+  private open(sealed: Sealed): StoredSession {
+    this.key ??= this.keys.get();
+    if (!this.key) throw new Error(`The DATEV session is encrypted, but its key is missing from the ${this.keys.name}. Log in again.`);
+    const d = createDecipheriv("aes-256-gcm", this.key, Buffer.from(sealed.iv, "base64"));
+    d.setAAD(this.aad());
+    d.setAuthTag(Buffer.from(sealed.tag, "base64"));
+    return JSON.parse(Buffer.concat([d.update(Buffer.from(sealed.data, "base64")), d.final()]).toString("utf8")) as StoredSession;
   }
 
   read(): StoredSession | undefined {
     if (!existsSync(this.file)) return undefined;
+    // Encrypted or not, the file stays owner-only.
+    if ((statSync(this.file).mode & 0o077) !== 0) chmodSync(this.file, 0o600);
+    let raw: unknown;
     try {
-      const s = JSON.parse(readFileSync(this.file, "utf8")) as StoredSession;
-      if (!s?.tokens?.accessToken || s.env !== this.env) throw new Error("shape");
-      return s;
+      raw = JSON.parse(readFileSync(this.file, "utf8")) as unknown;
     } catch {
-      // Keep the unreadable file for inspection rather than deleting it, then act as logged out.
-      renameSync(this.file, `${this.file}.corrupt-${Date.now()}`);
-      return undefined;
+      return this.quarantine();
     }
+    let s: StoredSession;
+    try {
+      s = isSealed(raw) ? this.open(raw) : (raw as StoredSession);
+    } catch (e) {
+      if ((e as Error).message.includes("key is missing")) throw e;
+      return this.quarantine();
+    }
+    if (!s?.tokens?.accessToken || s.env !== this.env) return this.quarantine();
+    // A session saved in plain text by an earlier version is encrypted the first time it is read.
+    if (!isSealed(raw)) this.write(s);
+    return s;
+  }
+
+  // Keep the unreadable file for inspection rather than deleting it, then act as logged out.
+  private quarantine(): undefined {
+    renameSync(this.file, `${this.file}.corrupt-${Date.now()}`);
+    return undefined;
   }
 
   write(s: StoredSession): void {
     mkdirSync(dirname(this.file), { recursive: true, mode: 0o700 });
     const tmp = `${this.file}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
-    writeFileSync(tmp, JSON.stringify(s), { mode: 0o600 });
+    writeFileSync(tmp, JSON.stringify(this.seal(s)), { mode: 0o600 });
     renameSync(tmp, this.file);
   }
 

@@ -12,7 +12,7 @@ export interface Check {
 
 async function get(url: string, token: string, cfg: Config): Promise<{ status: number; body: unknown }> {
   const headers = { authorization: `Bearer ${token}`, "X-DATEV-Client-Id": cfg.creds.clientId, accept: "application/json" };
-  const res = await fetch(url, { signal: AbortSignal.timeout(20_000), headers });
+  const res = await fetch(url, { signal: AbortSignal.timeout(20_000), headers, redirect: "error" });
   const text = await res.text();
   let body: unknown = text;
   try {

@@ -74,10 +74,13 @@ function sampleFor(op: Operation, name: string): string {
   return pick ?? "abc123";
 }
 
+const isServerHeader = (name: string) => name.toLowerCase() === "x-api-key";
+
 function validInput(op: Operation): CallInput {
   const pathParams = Object.fromEntries(pathNames(op).map((n) => [n, sampleFor(op, n)]));
   const query = Object.fromEntries(op.params.filter((p) => p.in === "query" && p.required).map((p) => [p.name, "1"]));
-  const headers = Object.fromEntries(op.params.filter((p) => p.in === "header" && p.required).map((p) => [p.name, sampleHeader(p.name)]));
+  // X-API-Key comes from the server's configuration, never from the caller.
+  const headers = Object.fromEntries(op.params.filter((p) => p.in === "header" && p.required && !isServerHeader(p.name)).map((p) => [p.name, sampleHeader(p.name)]));
   const input: CallInput = { pathParams, query, headers };
   if (op.body?.required) {
     const ct = op.body.contentTypes[0] ?? "application/json";
@@ -95,7 +98,16 @@ function mockDeps(respond: (n: number) => Response, extra: Partial<CallDeps> = {
     calls.push({ url: String(u), init });
     return respond(calls.length);
   };
-  const deps: CallDeps = { env: "sandbox", creds: { clientId: "cid", clientSecret: "SECRET" }, token: async () => "TOK", fetch, sleep: async () => {}, ...extra };
+  const deps: CallDeps = {
+    env: "sandbox",
+    creds: { clientId: "cid", clientSecret: "SECRET" },
+    token: async () => "TOK",
+    fetch,
+    sleep: async () => {},
+    serviceKeys: { "x-api-key": "SERVICEKEY" },
+    cooldowns: new Map(),
+    ...extra,
+  };
   return { deps, calls };
 }
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -172,10 +184,14 @@ function perOperation(op: Operation) {
     (v as URL).searchParams.get("q") === "a&b=c#d" && !(v as URL).searchParams.has("b") ? undefined : "query value split",
   );
 
-  for (const p of op.params.filter((x) => x.in === "header" && x.required)) {
+  for (const p of op.params.filter((x) => x.in === "header" && x.required && !isServerHeader(x.name))) {
     const h = { ...good.headers };
     delete h[p.name];
     expectThrow("header.missing-required", id, () => buildHeaders(op, { ...good, headers: h }), /required header/);
+  }
+  if (op.params.some((p) => p.in === "header" && isServerHeader(p.name))) {
+    expectThrow("header.service-key-from-caller", id, () => buildHeaders(op, { ...good, headers: { ...good.headers, "X-API-Key": "stolen" } }), /set by the server/);
+    expectThrow("header.service-key-missing", id, () => callOperation(op, good, mockDeps(() => json(200, {}), { serviceKeys: {} }).deps), /never passed through the assistant/);
   }
   RESERVED.forEach((r) => expectThrow("header.reserved", id, () => buildHeaders(op, { ...good, headers: { ...good.headers, [r]: "x" } }), /cannot be overridden/));
   ["a\r\nX-Evil: 1", "a\nb", "a\rb"].forEach((crlf) => expectThrow("header.crlf", id, () => buildHeaders(op, { ...good, headers: { ...good.headers, "X-Eval": crlf } }), /line break/));
@@ -188,6 +204,8 @@ function perOperation(op: Operation) {
       if (h["X-DATEV-Client-Id"] !== "cid") return "missing client id";
       if (op.clientSecretHeader !== (h["X-DATEV-Client-Secret"] === "SECRET")) return "client secret header mismatch";
       if (calls[0].init?.redirect !== "manual") return "redirects followed automatically, credentials could leave the DATEV host";
+      const wantsKey = op.params.some((p) => p.in === "header" && isServerHeader(p.name));
+      if (wantsKey !== (h["X-API-Key"] === "SERVICEKEY")) return "the service key is missing, or sent where the spec has no such header";
       return calls[0].init?.method === op.method.toUpperCase() ? undefined : "wrong method";
     });
   }
@@ -248,7 +266,7 @@ function perOperation(op: Operation) {
     const { deps, calls } = mockDeps((n) => (n < 3 ? json(status, {}, status === 429 ? { "retry-after": "0" } : {}) : json(200, [])));
     expectOk(`retry.${status}`, id, () => callOperation(op, good, deps), (v) => {
       const r = v as { status: number };
-      if (op.method === "get" || status === 429) return r.status === 200 && calls.length === 3 ? undefined : `status ${r.status}, calls ${calls.length}`;
+      if (op.method === "get") return r.status === 200 && calls.length === 3 ? undefined : `status ${r.status}, calls ${calls.length}`;
       return r.status === status && calls.length === 1 ? undefined : `write retried (${calls.length} calls)`;
     });
   });
@@ -338,7 +356,7 @@ async function uploadShapes() {
     const calls: { body: unknown }[] = [];
     const fetch: FetchLike = async (_u, init) => (calls.push({ body: init?.body }), json(201, {}));
     const server = new McpServer({ name: "eval", version: "0" });
-    registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {} }));
+    registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {}, serviceKeys: { "x-api-key": "SERVICEKEY" }, cooldowns: new Map() }));
     const [a, b] = InMemoryTransport.createLinkedPair();
     await server.connect(a);
     const c = new Client({ name: "eval", version: "0" });
