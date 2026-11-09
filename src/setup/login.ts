@@ -13,7 +13,7 @@ import { tokenLog } from "./token-log.js";
 import { formatDe, REVOKE_UI } from "./status.js";
 
 // DATEV's short-lived refresh token lasts 11 hours from login and is not extended by a refresh.
-export const REFRESH_LIFETIME_MS = 11 * 60 * 60_000;
+const REFRESH_LIFETIME_MS = 11 * 60 * 60_000;
 
 function openBrowser(url: string): void {
   const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "explorer" : "xdg-open";

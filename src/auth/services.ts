@@ -3,7 +3,7 @@ import type { OperationIndex } from "../spec/types.js";
 
 // DATEV asks apps to name its data services the way DATEV does and to request only the scopes of the
 // services the customer chose. Labels are DATEV's published service names; APIs without one show their API name.
-export const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Personalwirtschaft" | "Steuern" | "Sonstiges" }> = {
+const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Personalwirtschaft" | "Steuern" | "Sonstiges" }> = {
   "accounting-clients": { label: "Online-API accounting-clients", group: "Rechnungswesen" },
   "accounting-documents": { label: "Belegbilderservice Rechnungswesen", group: "Rechnungswesen" },
   "accounting-extf-files": { label: "Buchungsdatenservice und DATEV-Format", group: "Rechnungswesen" },
@@ -26,7 +26,7 @@ const NEEDS_CLIENT_LIST = new Set(["accounting-documents", "accounting-extf-file
 
 const ops = (index as OperationIndex).operations;
 
-export function scopesOf(product: string): string[] {
+function scopesOf(product: string): string[] {
   const s = new Set<string>();
   for (const o of ops) if (o.product === product || o.product === `${product}-health`) for (const sc of o.scopes) if (sc !== "datev:all") s.add(sc);
   return [...s].sort();

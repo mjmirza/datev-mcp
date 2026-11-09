@@ -59,7 +59,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
       description:
         "Upload a file (invoice, receipt, PDF, image) to a DATEV client's Belegbilderservice (accounting-documents). The first call returns a preview and a confirm_token. Show the preview to the user, then call again with confirm: true and that token.",
       inputSchema: {
-        client_id: z.string().describe("DATEV client id, e.g. 455148-1"),
+        client_id: z.string().describe("Technical client id from datev_list_clients (format consultant-client, e.g. 12345-1). Never invent one."),
         file_path: z.string().describe("Absolute path to the file (PDF, JPG, PNG, TIFF, GIF, BMP, XML, TXT, CSV)"),
         document_type: z.string().max(30).optional().describe("DATEV document type, e.g. Rechnungseingang or Rechnungsausgang"),
         note: z.string().max(255).optional(),

@@ -141,7 +141,7 @@ export function problemText(status: number, body: unknown): string {
 }
 
 /** Refuses an operation whose scopes the saved login does not hold. openid is part of every login. */
-export function checkGranted(op: Operation, granted: ReadonlySet<string> | undefined): void {
+function checkGranted(op: Operation, granted: ReadonlySet<string> | undefined): void {
   if (!granted) return;
   const missing = op.scopes.filter((s) => s !== "openid" && !granted.has(s));
   if (missing.length)

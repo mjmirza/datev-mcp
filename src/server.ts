@@ -15,7 +15,7 @@ import { registerUploadTools } from "./tools/upload.js";
 const VERSION = "0.0.1";
 
 // The scopes DATEV actually granted to the saved login, or the ones requested if DATEV did not say.
-export function grantedScopes(store: TokenStore): ReadonlySet<string> | undefined {
+function grantedScopes(store: TokenStore): ReadonlySet<string> | undefined {
   try {
     const s = store.read();
     const list = s?.tokens.scope?.split(/\s+/).filter(Boolean) ?? s?.scopes;

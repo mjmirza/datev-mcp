@@ -14,3 +14,9 @@ test/reports/
 
 # DATEV API documentation and anything derived from it (DATEV terms E.2.2/2.3): never commit
 src/data/operations.json
+
+# Local runtime state: encrypted session, key file, HTTP log, live-test ledgers. Never commit.
+session*.json
+session.key*
+logs/
+http-*.jsonl

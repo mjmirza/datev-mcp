@@ -1,11 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DatevEnv } from "../auth/endpoints.js";
+import { messageLang } from "../i18n.js";
 
-export type ConfirmMode = "human" | "token";
+type ConfirmMode = "human" | "token";
 
 // "human": the server asks the person through the client (elicitation), so the assistant cannot approve its own write.
 // "token": the preview's confirm code is enough. Production defaults to "human"; DATEV_MCP_CONFIRM overrides it.
-export function confirmMode(env: DatevEnv, vars: NodeJS.ProcessEnv = process.env): ConfirmMode {
+function confirmMode(env: DatevEnv, vars: NodeJS.ProcessEnv = process.env): ConfirmMode {
   const v = vars.DATEV_MCP_CONFIRM?.trim().toLowerCase();
   if (v === "human" || v === "token") return v;
   return env === "production" ? "human" : "token";
@@ -18,12 +19,17 @@ export async function humanApproval(server: McpServer, env: DatevEnv, summary: s
     if (confirmMode(env, vars) === "token") return undefined;
     return "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve writes.";
   }
+  const de = messageLang(vars) === "de";
   let res;
   try {
     res = await server.server.elicitInput({
       mode: "form",
-      message: `Send this to DATEV ${env}?\n\n${summary}`,
-      requestedSchema: { type: "object", properties: { approve: { type: "boolean", title: "Yes, send it to DATEV", default: false } }, required: ["approve"] },
+      message: de ? `Dies an DATEV ${env === "production" ? "Produktion" : "Sandbox"} senden?\n\n${summary}` : `Send this to DATEV ${env}?\n\n${summary}`,
+      requestedSchema: {
+        type: "object",
+        properties: { approve: { type: "boolean", title: de ? "Ja, an DATEV senden" : "Yes, send it to DATEV", default: false } },
+        required: ["approve"],
+      },
     });
   } catch (e) {
     return `The approval could not be asked (${e instanceof Error ? e.message : String(e)}). Nothing was sent.`;

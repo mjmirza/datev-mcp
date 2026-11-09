@@ -12,7 +12,7 @@
   },
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "index": "tsx scripts/build-spec-index.ts",
     "index:check": "tsx scripts/build-spec-index.ts --check",
     "test": "npm run test:unit",
@@ -32,6 +32,7 @@
   "devDependencies": {
     "@types/node": "^26.6.6",
     "fast-check": "^4.10.2",
+    "knip": "6.44.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },

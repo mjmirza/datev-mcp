@@ -165,7 +165,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
       description:
         "Send a checked EXTF file to a DATEV client's accounting (extf-files import). The file is validated first and refused if it has errors. The first call returns a preview and a confirm_token. Show it to the user, then call again with confirm: true and that token.",
       inputSchema: {
-        client_id: z.string().describe("DATEV client id, e.g. 455148-1"),
+        client_id: z.string().describe("Technical client id from datev_list_clients (format consultant-client, e.g. 12345-1). Never invent one."),
         file_path: z.string(),
         confirm: z.boolean().optional(),
         confirm_token: z.string().optional().describe("The token returned by the preview"),

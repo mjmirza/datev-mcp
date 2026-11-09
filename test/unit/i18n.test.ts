@@ -95,3 +95,41 @@ test("a tool error reaches the user in German when DATEV_MCP_LANG=de", async () 
     else process.env.DATEV_MCP_LANG = before;
   }
 });
+
+test("every message added for the DATEV review comes out fully German", async () => {
+  const { localize } = await import("../../src/i18n.js");
+  const { selectServices } = await import("../../src/auth/services.js");
+  const thrown = (fn: () => unknown) => {
+    try {
+      fn();
+    } catch (e) {
+      return (e as Error).message;
+    }
+    throw new Error("expected a throw");
+  };
+  const english = [
+    "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve writes.",
+    "You did not approve this write. Nothing was sent.",
+    "The approval could not be asked (client went away). Nothing was sent.",
+    "There is no saved DATEV connection.",
+    "DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.",
+    "DATEV's userinfo names a different user than the ID token. Nothing was saved.",
+    "The DATEV login answer failed the ID token check: the nonce does not match this login",
+    'The DATEV login answer failed the ID token check: issuer "x" is not "https://login.datev.de/openidsandbox"',
+    "DATEV asked to pause requests to this service until 12:30:00 UTC. Try again after that.",
+    'accounting-documents:list needs the scope datev:accounting:documents, which is not part of the connected data services. Run "datev-mcp login --services ..." with the data service it belongs to.',
+    "smarttransfer:post needs the x-api-key header. Set DATEV_SMARTTRANSFER_API_KEY in the server's environment; it is never passed through the assistant.",
+    'The connection was NOT removed: DATEV refused to revoke the refresh token (HTTP 500). Try again, or remove it at https://apps.datev.de/tokrevui and then run "datev-mcp disconnect --local-only".',
+    "DATEV refused to revoke the access token (HTTP 400)",
+    "The DATEV session is encrypted, but its key is missing from the macOS Keychain. Log in again.",
+    'DATEV returned HTTP 400 for the chart of accounts: Bad request. Help: https://help.datev.de/x (request id r-1)',
+    thrown(() => selectServices("")),
+    thrown(() => selectServices("nope")),
+  ];
+  for (const en of english) {
+    const de = localize(en, "de");
+    assert.notEqual(de, en, `not translated: ${en}`);
+    assert.doesNotMatch(de, /\b(Nothing was|Try again|Help:|request id|the connection|Choose|Available, as|needs the)\b/, `English left in: ${de}`);
+  }
+  assert.equal(localize("You did not approve this write. Nothing was sent.", "en"), "You did not approve this write. Nothing was sent.");
+});

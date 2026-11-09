@@ -253,3 +253,38 @@ test("in production a write needs the person's approval in the client; the assis
   assert.equal(blind.sent, 0, "without a way to ask the person, production writes are refused");
   assert.match(blind.r.content[0]!.text, /cannot ask you/);
 });
+
+test("property over all 209 operations: no DATEV wording leaves the server, every field name and constraint does", async () => {
+  const { OPERATIONS, describe, summarize, structureOnly } = await import("../../src/tools/catalog.js");
+  const prose = (v: unknown, acc: string[] = []): string[] => {
+    if (Array.isArray(v)) v.forEach((x) => prose(x, acc));
+    else if (v && typeof v === "object")
+      for (const [k, x] of Object.entries(v)) {
+        if (["description", "summary"].includes(k) && typeof x === "string" && x.trim().length > 25) acc.push(x.trim());
+        else if (k !== "properties") prose(x, acc);
+        else for (const field of Object.values(x as object)) prose(field, acc);
+      }
+    return acc;
+  };
+  const names = (v: unknown, acc = new Set<string>()): Set<string> => {
+    if (Array.isArray(v)) v.forEach((x) => names(x, acc));
+    else if (v && typeof v === "object")
+      for (const [k, x] of Object.entries(v)) {
+        if (k === "properties" && x && typeof x === "object") Object.keys(x).forEach((n) => acc.add(n));
+        names(x, acc);
+      }
+    return acc;
+  };
+  let checked = 0;
+  for (const op of OPERATIONS) {
+    const out = JSON.stringify([summarize(op), describe(op, 10_000_000)]);
+    for (const p of [op.summary, op.description, ...prose(op.params), ...prose(op.body?.schema)].filter((s): s is string => !!s && s.length > 25)) {
+      assert.ok(!out.includes(JSON.stringify(p).slice(1, -1)), `${op.id} leaks DATEV text: ${p.slice(0, 60)}`);
+      checked++;
+    }
+    const kept = names(structureOnly(op.body?.schema));
+    for (const n of names(op.body?.schema)) assert.ok(kept.has(n), `${op.id} lost field ${n}`);
+  }
+  assert.ok(checked > 200, `checked ${checked} DATEV texts`);
+  assert.deepEqual(structureOnly({ properties: { description: { maxLength: 9 } }, description: "x" }), { properties: { description: { maxLength: 9 } } });
+});

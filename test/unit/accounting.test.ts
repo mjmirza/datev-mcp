@@ -43,7 +43,7 @@ test("account postings: starts the job, polls until finished, filters by account
     calls.push(`${init?.method} ${new URL(url).pathname}`);
     if (url.endsWith("/account-postings")) return json(202, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
     if (url.includes("/jobs/3f2504e0-4f89-41d3-9a0c-0305e82c3301/state")) return json(200, { state: ++polls < 3 ? "processing" : "finished" });
-    if (url.includes("/account-postings-jobs/3f2504e0-4f89-41d3-9a0c-0305e82c3301")) return json(200, '{"accountNumber":12000000,"amount":10}\n{"accountNumber":84000000,"amount":20}');
+    if (url.includes("/account-postings-jobs/3f2504e0-4f89-41d3-9a0c-0305e82c3301")) return json(200, '{"accountNumber":12000000,"amountDebit":10}\n{"accountNumber":84000000,"amountDebit":20}');
     return json(404, {});
   };
   const c = await client(f);
@@ -51,7 +51,7 @@ test("account postings: starts the job, polls until finished, filters by account
   assert.equal(out.ready, true);
   assert.equal(out.postings_read, 2);
   assert.equal(out.complete, true);
-  assert.deepEqual(out.rows, [{ accountNumber: 12000000, amount: 10 }]);
+  assert.deepEqual(out.rows, [{ accountNumber: 12000000, amountDebit: 10 }]);
   assert.equal(polls, 3);
   assert.equal(calls[0], "POST /platform-sandbox/v1/clients/455148-1/fiscal-years/20230701/account-postings");
 });
@@ -102,13 +102,13 @@ test("account postings: reads every page DATEV reports, not only the first", asy
     if (url.pathname.includes("/state")) return json(200, { jobState: "COMPLETED" });
     const p = Number(url.searchParams.get("page"));
     pages.push(p);
-    return json(200, `{"accountNumber":${p === 3 ? 12000000 : 84000000},"amount":${p}}`, { "x-total-pages": "3", "x-total-count": "3" });
+    return json(200, `{"accountNumber":${p === 3 ? 12000000 : 84000000},"amountDebit":${p}}`, { "x-total-pages": "3", "x-total-count": "3" });
   };
   const out = JSON.parse(text(await (await client(f)).callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", account: "1200" } })));
   assert.deepEqual(pages, [1, 2, 3]);
   assert.equal(out.complete, true);
   assert.equal(out.total_postings, 3);
-  assert.deepEqual(out.rows, [{ accountNumber: 12000000, amount: 3 }]);
+  assert.deepEqual(out.rows, [{ accountNumber: 12000000, amountDebit: 3 }]);
 });
 
 test("account postings: job_id continues the same export instead of starting another", async () => {
@@ -149,8 +149,11 @@ test("clients are read page by page past DATEV's 100 per request", async () => {
     return json(200, Array.from({ length: n }, (_, i) => ({ id: `455148-${skip + i + 1}`, name: "x" })));
   });
   const out = JSON.parse(text(await c.callTool({ name: "datev_list_clients", arguments: {} })));
-  assert.equal(out.length, 150);
+  assert.equal(out.clients.length, 150);
   assert.deepEqual(seen, ["?top=100&skip=0", "?top=100&skip=100"]);
+  assert.equal(out.clients[0].id, undefined, "no field the user would read as the client id");
+  assert.equal(out.clients[0].technical_id, "455148-1");
+  assert.match(out.note, /DATEV asks apps not to display it/);
 });
 
 test("an HTTP 200 that carries only an error is an error, never data", async () => {
@@ -169,7 +172,7 @@ test("postings keep only the rows asked for, but count every match", async () =>
     const p = new URL(String(u)).pathname;
     if ((init as RequestInit).method === "POST") return json(200, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
     if (p.endsWith("/state")) return json(200, { jobState: "COMPLETED" });
-    return json(200, Array.from({ length: 300 }, (_, i) => ({ accountNumber: 1200, amount: i })), { "x-total-pages": "1" });
+    return json(200, Array.from({ length: 300 }, (_, i) => ({ accountNumber: 1200, amountDebit: i })), { "x-total-pages": "1" });
   });
   const out = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", limit: 3 } })));
   assert.equal(out.matches, 300);
@@ -256,10 +259,25 @@ test("account postings: rows without a readable account are counted, not silentl
   const f: FetchLike = async (u) => {
     const url = new URL(String(u));
     if (url.pathname.includes("/state")) return json(200, { jobState: "COMPLETED" });
-    return json(200, '{"amount":1}\n{"amount":2,"accountNumber":null}', { "x-total-pages": "1", "x-total-count": "2" });
+    return json(200, '{"amountDebit":1}\n{"amountDebit":2,"accountNumber":null}', { "x-total-pages": "1", "x-total-count": "2" });
   };
   const out = JSON.parse(text(await (await client(f)).callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230101", job_id: JOB, account: "1200" } })));
   assert.equal(out.matches, 0);
   assert.equal(out.rows_without_account, 2);
   assert.match(out.note, /no readable account number/);
+});
+
+test("account postings return a minimal field set by default, and every field only when asked", async () => {
+  const row = { accountNumber: 12000000, contraAccountNumber: 84000000, date: "2023-07-03", amountDebit: 119, postingDescription: "Miete", euVatId: "DE123456789", documentLink: "BEDI 1234", billingReference: "R-1" };
+  const f: FetchLike = async (u) => {
+    const url = String(u);
+    if (url.endsWith("/account-postings")) return json(202, { id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" });
+    if (url.includes("/state")) return json(200, { state: "finished" });
+    return json(200, JSON.stringify(row), { "x-total-pages": "1" });
+  };
+  const c = await client(f);
+  const basic = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230701" } })));
+  assert.deepEqual(basic.rows[0], { date: "2023-07-03", accountNumber: 12000000, contraAccountNumber: 84000000, amountDebit: 119, postingDescription: "Miete" });
+  const all = JSON.parse(text(await c.callTool({ name: "datev_account_postings", arguments: { client_id: "455148-1", fiscal_year_id: "20230701", fields: "all" } })));
+  assert.deepEqual(all.rows[0], row);
 });

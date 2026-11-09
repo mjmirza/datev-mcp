@@ -9,6 +9,10 @@ const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stri
 const err = (m: string) => ({ content: [{ type: "text" as const, text: localize(m) }], isError: true });
 const UNCAPPED = Number.MAX_SAFE_INTEGER;
 
+// Data minimisation: what an assistant needs to answer a booking question, without VAT ids, links or EU details.
+const BASIC_POSTING = ["date", "accountNumber", "contraAccountNumber", "amountDebit", "amountCredit", "currencyCode", "postingDescription", "documentField1", "taxRate", "kost1CostCenterId", "kost2CostCenterId", "accountingSequenceId"];
+const basicPosting = (x: Record<string, unknown>) => Object.fromEntries(BASIC_POSTING.filter((k) => Object.hasOwn(x, k)).map((k) => [k, x[k]]));
+
 function errorText(e: unknown): string {
   if (e instanceof CallError || e instanceof NeedsLoginError) return e.message;
   return `Failed: ${e instanceof Error ? e.message : String(e)}`;
@@ -125,8 +129,16 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
             break;
           }
         }
-        const clients = all.map((c) => ({ id: c.id, name: c.name, number: c.client_number, services: Array.isArray(c.services) ? (c.services as { name?: string }[]).map((s) => s.name) : undefined }));
-        return ok(complete ? clients : { complete: false, note: "More than 5000 clients; only the first 5000 are listed.", clients });
+        // DATEV: the technical id is for API calls only and is not shown to the user. People know a client by name and numbers.
+        const clients = all.map((c) => ({
+          name: c.name,
+          consultant_number: c.consultant_number,
+          client_number: c.client_number,
+          data_services: Array.isArray(c.services) ? (c.services as { name?: string }[]).map((s) => s.name) : undefined,
+          technical_id: c.id,
+        }));
+        const note = "Show the user name, consultant number and client number. technical_id is only for the client_id argument of other tools; DATEV asks apps not to display it.";
+        return ok(complete ? { note, clients } : { complete: false, note: `More than 5000 clients; only the first 5000 are listed. ${note}`, clients });
       } catch (e) {
         return err(errorText(e));
       }
@@ -181,7 +193,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     {
       title: "Account postings (Kontobuchungen)",
       description:
-        "Fetch the posted bookings of a client's fiscal year from DATEV, optionally for one account. DATEV prepares these asynchronously, so this waits for the export job (up to max_wait_seconds) and reads every page it can in that time. If the job is not ready, call again with the returned job_id to continue the same job instead of starting a new one.",
+        "Fetch the posted bookings of a client's fiscal year from DATEV, optionally for one account. This starts an export job at DATEV (DATEV keeps it up to 12 hours; it changes no bookings), waits for it up to max_wait_seconds and reads every page it can in that time. The whole journal is read, because DATEV has no account filter; only matching rows are returned, with a basic set of fields unless fields is \"all\". If the job is not ready, call again with the returned job_id to continue the same job instead of starting a new one.",
       inputSchema: {
         client_id: z.string(),
         fiscal_year_id: z.string(),
@@ -190,10 +202,12 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         job_id: z.string().optional().describe("Continue an export job returned by an earlier call"),
         from_page: z.number().int().min(1).optional().describe("First page to read, for continuing a partial read"),
         max_wait_seconds: z.number().int().min(5).max(50).optional().describe("Max 50: MCP clients usually cancel a call after 60 seconds"),
+        fields: z.enum(["basic", "all"]).optional().describe("basic (default): account, contra account, date, amounts, text, document number, tax rate, cost centres. all: every field DATEV sends"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      // Not read-only: it creates an export job at DATEV. It changes no business data, so it needs no preview.
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
-    async ({ client_id, fiscal_year_id, account, limit, job_id, from_page, max_wait_seconds }, extra) => {
+    async ({ client_id, fiscal_year_id, account, limit, job_id, from_page, max_wait_seconds, fields }, extra) => {
       try {
         const d = deps(extra.signal);
         const ids = { clientId: client_id, fiscalYearId: fiscal_year_id };
@@ -252,7 +266,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
             if (!hasAccountNumber(x)) withoutAccount++;
             if (account && !accountOf(x).startsWith(account)) continue;
             matches++;
-            if (rows.length < keep) rows.push(x);
+            if (rows.length < keep) rows.push(fields === "all" ? x : basicPosting(x));
           }
           pageNo++;
         }

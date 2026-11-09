@@ -5,7 +5,7 @@ import { logDir } from "../paths.js";
 
 // DATEV requires a technical log of every request to its API gateway, kept at least 14 days,
 // with the X-Global-Transaction-ID and V-Cap-Request-ID of each answer. Tokens and secrets never enter it.
-export const RETENTION_DAYS = 30;
+const RETENTION_DAYS = 30;
 const SECRET_HEADERS = /^(authorization|x-datev-client-secret|x-api-key|cookie|set-cookie|proxy-authorization)$/i;
 const MAX_BODY_CHARS = 8_000;
 

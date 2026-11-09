@@ -1,7 +1,7 @@
 import { createPublicKey, verify, type webcrypto } from "node:crypto";
 import type { FetchLike } from "./token-client.js";
 
-export class IdTokenError extends Error {
+class IdTokenError extends Error {
   constructor(message: string) {
     super(`The DATEV login answer failed the ID token check: ${message}`);
     this.name = "IdTokenError";

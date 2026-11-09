@@ -7,12 +7,28 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 type ToolResult = { content: { text: string }[]; isError?: boolean };
+// The live checks write test data. They run against the sandbox only, never against real client data.
+if (process.env.DATEV_ENV?.trim() && process.env.DATEV_ENV.trim() !== "sandbox") {
+  process.stderr.write(`The live checks run against the DATEV sandbox only, but DATEV_ENV is "${process.env.DATEV_ENV}". Nothing was sent.\n`);
+  process.exit(2);
+}
+const sandboxEnv = { ...(process.env as Record<string, string>), DATEV_ENV: "sandbox" };
 const launcher = process.env.DATEV_MCP_LAUNCHER;
 const transport = new StdioClientTransport(
-  launcher ? { command: launcher, args: [], env: process.env as Record<string, string> } : { command: process.execPath, args: ["dist/index.js"], env: process.env as Record<string, string> },
+  launcher ? { command: launcher, args: [], env: sandboxEnv } : { command: process.execPath, args: ["dist/index.js"], env: sandboxEnv },
 );
 const client = new Client({ name: "datev-mcp-live", version: "0" });
 await client.connect(transport, { timeout: 300_000 }); // leaves time to approve the vault prompt
+// A launcher could still set production; the server says which environment it really runs in.
+{
+  const st = (await client.callTool({ name: "datev_connection_status", arguments: {} })) as { content: { text: string }[] };
+  const env = (JSON.parse(st.content[0]!.text) as { env?: string }).env;
+  if (env !== "sandbox") {
+    process.stderr.write(`The server runs against DATEV ${env}, not the sandbox. Stopped before any call.\n`);
+    await client.close();
+    process.exit(2);
+  }
+}
 
 const results: { check: string; ok: boolean; detail: string }[] = [];
 const call = async (name: string, args: Record<string, unknown>) => (await client.callTool({ name, arguments: args }, undefined, { timeout: 120_000 })) as ToolResult;

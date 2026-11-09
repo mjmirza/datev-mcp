@@ -68,6 +68,8 @@ export async function loadAccountChart(clientId: string, fiscalYearId: string, d
   if (rows.length > 0 && accounts.length === 0)
     throw new CallError(`DATEV returned a chart of accounts, but none of the ${rows.length} rows has an account number and a name (first row: ${JSON.stringify(rows[0]).slice(0, 150)})`);
   const chart = { accounts, skipped: rows.length - accounts.length };
+  // Charts of an old token or another client are dropped after 10 minutes, as SECURITY.md promises.
+  for (const [k, v] of cache) if (now - v.at > CACHE_MS) cache.delete(k);
   cache.set(key, { at: now, chart });
   return chart;
 }
@@ -80,7 +82,7 @@ export function registerAccountTools(server: McpServer, deps: (signal?: AbortSig
       description:
         "Look up general ledger accounts (Sachkonten) of one DATEV client and fiscal year, by number prefix or by name words. Uses the client's real chart (SKR03, SKR04 or custom). Use before booking to check an account exists.",
       inputSchema: {
-        client_id: z.string().describe("DATEV client id, e.g. 455148-2 (from the clients list)"),
+        client_id: z.string().describe("Technical client id from datev_list_clients (format consultant-client, e.g. 12345-1). Never invent one."),
         fiscal_year_id: z.string().describe("Fiscal year id, e.g. 20230701 (from getfiscalyears)"),
         query: z.string().describe("Account number prefix like '1200', or words like 'Bank' or 'Umsatzsteuer'"),
         limit: z.number().int().min(1).max(100).optional(),
