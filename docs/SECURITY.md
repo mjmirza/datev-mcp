@@ -12,7 +12,8 @@ Report a suspected vulnerability privately through this repository's Security ta
 | Asset | Where it lives |
 |---|---|
 | DATEV client id and client secret | Only in the environment of the running process, injected from a password manager |
-| Access and refresh tokens | `~/.config/datev-mcp/session-<env>.json`, owner-only (mode 600), never logged |
+| Access and refresh tokens | `~/.config/datev-mcp/session-<env>.json`, encrypted with AES-256-GCM, key in the OS credential store, owner-only (mode 600), never logged |
+| Technical HTTP log | `~/.config/datev-mcp/logs/`, owner-only, 30 days. Authorization headers, secrets and API keys removed, response bodies only for errors and job status |
 | Client data from DATEV | In the AI conversation that asked for it. The server keeps charts of accounts in memory while it runs, reused for 10 minutes and replaced or dropped when the server stops. Files you save with `save_to` stay on your disk |
 | Local files | Read only when a tool is told a path, and only after the checks below |
 

@@ -1,15 +1,15 @@
 <!-- freshness: 14d -->
 # Validation
 
-What was checked, how, the numbers from the last run, and how to repeat each check yourself. Every number here comes from a real run on 2026-11-07. Nothing is estimated.
+What was checked, how, the numbers from the last run, and how to repeat each check yourself. Type check, tests and scenarios were re-run on 2026-11-09. The planted bug and live sandbox numbers are from 2026-11-07 and 2026-11-08, as dated below. Nothing is estimated.
 
 ## The five layers
 
 | Layer | What it proves | Command | Last result |
 |---|---|---|---|
 | Type check | The code is consistent, strict mode | `npm run typecheck` | Clean |
-| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 141 of 141 passing |
-| Offline scenario run | Every one of the 209 operations against 62 scenario categories, with a fake DATEV | `npm run eval` | 28,496 of 28,496 passing |
+| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 158 of 158 passing |
+| Offline scenario run | Every one of the 209 operations against 65 scenario categories, with a fake DATEV | `npm run eval` | 28,586 of 28,586 passing |
 | Planted bugs | The scenarios catch real defects | see below | 5 of 5 bugs caught |
 | Live DATEV sandbox | The server works against the real DATEV gateway | `npm run test:live`, `npm run sweep` | 71 read operations reached, 38 returned data |
 

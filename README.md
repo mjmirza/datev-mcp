@@ -55,8 +55,11 @@ Git ignores `.env/.env.local`. Every setting is explained in [.env/README.md](.e
 ### 3. Sign in once
 
 ```bash
-node --env-file=.env/.env.local dist/index.js login
+node --env-file=.env/.env.local dist/index.js services
+node --env-file=.env/.env.local dist/index.js login --services accounting-documents,accounting-extf-files
 ```
+
+Pick the data services you will use from the `services` list. DATEV allows only their scopes, so the server asks for nothing more.
 
 A browser window opens at DATEV's sandbox login. These are the four screens you will see.
 
@@ -72,7 +75,7 @@ A browser window opens at DATEV's sandbox login. These are the four screens you 
 
 ![DATEV consent page listing the requested permissions](docs/images/03-signin-consent.png)
 
-**3d. Done.** The browser shows a short confirmation and your terminal prints `Logged in to DATEV sandbox`. The session is saved on your machine with owner-only permissions.
+**3d. Done.** The browser shows a short confirmation and your terminal prints `Connected to DATEV sandbox as <your name>` with the date and time the connection stays valid. The session is saved encrypted on your machine. `dist/index.js status` shows the connection at any time, `dist/index.js disconnect` ends it.
 
 ![Login complete page](docs/images/04-signin-done.png)
 
@@ -144,13 +147,13 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 
 ## How well it is tested
 
-Every number below comes from a real run on 2026-11-07. The method and how to reproduce each one is in [docs/VALIDATION.md](docs/VALIDATION.md).
+Type check, tests and scenarios were re-run on 2026-11-09. The planted bug check and the live sandbox numbers are from 2026-11-07 and 2026-11-08. The method and how to reproduce each one is in [docs/VALIDATION.md](docs/VALIDATION.md).
 
 | Check | Result |
 |---|---|
-| Offline scenarios across all 209 operations | 28,496 of 28,496 passing |
-| Planted bugs the scenarios had to catch | 3 of 3 caught, 440 failing scenarios |
-| Unit and integration tests | 101 of 101 passing |
+| Offline scenarios across all 209 operations | 28,586 of 28,586 passing |
+| Planted bugs the scenarios had to catch | 5 of 5 caught |
+| Unit and integration tests | 158 of 158 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
 | Independent review by a second AI model (Codex), four passes | 46 of 48 findings fixed. Two known limits remain, listed in [SECURITY.md](docs/SECURITY.md) |
 
@@ -158,7 +161,7 @@ Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
 ## Safety in one paragraph
 
-Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. The login token request and `doctor` use fetch's default redirect handling. Logins use OAuth with PKCE and the session is stored on your machine with owner-only permissions. Writes need a preview-bound confirmation code. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
+Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. Token, revoke, userinfo and `doctor` calls refuse redirects too. Logins use OAuth with PKCE, DATEV's ID token is verified, and the session is stored encrypted with the key in your operating system's credential store. Writes need a preview-bound confirmation code, and in production you approve each one in the client. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## For developers
 
