@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { humanApproval } from "./approval.js";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
@@ -14,7 +15,7 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { buildHeaders, callOperation, CallError, type CallDeps } from "../api/client.js";
+import { buildHeaders, callOperation, CallError, problemOf, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -194,8 +195,10 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
+        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into client ${client_id}`);
+        if (denied) return err(denied);
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? { problem: problemOf(r.body) } : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

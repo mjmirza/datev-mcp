@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { callOperation, CallError, type CallDeps, type CallInput } from "../api/client.js";
+import { callOperation, CallError, problemText, type CallDeps, type CallInput } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { localize } from "../i18n.js";
@@ -22,7 +22,7 @@ async function call(id: string, input: CallInput, deps: CallDeps, maxBodyChars?:
   if (left !== undefined && left <= 0) throw new CallError(`Ran out of time before ${id} could run`);
   const r = await callOperation(op, input, { ...deps, ...(maxBodyChars ? { maxBodyChars } : {}), ...(left !== undefined ? { deadlineMs: left } : {}) });
   // Anything but 2xx is a failure here, a redirect included: a typed tool must never turn it into an empty answer.
-  if (r.status < 200 || r.status >= 300) throw new CallError(`DATEV returned HTTP ${r.status} for ${id}: ${JSON.stringify(r.body).slice(0, 300)}`);
+  if (r.status < 200 || r.status >= 300) throw new CallError(`DATEV returned HTTP ${r.status} for ${id}: ${problemText(r.status, r.body)}`);
   if (r.bytes) throw new CallError(`DATEV answered ${id} with a binary file (${r.contentType ?? "unknown type"}) instead of data`);
   if (r.truncated) throw new CallError(`DATEV's answer for ${id} was larger than this tool can read safely; narrow the request`);
   return r;

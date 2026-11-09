@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { bounded, callOperation, CallError, type CallDeps } from "../api/client.js";
+import { bounded, callOperation, CallError, problemText, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { localize } from "../i18n.js";
@@ -61,7 +61,7 @@ export async function loadAccountChart(clientId: string, fiscalYearId: string, d
   if (!op) throw new CallError("The general ledger operation is missing from the index");
   // A full chart easily exceeds the generic response cap, so read it whole and filter here.
   const r = await callOperation(op, { pathParams: { clientId, fiscalYearId } }, { ...deps, maxBodyChars: Number.MAX_SAFE_INTEGER, deadlineMs: Math.max(0, deadline - Date.now()) });
-  if (r.status !== 200) throw new CallError(`DATEV returned HTTP ${r.status} for the chart of accounts: ${JSON.stringify(r.body).slice(0, 300)}`);
+  if (r.status !== 200) throw new CallError(`DATEV returned HTTP ${r.status} for the chart of accounts: ${problemText(r.status, r.body)}`);
   if (!Array.isArray(r.body)) throw new CallError("DATEV returned the chart of accounts in an unexpected format");
   const rows = r.body as LedgerAccount[];
   const accounts = rows.filter((a) => typeof a?.accountNumber === "number" && typeof a?.caption === "string").sort((a, b) => a.accountNumber - b.accountNumber);

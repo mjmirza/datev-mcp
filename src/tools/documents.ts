@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
+import { humanApproval } from "./approval.js";
 import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { callOperation, CallError, type CallDeps } from "../api/client.js";
+import { callOperation, CallError, problemOf, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -94,10 +95,12 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
+        const denied = await humanApproval(server, d.env, `Upload ${file.name} (${file.bytes.length} bytes) to the document inbox of client ${client_id}`);
+        if (denied) return err(denied);
         const op = getOperation("accounting-documents.post_clients_client_id_documents");
         if (!op) return err("Document upload operation missing from the index");
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, rawBody: buildDocumentForm(file, metadata) }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? { problem: problemOf(r.body) } : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

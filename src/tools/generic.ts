@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemOf, type CallDeps } from "../api/client.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -79,12 +80,14 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (save_to) assertShareable(expandPath(save_to)); // never into ~/.ssh, a dotfile or a key file
         if (op.write && confirm !== true) {
           const url = buildUrl(op, d.env, input);
-          buildHeaders(op, input);
+          const sentHeaders = buildHeaders(op, input);
           return text({
             preview: true,
             note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`,
             method: op.method.toUpperCase(),
             url: url.toString(),
+            // Every header the caller set, because some decide where DATEV delivers the result (Target-System, Notify-Url).
+            ...(Object.keys(sentHeaders).length ? { headers: sentHeaders } : {}),
             body,
             confirm_token: issueConfirmToken(fingerprint),
           });
@@ -92,9 +95,12 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
+          const summary = [`${op.method.toUpperCase()} ${op.id}`, path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
+          const denied = await humanApproval(server, d.env, summary);
+          if (denied) return fail(denied);
         }
         const { bytes, ...r } = await callOperation(op, input, d);
-        const out: Record<string, unknown> = { ...r, env: d.env };
+        const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? { problem: problemOf(r.body) } : {}) };
         // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
         if (bytes) {
           if (save_to && r.status < 400 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);

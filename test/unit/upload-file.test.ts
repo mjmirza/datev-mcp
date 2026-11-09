@@ -113,9 +113,15 @@ test("parts follow the declared types, and a JSON field goes out as JSON", async
 });
 
 test("parts go out in the order the spec lists them, not the order given", async () => {
-  const { c, sent } = await client("production");
-  await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
-  assert.deepEqual([...sent[0].form!.keys()], ["metadata", "file"]);
+  // The cash register API has no sandbox; this client cannot ask the person, so it opts into confirm codes.
+  process.env.DATEV_MCP_CONFIRM = "token";
+  try {
+    const { c, sent } = await client("production");
+    await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
+    assert.deepEqual([...sent[0].form!.keys()], ["metadata", "file"]);
+  } finally {
+    delete process.env.DATEV_MCP_CONFIRM;
+  }
 });
 
 test("a list of files goes to an array part as repeated parts", async () => {
@@ -196,4 +202,11 @@ test("hidden folders, key files and hard links are refused and nothing is sent",
     assert.ok(isError(r), p);
   }
   assert.equal(sent.length, 0);
+});
+
+test("the preview shows every header that will be sent, so nothing in the signed request is hidden from the user", async () => {
+  const { c } = await client();
+  const args = { operation_id: "traffiqx-invoice.uploadstructureddata", path_params: TQX, headers: { "X-App-Display-Name": "Kanzlei Test" }, files: { data: xml, view_component: view } };
+  const preview = JSON.parse(text(await c.callTool({ name: "datev_upload_file", arguments: args })));
+  assert.deepEqual(preview.headers, { "X-App-Display-Name": "Kanzlei Test" });
 });

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import fc from "fast-check";
 import { decodeBytes, encodeCp1252, validateExtf, writeBuchungsstapel, type BatchRow } from "@seamless-engineering/datev-extf";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, parseJsonOrLines, type CallDeps, type CallInput } from "../../src/api/client.js";
@@ -359,7 +360,10 @@ async function uploadShapes() {
     registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {}, serviceKeys: { "x-api-key": "SERVICEKEY" }, cooldowns: new Map() }));
     const [a, b] = InMemoryTransport.createLinkedPair();
     await server.connect(a);
-    const c = new Client({ name: "eval", version: "0" });
+    // The client can ask the person, and the person approves: production writes require that.
+    const c = new Client({ name: "eval", version: "0" }, { capabilities: { elicitation: { form: {} } } });
+    let asked = 0;
+    c.setRequestHandler(ElicitRequestSchema, async () => (asked++, { action: "accept" as const, content: { approve: true } }));
     await c.connect(b);
     const schema = flatPart(op.body?.schema as PartSchema);
     const props = Object.entries(schema.properties ?? {}).map(([n, s]) => [n, flatPart(s)] as const);
@@ -401,6 +405,7 @@ async function uploadShapes() {
       }
     }
     record("upload.parts-on-wire", op.id, problems.length === 0, problems.join(", "));
+    if (env === "production") record("upload.human-approval-asked", op.id, asked === 1, `asked ${asked} times`);
   }
 }
 
