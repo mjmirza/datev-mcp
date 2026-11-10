@@ -13,7 +13,7 @@ import { TokenStore } from "../../src/auth/token-store.js";
 import { doctor } from "../../src/setup/doctor.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
 
-// Guards for ledger rows that were open before R6 (F16, F22, F39, F41).
+// Guards for ledger rows that were open before R6 (F16, F22, F39, F41, F42).
 process.env.DATEV_MCP_SESSION_KEY ??= "33".repeat(32);
 
 test("a corrupt plain text session is kept only as an encrypted copy", () => {
@@ -88,4 +88,12 @@ test("doctor never calls accounting-clients when the login chose no accounting s
   const checks = await doctor({ env: "sandbox", endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid", clientSecret: "s" } }, { store, fetch: f, httpLog: () => {} });
   assert.ok(!urls.some((u) => u.endsWith("/clients")), urls.join(", "));
   assert.match(checks.find((c) => c.name === "accounting-clients API")?.detail ?? "", /not connected/);
+});
+
+test("the setup and README login examples grant the service their first questions need", () => {
+  const root = join(import.meta.dirname, "..", "..");
+  for (const doc of ["docs/SETUP.md", "README.md"]) {
+    const login = readFileSync(join(root, doc), "utf8").split("\n").find((l) => l.includes("login --services"));
+    assert.ok(login?.includes("accounting-dataexchange"), `${doc}: fiscal years, balances and the chart of accounts come from accounting-dataexchange`);
+  }
 });

@@ -58,7 +58,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F39 | MEDIUM | Session key creation not serialised across environments | R2-24 | fixed | b3996d8 | a session key stored by another process while this one waited is used, not overwritten |
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | fixed | b3996d8 | doctor never calls accounting-clients when the login chose no accounting service |
-| F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | fixed | 4e66d5f | docs, Q&A sources and code never repeat a claim a reviewer proved false |
+| F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | fixed | 4e66d5f | the setup and README login examples grant the service their first questions need |
 | F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
 | F44 | HIGH | The client gate checks the first client alias it finds, not the client the URL actually targets | R4-1 | fixed | e9b7706 | the permission check reads the client the URL targets, never a surplus parameter |
 | F45 | HIGH | hr-documents uploads by `client_guid` skip the client check | R4-2 | fixed | e9b7706 | an hr-documents upload by GUID is checked through DATEV's client list |
