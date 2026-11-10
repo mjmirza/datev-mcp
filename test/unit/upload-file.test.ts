@@ -19,6 +19,9 @@ interface Sent {
 async function client(env: "sandbox" | "production" = "sandbox", approve?: boolean) {
   const sent: Sent[] = [];
   const f: FetchLike = async (u, init) => {
+    // DATEV's permission read before a transfer is not a transfer; only sends are counted.
+    if ((init?.method ?? "GET").toUpperCase() === "GET")
+      return new Response(JSON.stringify({ name: "Muster GmbH", consultant_number: 455148, client_number: 1 }), { headers: { "content-type": "application/json" } });
     sent.push({ url: String(u), form: init?.body instanceof FormData ? init.body : undefined, headers: new Headers(init?.headers) });
     return new Response(JSON.stringify({ id: "ok" }), { status: 201, headers: { "content-type": "application/json" } });
   };

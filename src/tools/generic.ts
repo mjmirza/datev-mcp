@@ -2,6 +2,8 @@ import { z } from "zod";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
+import { gateCall } from "../api/client-gate.js";
+import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -78,6 +80,11 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
       const fingerprint = { tool: "datev_call", env: d.env, operation_id, path_params, query, headers, body, content_type };
       try {
         if (save_to) assertShareable(expandPath(save_to)); // never into ~/.ssh, a dotfile or a key file
+        // DATEV's permission checks run before any data moves, also through this generic tool.
+        const pp = (path_params ?? {}) as Record<string, string | number>;
+        if (op.product === "accounting-dataexchange" && pp.clientId !== undefined && op.id !== "accounting-dataexchange.getfiscalyears")
+          await dataexchangeGuard(String(pp.clientId), pp.fiscalYearId === undefined ? undefined : String(pp.fiscalYearId), d);
+        const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
         if (op.write && confirm !== true) {
           const url = buildUrl(op, d.env, input);
           const sentHeaders = buildHeaders(op, input);
@@ -86,6 +93,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
             note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`,
             method: op.method.toUpperCase(),
             url: url.toString(),
+            ...(client ? { client } : {}),
             // Every header the caller set, because some decide where DATEV delivers the result (Target-System, Notify-Url).
             ...(Object.keys(sentHeaders).length ? { headers: sentHeaders } : {}),
             body,

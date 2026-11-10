@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { revokePending } from "./auth/pending-revoke.js";
 import { clearDataexchangeCache } from "./api/dataexchange-guard.js";
+import { clearClientGate } from "./api/client-gate.js";
 import { disconnect } from "./setup/disconnect.js";
 import { tokenLog } from "./setup/token-log.js";
 import { writeHttpLog, type HttpLogEntry } from "./api/http-log.js";
@@ -10,6 +11,7 @@ import { TokenStore } from "./auth/token-store.js";
 import type { Config } from "./config.js";
 import { registerAccountTools } from "./tools/accounts.js";
 import { registerAccountingTools } from "./tools/accounting.js";
+import { registerClientCheckTool } from "./tools/client-check.js";
 import { registerConnectionTools } from "./tools/connection.js";
 import { registerDocumentTools } from "./tools/documents.js";
 import { registerExtfTools } from "./tools/extf.js";
@@ -37,6 +39,7 @@ function createServer(cfg: Config): McpServer {
   // DATEV's Export rules: a missing permission revokes both tokens at once.
   const onMissingPermission = async () => {
     clearDataexchangeCache();
+    clearClientGate();
     await disconnect(cfg, { store, httpLog });
   };
   const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), onMissingPermission });
@@ -49,6 +52,7 @@ function createServer(cfg: Config): McpServer {
   registerExtfTools(server, deps);
   registerDocumentTools(server, deps);
   registerUploadTools(server, deps);
+  registerClientCheckTool(server, deps);
   return server;
 }
 

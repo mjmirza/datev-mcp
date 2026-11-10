@@ -313,10 +313,17 @@ function perOperation(op: Operation) {
   record("search.recall-top50", id, hits.some((h) => h.id === id), "own summary did not find it");
 }
 
+// What DATEV answers to the reads before a transfer: the client with every data service, one fiscal year.
+const permissionRead = (url: string) =>
+  /\/fiscal-years$/.test(new URL(url).pathname)
+    ? json(200, [19920101])
+    : json(200, { name: "Eval GmbH", consultant_number: 1000, client_number: 1, services: ["Belegbilderservice", "Buchungsdatenservice", "Rechnungsdatenservice 1.0", "Datenservice Export Rechnungswesen"].map((name) => ({ name })) });
+
 async function writeConfirmGate() {
   const server = new McpServer({ name: "eval", version: "0" });
   let sent = 0;
-  const fetch: FetchLike = async () => (sent++, json(200, {}));
+  // DATEV's permission and fiscal year reads come before a preview; only a change counts as sent.
+  const fetch: FetchLike = async (u, init) => ((init?.method ?? "GET").toUpperCase() === "GET" ? permissionRead(String(u)) : (sent++, json(200, {})));
   registerGenericTools(server, () => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {} }));
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
@@ -355,7 +362,7 @@ async function uploadShapes() {
   for (const op of ops) {
     const env = op.servers.sandbox ? "sandbox" : "production";
     const calls: { body: unknown }[] = [];
-    const fetch: FetchLike = async (_u, init) => (calls.push({ body: init?.body }), json(201, {}));
+    const fetch: FetchLike = async (u, init) => ((init?.method ?? "GET").toUpperCase() === "GET" ? permissionRead(String(u)) : (calls.push({ body: init?.body }), json(201, {})));
     const server = new McpServer({ name: "eval", version: "0" });
     registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {}, serviceKeys: { "x-api-key": "SERVICEKEY" }, cooldowns: new Map() }));
     const [a, b] = InMemoryTransport.createLinkedPair();

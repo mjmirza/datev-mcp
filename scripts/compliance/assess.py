@@ -446,14 +446,16 @@ A = {
     ),
     "DXSO-02": (M, "No automatic job polling"),
     "DXSO-03": (
-        P,
-        "Client list shows name and numbers (src/tools/accounting.ts:133-139), but no check before a DXSO job; "
-        + GEN_ONLY,
+        M,
+        "Before any client-bound accounting-dxso-jobs call, datev_call and datev_upload_file read GET /clients/{client-id} of that service and show company name and numbers in the preview (src/api/client-gate.ts); datev_check_client lets the person enter the numbers",
     ),
-    "DXSO-04": (O, "No permission re-check before transfers; " + GEN_ONLY),
+    "DXSO-04": (
+        M,
+        "The permission read is repeated each transfer day (src/api/client-gate.ts, test 'the permission is read once per transfer day')",
+    ),
     "DXSO-05": (
-        P,
-        "403/401 answers shown with DATEV's help link (src/api/problem.ts), no dedicated permission-change message",
+        M,
+        "A denied client gives a clear refusal with a hint to check the numbers or ask the administrator, DATEV's setup page and help link (src/api/client-gate.ts)",
     ),
     "DXSO-06": (
         O,
@@ -606,7 +608,10 @@ A = {
     ),
     # 15 HR imports
     "HRIMP-01": (M, "Upload sends one POST, no automatic GETs"),
-    "HRIMP-02": (O, "No single-client permission check flow for hr-files; " + GEN_ONLY),
+    "HRIMP-02": (
+        M,
+        "hr-files calls read GET /v1/clients/{client-id} first; datev_check_client shows success and reproduces the refusal for numbers without permission",
+    ),
     "HRIMP-03": (
         O,
         "Status 'connected' not tied to GET clients (src/setup/status.ts:66-69)",
@@ -635,15 +640,18 @@ A = {
         "Every call is a manual trigger by the person through the assistant; no schedule",
     ),
     "HRPAY-02": (M, "No background calls"),
-    "HRPAY-03": (O, "No permission query before retrieval; " + GEN_ONLY),
+    "HRPAY-03": (
+        M,
+        "hr-payrollreports reads GET /clients/{client-id} first and requests only report types listed in access_granted (src/api/client-gate.ts gateCall)",
+    ),
     "HRPAY-04": (NA, "Long-term-token note; " + NOOFF),
     "HRPAY-05": (
-        P,
-        "Invalid numbers produce a schema error (src/api/client.ts:132-154) or DATEV's error with help link, without the suggested hint text",
+        M,
+        "Invalid numbers give 'Please check the consultant and client number, or ask your administrator' with DATEV's help link (src/api/client-gate.ts)",
     ),
     "HRPAY-06": (
-        O,
-        "No input flow plus GET /clients/{client-id} access display for payroll reports",
+        M,
+        "datev_check_client takes consultant and client number and shows the granted report types or the refusal",
     ),
     "HRPAY-07": (P, GEN_ONLY),
     "HRPAY-08": (P, GEN_ONLY),
@@ -659,9 +667,15 @@ A = {
     # 18 exports
     "HREXP-01": (M, "Manual trigger only"),
     "HREXP-02": (M, "No background calls"),
-    "HREXP-03": (O, "No HR client selection/permission flow; " + GEN_ONLY),
+    "HREXP-03": (
+        M,
+        "hr-exports reads GET /clients/{client-id} first; datev_check_client is where the person enters the numbers",
+    ),
     "HREXP-04": (O, "Status 'connected' not tied to GET clients"),
-    "HREXP-05": (P, "Schema or DATEV error with help link, no hint text"),
+    "HREXP-05": (
+        M,
+        "Same understandable refusal with hint as HRPAY-05 (src/api/client-gate.ts)",
+    ),
     "HREXP-06": (
         NO,
         "Owner demonstrates master-data query and assignment (only via datev_call)",
@@ -675,7 +689,10 @@ A = {
     # 19 exchange
     "HREX-01": (NO, "Owner names the use cases at the review"),
     "HREX-02": (O, "No counter-booking logic; " + GEN_ONLY),
-    "HREX-03": (O, "No permission check flow for hr-exchange"),
+    "HREX-03": (
+        M,
+        "hr-exchange reads GET /clients/{client-id} first and datev_check_client shows whether it succeeded",
+    ),
     "HREX-04": (
         P,
         "Jobs can be created through datev_call with preview and approval (src/tools/generic.ts:81-101)",
@@ -720,18 +737,27 @@ A = {
     ),
     # 20 eAU
     "EAU-01": (M, "Manual trigger only, no automatic GETs"),
-    "EAU-02": (O, "No permission check flow for eau-api"),
+    "EAU-02": (
+        M,
+        "eau-api reads GET /clients/{consultantNumber}-{clientNumber} first; datev_check_client shows success and refusal (test 'eAU reads the client through its own consultant and client number path')",
+    ),
     "EAU-03": (NO, "Owner demonstrates a request"),
     "EAU-04": (P, "Feedback data is returned in the tool answer; no dedicated display"),
     "EAU-05": (NO, "Owner demonstrates DELETE (reachable via datev_call with preview)"),
     "EAU-06": (O, "No warning about § 5 (1) EntgFG or the 4th-day rule"),
     # 21 hr documents
-    "HRDOCS-01": (O, "No /clients permission check for hr-documents; " + GEN_ONLY),
+    "HRDOCS-01": (
+        M,
+        "hr-documents reads GET /clients/{consultantnumber-clientnumber} before client-bound calls (src/api/client-gate.ts)",
+    ),
     "HRDOCS-02": (NA, "Hint about long-term token use; " + NOOFF),
     "HRDOCS-03": (NA, "Descriptive hint"),
     # 22 mytax
     "MYTAX-01": (M, "Uploads send one POST, no automatic GETs"),
-    "MYTAX-02": (O, "No client selection for my-tax; " + GEN_ONLY),
+    "MYTAX-02": (
+        M,
+        "my-tax-income-tax-documents reads GET /clients/{client-id} first; datev_check_client is where the person enters the numbers",
+    ),
     "MYTAX-03": (O, "Status 'connected' not tied to GET clients"),
     "MYTAX-04": (O, "tax-years not checked per transfer day"),
     "MYTAX-05": (NO, "Owner explains tax-year mapping"),

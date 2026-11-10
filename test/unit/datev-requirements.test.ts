@@ -471,7 +471,7 @@ test("in production a write needs the person's approval in the client; the assis
   const run = async (answer: "approve" | "decline" | "none") => {
     let sent = 0;
     const server = new McpServer({ name: "t", version: "0" });
-    registerGenericTools(server, () => ({ env: "production" as const, creds, token: async () => "T", fetch: async () => (sent++, new Response("{}", { status: 201 })), cooldowns: new Map() }));
+    registerGenericTools(server, () => ({ env: "production" as const, creds, token: async () => "T", fetch: async (_u, init) => ((init?.method ?? "GET") !== "GET" && sent++, new Response("{}", { status: 201 })), cooldowns: new Map() }));
     const [a, b] = InMemoryTransport.createLinkedPair();
     await server.connect(a);
     const c = new Client({ name: "t", version: "0" }, { capabilities: answer === "none" ? {} : { elicitation: { form: {} } } });

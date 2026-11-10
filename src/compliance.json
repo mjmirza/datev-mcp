@@ -249,9 +249,9 @@
   {
    "title": "11. Rechnungsdatenservice 1.0 (accounting:dxso-jobs)",
    "counts": {
-    "met": 2,
-    "partial": 4,
-    "open": 9,
+    "met": 5,
+    "partial": 2,
+    "open": 8,
     "n/a": 0,
     "needs-owner": 1
    },
@@ -360,9 +360,9 @@
   {
    "title": "15. Lohnimportdatenservice (hr:files / hr:imports)",
    "counts": {
-    "met": 1,
+    "met": 2,
     "partial": 2,
-    "open": 2,
+    "open": 1,
     "n/a": 0,
     "needs-owner": 3
    },
@@ -398,9 +398,9 @@
   {
    "title": "17. Lohnauswertungsdatenservice (hr:payrollreports)",
    "counts": {
-    "met": 2,
-    "partial": 3,
-    "open": 3,
+    "met": 5,
+    "partial": 2,
+    "open": 1,
     "n/a": 5,
     "needs-owner": 1
    },
@@ -424,9 +424,9 @@
   {
    "title": "18. Lohnergebnisdatenservice (hr:exports)",
    "counts": {
-    "met": 3,
-    "partial": 1,
-    "open": 3,
+    "met": 5,
+    "partial": 0,
+    "open": 2,
     "n/a": 0,
     "needs-owner": 2
    },
@@ -445,9 +445,9 @@
   {
    "title": "19. Lohnaustauschdatenservice (hr:exchange)",
    "counts": {
-    "met": 0,
+    "met": 1,
     "partial": 3,
-    "open": 27,
+    "open": 26,
     "n/a": 1,
     "needs-owner": 2
    },
@@ -490,9 +490,9 @@
   {
    "title": "20. Lohnaustauschdatenservice eAU (hr:eau / eau-api)",
    "counts": {
-    "met": 1,
+    "met": 2,
     "partial": 1,
-    "open": 2,
+    "open": 1,
     "n/a": 0,
     "needs-owner": 2
    },
@@ -508,9 +508,9 @@
   {
    "title": "21. Datenservice Dokumente Personalwirtschaft (hr:documents)",
    "counts": {
-    "met": 0,
+    "met": 1,
     "partial": 0,
-    "open": 1,
+    "open": 0,
     "n/a": 2,
     "needs-owner": 0
    },
@@ -523,9 +523,9 @@
   {
    "title": "22. Belegbilderservice Einkommensteuer / DATEV Meine Steuern (my-tax:income-tax-documents)",
    "counts": {
-    "met": 3,
+    "met": 4,
     "partial": 0,
-    "open": 6,
+    "open": 5,
     "n/a": 0,
     "needs-owner": 3
    },
@@ -678,18 +678,6 @@
    "status": "partial"
   },
   {
-   "id": "DXSO-03",
-   "status": "partial"
-  },
-  {
-   "id": "DXSO-04",
-   "status": "open"
-  },
-  {
-   "id": "DXSO-05",
-   "status": "partial"
-  },
-  {
    "id": "DXSO-08",
    "status": "open"
   },
@@ -810,43 +798,15 @@
    "status": "open"
   },
   {
-   "id": "HRIMP-02",
-   "status": "open"
-  },
-  {
    "id": "HRIMP-08",
    "status": "partial"
-  },
-  {
-   "id": "HRPAY-03",
-   "status": "open"
-  },
-  {
-   "id": "HRPAY-05",
-   "status": "partial"
-  },
-  {
-   "id": "HRPAY-06",
-   "status": "open"
   },
   {
    "id": "HRPAY-13",
    "status": "open"
   },
   {
-   "id": "HREXP-03",
-   "status": "open"
-  },
-  {
-   "id": "HREXP-05",
-   "status": "partial"
-  },
-  {
    "id": "HREX-02",
-   "status": "open"
-  },
-  {
-   "id": "HREX-03",
    "status": "open"
   },
   {
@@ -942,23 +902,11 @@
    "status": "partial"
   },
   {
-   "id": "EAU-02",
-   "status": "open"
-  },
-  {
    "id": "EAU-04",
    "status": "partial"
   },
   {
    "id": "EAU-06",
-   "status": "open"
-  },
-  {
-   "id": "HRDOCS-01",
-   "status": "open"
-  },
-  {
-   "id": "MYTAX-02",
    "status": "open"
   },
   {

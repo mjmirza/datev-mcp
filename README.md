@@ -132,28 +132,33 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 | Tool | What it does | Changes data |
 |---|---|---|
 | `datev_list_clients` | Lists the clients (Mandanten) your login can see | No |
-| `datev_list_fiscal_years` | Lists a client's fiscal years | No |
+| `datev_list_fiscal_years` | Lists a client's fiscal years, after checking the client switched on Datenservice Export Rechnungswesen | No |
 | `datev_sums_and_balances` | Summen- und Saldenliste, filterable by account prefix | No |
 | `datev_account_postings` | Posted bookings for a fiscal year, all pages, resumable | No |
 | `datev_find_accounts` | Searches the client's real chart of accounts (SKR03, SKR04 or custom) | No |
 | `datev_validate_extf` | Checks a DATEV EXTF booking file locally, before anything is sent | No |
 | `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe, cost centres included | No, writes a local file |
-| `datev_upload_extf` | Imports an EXTF booking file into a client | Yes, preview first |
-| `datev_upload_document` | Uploads a receipt or invoice to the Belegbilderservice | Yes, preview first |
+| `datev_upload_extf` | Imports an EXTF booking file into a client with Buchungsdatenservice, waits for DATEV's import result, refuses to send the same file twice by accident | Yes, preview first |
+| `datev_extf_job` | Shows the result of an earlier EXTF import | No |
+| `datev_upload_document` | Uploads a receipt or invoice to Belegbilderservice or Buchungsdatenservice, with the client's own document types | Yes, preview first |
+| `datev_document_types` | Lists the document types (Belegtypen) a client accepts | No |
+| `datev_check_client` | Checks with consultant and client number that a data service may be used for a client | No |
 | `datev_upload_file` | Sends local files to any DATEV operation that takes a multipart upload | Yes, preview first |
 | `datev_search_operations` | Finds DATEV operations by words (health checks with `include_health`) | No |
 | `datev_describe_operation` | Shows the parameters an operation needs | No |
+| `datev_connection_status` | Shows whether the DATEV connection is active, for whom, and until when | No |
+| `datev_compliance` | Shows how this installation meets DATEV's interface requirements | No |
 | `datev_call` | Calls a DATEV operation by id, reads directly, writes with preview. Sends JSON or text. Files go through `datev_upload_file` | Writes need confirmation |
 
 ## How well it is tested
 
-Type check, tests and scenarios were re-run on 2026-11-09. The planted bug check and the live sandbox numbers are from 2026-11-07 and 2026-11-08. The method and how to reproduce each one is in [docs/VALIDATION.md](docs/VALIDATION.md).
+Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check and the live sandbox numbers are from 2026-11-07 and 2026-11-08. The method and how to reproduce each one is in [docs/VALIDATION.md](docs/VALIDATION.md).
 
 | Check | Result |
 |---|---|
 | Offline scenarios across all 209 operations | 28,586 of 28,586 passing |
 | Planted bugs the scenarios had to catch | 5 of 5 caught |
-| Unit and integration tests | 158 of 158 passing |
+| Unit and integration tests | 196 of 196 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
 | Independent review by a second AI model (Codex), four passes | 46 of 48 findings fixed. Two known limits remain, listed in [SECURITY.md](docs/SECURITY.md) |
 

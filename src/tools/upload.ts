@@ -4,6 +4,7 @@ import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, type CallDeps } from "../api/client.js";
+import { gateCall } from "../api/client-gate.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { localize } from "../i18n.js";
 import type { Operation } from "../spec/types.js";
@@ -229,6 +230,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const target = { pathParams: path_params, query, headers };
         const url = buildUrl(op, d.env, target);
         buildHeaders(op, target);
+        const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
         const read = readAll(op, order, files, fieldBytes);
         const listed = read.map((x) => ({ part: x.part, file: x.path, sent_as: x.name, bytes: x.bytes.length, content_type: x.type }));
         const fingerprint = {
@@ -246,6 +248,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
             preview: true,
             note: `Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`,
             operation: op.id,
+            ...(client ? { client } : {}),
             files: listed,
             fields: f,
             ...(headers && Object.keys(headers).length ? { headers } : {}),
