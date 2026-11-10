@@ -198,3 +198,24 @@ test("every preview note and approval line the upload, document and EXTF tools w
   for (const l of lines) assert.notEqual(localizeApproval(l, "de"), l, l);
   assert.match(localizeApproval(lines[0]!, "de"), /von Muster GmbH, Berater 455148, Mandant 1$/);
 });
+
+test("every DATEV requirement proof names a test that exists", () => {
+  const root = join(import.meta.dirname, "..", "..");
+  const testText = readdirSync(join(root, "test", "unit"))
+    .filter((f) => f.endsWith(".test.ts"))
+    .map((f) => readFileSync(join(root, "test", "unit", f), "utf8"))
+    .join("\n");
+  const review = readFileSync(join(root, "docs", "DATEV-REVIEW.md"), "utf8");
+  const table = review.slice(review.indexOf("## Requirement by requirement"));
+  const rowsWithProof = table
+    .split("\n")
+    .filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith("| Requirement"))
+    .map((l) => l.split("|").map((x) => x.trim()))
+    .filter((c) => c.length >= 5 && c[3]);
+  assert.ok(rowsWithProof.length >= 19);
+  for (const c of rowsWithProof) {
+    const names = [...c[3]!.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
+    assert.ok(names.length, `${c[1]}: the proof names no test`);
+    for (const n of names) assert.ok(testText.includes(`test("${n}"`), `${c[1]}: "${n}" is not a test`);
+  }
+});

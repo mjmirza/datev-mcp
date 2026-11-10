@@ -38,19 +38,3 @@ test("every fixed finding names its commit and a guarding test that exists", () 
 test("every rejected finding carries a reason", () => {
   for (const r of rows.filter((x) => x.status === "rejected")) assert.ok(r.guard.length > 20, `${r.id} has no reason`);
 });
-
-test("every DATEV requirement proof names a test that exists", () => {
-  const review = readFileSync(join(root, "docs", "DATEV-REVIEW.md"), "utf8");
-  const table = review.slice(review.indexOf("## Requirement by requirement"));
-  const rowsWithProof = table
-    .split("\n")
-    .filter((l) => /^\| [A-Z]/.test(l) && !l.startsWith("| Requirement"))
-    .map((l) => l.split("|").map((x) => x.trim()))
-    .filter((c) => c.length >= 5 && c[3]);
-  assert.ok(rowsWithProof.length >= 19);
-  for (const c of rowsWithProof) {
-    const names = [...c[3]!.matchAll(/`([^`]+)`/g)].map((m) => m[1]!);
-    assert.ok(names.length, `${c[1]}: the proof names no test`);
-    for (const n of names) assert.ok(testText.includes(`test("${n}"`), `${c[1]}: "${n}" is not a test`);
-  }
-});
