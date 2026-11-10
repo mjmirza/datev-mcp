@@ -29,6 +29,8 @@ export interface StoredSession {
   loginId?: string;
   /** Set on an ended session once a token DATEV never confirmed as revoked expired instead. */
   revokeExpired?: boolean;
+  /** Access tokens of this login that a refresh replaced, newest last, so a late 403 on one still ends and revokes it. */
+  replacedAccess?: { token: string; expiresAt: number }[];
 }
 
 interface Sealed {

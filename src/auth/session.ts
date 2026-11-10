@@ -4,6 +4,7 @@ import { tokenLog } from "../setup/token-log.js";
 import { refreshTokens, TokenError, type ClientCredentials, type FetchLike } from "./token-client.js";
 import type { StoredSession, TokenStore } from "./token-store.js";
 import { revokePending } from "./pending-revoke.js";
+import { randomToken } from "./pkce.js";
 
 export class NeedsLoginError extends Error {
   constructor(reason: string) {
@@ -22,6 +23,8 @@ function revokeOpen(s: StoredSession, now: number): boolean {
   return !!s.pendingRevoke?.length || s.tokens.expiresAt > now || (s.pendingAccessRevoke ?? []).some((a) => a.expiresAt > now);
 }
 const RETRY_EVERY_MS = 30_000;
+/** How many replaced access tokens a session remembers to recognise a late 403. */
+const REPLACED_KEPT = 4;
 
 /** Confirmed only when no unconfirmed token merely ran out: a confirmed access token is stored with expiry 0. */
 function endedMessage(s: StoredSession, now: number): string {
@@ -87,8 +90,11 @@ export class Session {
       try {
         const next = await refreshTokens(this.endpoints.token, s.tokens.refreshToken, this.creds, { fetch: this.opts.fetch, now: this.opts.now, log: this.opts.log && tokenLog(this.opts.log) });
         // DATEV refresh tokens are single-use. The one just sent is spent, so it is never kept, even if no new one came back.
-        this.store.write({ ...s, tokens: { ...next, refreshToken: next.refreshToken } });
-        return { accessToken: next.accessToken, loginId: s.loginId };
+        // A session saved before login ids existed gets one now; the replaced access token is remembered for a late 403.
+        const loginId = s.loginId ?? randomToken();
+        const replacedAccess = [...(s.replacedAccess ?? []), { token: s.tokens.accessToken, expiresAt: s.tokens.expiresAt }].slice(-REPLACED_KEPT);
+        this.store.write({ ...s, loginId, replacedAccess, tokens: { ...next, refreshToken: next.refreshToken } });
+        return { accessToken: next.accessToken, loginId };
       } catch (e) {
         // Only a rejected refresh token ends the session. A wrong client secret (invalid_client) or a server hiccup keeps it.
         if (e instanceof TokenError && e.code === "invalid_grant") {
