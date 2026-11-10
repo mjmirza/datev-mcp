@@ -21,6 +21,7 @@ const LOGIN_REASON: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^saved session belongs to a different DATEV app$/, () => "die gespeicherte Sitzung gehört zu einer anderen DATEV-App"],
   [/^session expired and has no refresh token$/, () => "die Sitzung ist abgelaufen und enthält kein Refresh-Token"],
   [/^DATEV no longer accepts the saved session \(([^)]*)\)$/, (m) => `DATEV akzeptiert die gespeicherte Sitzung nicht mehr (${m[1]})`],
+  [/^the connection was ended because a data service permission is missing$/, () => "die Verbindung wurde beendet, weil eine Datenservice-Freigabe fehlt"],
 ];
 
 const TARGET: Record<string, string> = { "the chart of accounts": "den Kontenplan" };
@@ -145,6 +146,7 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
     /^(\S+) needs the app's client secret, which a DATEV Public client does not have\. This API is available to Confidential clients only\.$/,
     (m) => `${m[1]} braucht das Client Secret der App, das ein DATEV Public Client nicht hat. Diese API steht nur Confidential Clients zur Verfügung.`,
   ],
+  [/^(Available, as --services a,b,c: [\s\S]*)$/, (m) => servicesTail(m[1]!)],
   [/^Choose at least one DATEV data service\. ([\s\S]*)$/, (m) => `Wählen Sie mindestens einen DATEV-Datenservice. ${servicesTail(m[1])}`],
   [
     /^Unknown data service ((?:"[^"]*"(?:, )?)+)\. ([\s\S]*)$/,
@@ -217,12 +219,25 @@ const CHECK_NAMES: Record<string, string> = {
   "accounting-clients API": "accounting-clients-API",
 };
 
-const who = (s: string) => s.replace(/\bconsultant (\d+)/g, "Berater $1").replace(/\bclient (\d+)/g, "Mandant $1");
+// Only the labels describeClient appends are translated: ", consultant N" and ", client N" at the end.
+// The name before them is DATEV's text and is never rewritten.
+const who = (s: string) => s.replace(/(^|, )consultant (\d+)(?=(?:, client \d+)?$)/, "$1Berater $2").replace(/(^|, )client (\d+)$/, "$1Mandant $2");
 
 // Single sentences the safety refusals are built from. A message no whole-message pattern matches is
 // translated sentence by sentence, so a new combination of known sentences still reaches the person in German.
 const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Nothing was sent\.$/, () => "Es wurde nichts gesendet."],
+  [
+    /^Access to client (\S+) could not be confirmed for this data service \((?:its answer was cut off|DATEV answered HTTP (\d{3}))\)\.$/,
+    (m) => `Der Zugriff auf den Mandanten ${m[1]} konnte für diesen Datenservice nicht bestätigt werden (${m[2] ? `DATEV antwortete mit HTTP ${m[2]}` : "die Antwort war abgeschnitten"}).`,
+  ],
+  [
+    /^Please check the consultant and client number, or ask your administrator whether the data service is ordered and switched on at DATEV, see (\S+?)\.$/,
+    (m) => `Bitte prüfen Sie Berater- und Mandantennummer oder fragen Sie Ihre Administration, ob der Datenservice bei DATEV bestellt und freigeschaltet ist, siehe ${m[1]}.`,
+  ],
+  [/^DATEV may already have applied this change, so check in DATEV before sending it again\.$/, () => "DATEV hat diese Änderung möglicherweise schon übernommen. Prüfen Sie das in DATEV, bevor Sie sie erneut senden."],
+  [/^DATEV answered HTTP (\d{3}) \(a redirect\), which this server does not follow\.$/, (m) => `DATEV antwortete mit HTTP ${m[1]} (einer Weiterleitung), der dieser Server nicht folgt.`],
+  [/^Nothing was read\.$/, () => "Es wurde nichts gelesen."],
   [/^Nothing was sent again\.$/, () => "Es wurde nichts erneut gesendet."],
   [/^Nothing was requested\.$/, () => "Es wurde nichts angefordert."],
   [/^Try again later\.$/, () => "Versuchen Sie es später erneut."],

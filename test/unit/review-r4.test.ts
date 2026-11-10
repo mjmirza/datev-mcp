@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -12,7 +12,11 @@ import { clearClientGate } from "../../src/api/client-gate.js";
 import { clearDataexchangeCache } from "../../src/api/dataexchange-guard.js";
 import { requireClientService } from "../../src/api/permission.js";
 import { ENDPOINTS } from "../../src/auth/endpoints.js";
-import { envKeyStore } from "../../src/auth/session-key.js";
+import { envKeyStore, loadOrCreateKey, type KeyStore } from "../../src/auth/session-key.js";
+import { Session } from "../../src/auth/session.js";
+import { revokePending } from "../../src/auth/pending-revoke.js";
+import { selectServices, servicesForScopes, serviceList } from "../../src/auth/services.js";
+import { localize, localizeApproval } from "../../src/i18n.js";
 import { TokenStore } from "../../src/auth/token-store.js";
 import { endForMissingPermission } from "../../src/setup/disconnect.js";
 import { documentGuid, registerDocumentTools } from "../../src/tools/documents.js";
@@ -510,4 +514,119 @@ test("the safety refusals for sends, permissions, the client gate and documents 
     const de = localize(m, "de");
     assert.doesNotMatch(de, ENGLISH, `still English: ${de.slice(0, 200)}`);
   }
+});
+
+// Guards for the Codex check of 2026-11-10 (ledger R7).
+
+test("an expert scope login records the services its scopes cover, so no service boundary is skipped", () => {
+  const hr = selectServices("hr-files").scopes;
+  const covered = servicesForScopes(hr);
+  assert.ok(covered.includes("hr-files"));
+  for (const outside of ["accounting-clients", "cashregister", "smarttransfer-inbound"]) assert.ok(!covered.includes(outside), outside);
+});
+
+test("the services command reads in German", () => {
+  assert.match(localize(serviceList(), "de"), /^Verfügbar, als --services/);
+});
+
+test("a stapled upload with reordered metadata or a changed note is still recognised as sent", async () => {
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? json(201, {}) : json(200, client(["Belegbilderservice"]))));
+  const stapledPdf = join(dir, "stapled-r7.pdf");
+  writeFileSync(stapledPdf, "%PDF-1.4 r7 stapled");
+  const base = { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-9" }, files: { files: [stapledPdf] } };
+  assert.equal((await h.confirmed("datev_upload_file", { ...base, fields: { metadata: { document_type: "Rechnungseingang", note: "a" } } })).error, false);
+  for (const metadata of [{ note: "a", document_type: "Rechnungseingang" }, { document_type: "Rechnungseingang", note: "b" }])
+    assert.match((await h.call("datev_upload_file", { ...base, fields: { metadata } })).text, /already sent to this client/);
+});
+
+test("a permission refusal keeps DATEV's help link and title", async () => {
+  const deps: CallDeps = { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => json(403, { type: "https://help.datev.de/403-x", title: "Forbidden here" }), sleep: async () => undefined, onMissingPermission: async () => "" };
+  await assert.rejects(requireClientService("455148-1", ["Belegbilderservice"], deps), /help\.datev\.de\/403-x[\s\S]*|Forbidden here/);
+  await assert.rejects(requireClientService("455148-1", ["Belegbilderservice"], deps), (e: Error) => e.message.includes("https://help.datev.de/403-x"));
+});
+
+test("the session key of a per-user credential store is created under one lock for every home folder", () => {
+  const home = mkdtempSync(join(tmpdir(), "datev-r7-home-"));
+  let lockedPerUser = false;
+  let kept: Buffer | undefined;
+  const uid = typeof process.getuid === "function" ? process.getuid() : "";
+  const store: KeyStore = {
+    name: "test keychain",
+    perUser: true,
+    get: () => kept,
+    set: (k) => {
+      lockedPerUser = existsSync(join(tmpdir(), `datev-mcp-key-${uid}`, "session-key.lock"));
+      kept = k;
+    },
+  };
+  loadOrCreateKey(store, home);
+  assert.ok(lockedPerUser, "the lock is per user, outside the home folder");
+  assert.equal(existsSync(join(home, "session-key.lock")), false);
+});
+
+test("an EXTF file DATEV accepted returns its job id even when asking for the result fails", async () => {
+  const file = await extfFile("EXTF_R7A.csv", 7100);
+  const h = await harness(extfDatev({}), {});
+  const fail = await harness((s) => (s.path.includes("/jobs/J9") ? Promise.reject(new TypeError("socket hang up")) : extfDatev()(s)));
+  const r = await fail.confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file });
+  assert.match(r.text, /J9/);
+  assert.match(r.text, /Do not send the file again/);
+  void h;
+});
+
+test("an ended connection never hands out a token, and its unconfirmed access token is still revoked later", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r7-s-")), envKeyStore());
+  const expiresAt = Date.now() + 9e5;
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt, obtainedAt: Date.now() } });
+  await endForMissingPermission(cfg, { store, fetch: async () => new Response("{}", { status: 500 }), httpLog: () => {} });
+  const s = store.read()!;
+  assert.equal(s.ended, true);
+  assert.equal(s.tokens.expiresAt, expiresAt, "the real expiry is kept so the access token is revoked again");
+  await assert.rejects(new Session(store, ENDPOINTS.sandbox, cfg.creds).accessToken(), /connection was ended/);
+  const hints: string[] = [];
+  await revokePending(store, ENDPOINTS.sandbox, cfg.creds, { fetch: async (_u, init) => (hints.push(String(new URLSearchParams(String(init?.body)).get("token_type_hint"))), new Response("", { status: 200 })) });
+  assert.deepEqual(hints.sort(), ["access_token", "refresh_token"]);
+  assert.equal(store.read()!.tokens.expiresAt, 0);
+});
+
+test("a write answered with a redirect never claims that nothing changed", async () => {
+  const h = await harness((s) => (s.method === "GET" ? json(200, client(["Rechnungsdatenservice 1.0"])) : new Response(null, { status: 303, headers: { location: "https://x.example/r" } })));
+  const r = await h.confirmed("datev_call", { operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs", path_params: { "client-id": "455148-1" }, body: { job_type: "x" } });
+  assert.equal(r.error, true);
+  assert.doesNotMatch(r.text, /Nothing was read or changed/);
+  assert.match(r.text, /may already have applied this change/);
+});
+
+test("the income tax health check stays reachable when its service was chosen", async () => {
+  let sent = 0;
+  const op = getOperation("my-tax-mytax-income-tax-documents-health.health")!;
+  await callOperation(op, {}, { env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", sleep: async () => undefined, chosenServices: new Set(["my-tax-income-tax-documents"]), fetch: async () => (sent++, json(200, {})) });
+  assert.equal(sent, 1);
+});
+
+test("German approvals translate the client labels, never the client's name", () => {
+  assert.equal(localizeApproval("Client: Best client 123 GmbH, consultant 455148, client 1", "de"), "Mandant: Best client 123 GmbH, Berater 455148, Mandant 1");
+});
+
+test("a send record keeps the accepted import but does not grow with every resend", async () => {
+  const file = await extfFile("EXTF_R7B.csv", 7200);
+  assert.equal((await (await harness(extfDatev())).confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file })).error, false);
+  for (let n = 0; n < 4; n++) await (await harness(extfDatev({ post: () => json(503, {}) }))).confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file, resend: true });
+  const { sentBefore } = await import("../../src/tools/sent-ledger.js");
+  const { createHash } = await import("node:crypto");
+  const { readFileSync } = await import("node:fs");
+  const e = sentBefore("extf", "sandbox", "455148-1", createHash("sha256").update(readFileSync(file)).digest("hex"))!;
+  let depth = 0;
+  for (let x = e.previous; x; x = x.previous) depth++;
+  assert.ok(depth <= 2, `depth ${depth}`);
+  assert.match((await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file })).text, /\(job J9\)/);
+});
+
+test("a client access refusal from the client gate reads fully in German", async () => {
+  const h = await harness((s) => (s.method === "GET" && /\/clients\/\d+-\d+$/.test(s.path) ? json(404, { title: "Not found", type: "https://help.datev.de/404" }) : json(200, {})));
+  const r = await h.call("datev_call", { operation_id: "accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id", path_params: { "client-id": "455148-1", "job-id": "J1" } });
+  assert.match(r.text, /Access to client 455148-1 could not be confirmed/);
+  const de = localize(r.text, "de");
+  assert.doesNotMatch(de, /Access to client|Please check|Nothing was sent|could not be confirmed/, de);
 });

@@ -20,6 +20,9 @@ export interface StoredSession {
   refreshExpiresAt?: number;
   /** Refresh tokens of earlier logins that DATEV has not confirmed as revoked yet. Retried until it does. */
   pendingRevoke?: string[];
+  /** Set when the connection was ended for a missing permission but DATEV did not confirm every revoke.
+   *  No token is handed out again; the access token keeps its real expiry so it is still revoked. */
+  ended?: boolean;
 }
 
 interface Sealed {

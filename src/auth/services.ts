@@ -53,6 +53,17 @@ export function selectServices(list: string): { services: string[]; scopes: stri
   return { services: [...services].sort(), scopes: [...scopes].sort(), added: [...services].filter((p) => !asked.includes(p)) };
 }
 
+/** For an expert scope list: the services whose scopes it holds in full. A service without scopes needs --services. */
+export function servicesForScopes(scopes: string[]): string[] {
+  const have = new Set(scopes);
+  return Object.keys(SERVICES)
+    .filter((p) => {
+      const need = scopesOf(p);
+      return need.length > 0 && need.every((sc) => have.has(sc));
+    })
+    .sort();
+}
+
 export function serviceList(): string {
   return `Available, as --services a,b,c: ${Object.entries(SERVICES)
     .map(([id, s]) => `${id} (${s.label})`)
@@ -60,3 +71,9 @@ export function serviceList(): string {
 }
 
 export const serviceLabel = (id: string) => SERVICES[id]?.label ?? id;
+
+// Health endpoints whose product id is not the service id with "-health" appended.
+const HEALTH_OF: Record<string, string> = { "my-tax-mytax-income-tax-documents-health": "my-tax-income-tax-documents" };
+
+/** The data service an operation's product belongs to, as chosen at login. */
+export const serviceOfProduct = (product: string): string => HEALTH_OF[product] ?? product.replace(/-health$/, "");

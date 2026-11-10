@@ -62,6 +62,12 @@ const locked = <T>(env: DatevEnv, vars: NodeJS.ProcessEnv, fn: () => T) => new T
 const STALE_MS = 15 * 60_000;
 const current = (e: SentEntry | undefined): SentEntry | undefined => (e?.status === "sending" && Date.now() - Date.parse(e.at) > STALE_MS ? { ...e, status: "uncertain" } : e);
 
+function trimmed(e: SentEntry): SentEntry {
+  const { previous, ...self } = e;
+  const accepted = e.status === "sent" ? undefined : acceptedBefore(previous);
+  return accepted ? { ...self, previous: { ...accepted, previous: undefined } } : self;
+}
+
 /** The newest earlier send of this file that DATEV accepted, if any, from the chain behind this record. */
 export function acceptedBefore(e: SentEntry | undefined): SentEntry | undefined {
   for (let x = e; x; x = x.previous) if (x.status === "sent") return x;
@@ -90,8 +96,9 @@ export function reserveSend(
     // A send in progress blocks even a deliberate resend; a finished or uncertain one only without resend.
     if (earlier && (earlier.status === "sending" || !resend || earlier.at !== resend.seen)) return { blocked: earlier };
     const reservation = randomUUID();
-    // The whole chain of earlier sends is kept, so an import DATEV accepted is never forgotten by a later resend.
-    ((all[kind] ??= {})[clientId] ??= {})[sha256] = { at: new Date().toISOString(), name, status: "sending", reservation, ...(earlier ? { previous: earlier } : {}) };
+    // The earlier record is kept with the newest import DATEV accepted behind it, never the whole history,
+    // so an accepted import is never forgotten and the record does not grow with every resend.
+    ((all[kind] ??= {})[clientId] ??= {})[sha256] = { at: new Date().toISOString(), name, status: "sending", reservation, ...(earlier ? { previous: trimmed(earlier) } : {}) };
     save(env, all, vars);
     return { reservation };
   });

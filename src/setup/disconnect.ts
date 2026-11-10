@@ -80,7 +80,8 @@ export async function endForMissingPermission(
     if (left.length) {
       // No token is used again after this, whatever DATEV answered: a lost answer may hide a revoke that worked.
       // Tokens DATEV did not confirm stay in pendingRevoke and are revoked again on the next call.
-      store.write({ ...s, pendingRevoke: left, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: 0 } });
+      // An access token whose revoke DATEV did not confirm keeps its expiry, so disconnect and status revoke it again.
+      store.write({ ...s, ended: true, pendingRevoke: left, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: accessResult ? s.tokens.expiresAt : 0 } });
       return ` The connection was ended here, but DATEV did not confirm revoking it, so it is revoked again on the next call. It can also be removed at ${REVOKE_UI}.`;
     }
     store.clear();

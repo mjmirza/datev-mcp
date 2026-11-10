@@ -4,7 +4,7 @@ import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, UncertainSendError, type CallDeps } from "../api/client.js";
-import { describeClient, gateCall } from "../api/client-gate.js";
+import { describeClient, gateCall, hideClientId } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { localize } from "../i18n.js";
@@ -125,6 +125,22 @@ function checkField(op: Operation, name: string, value: unknown, schema: Schema,
       }
     }
   }
+}
+
+/** The filing a stapled upload names, independent of key order and of the note, which changes no filing. */
+function filingOf(raw: unknown): [string, unknown][] {
+  let meta: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      meta = JSON.parse(raw);
+    } catch {
+      return [["raw", raw]];
+    }
+  }
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return [];
+  return Object.entries(meta as Record<string, unknown>)
+    .filter(([k]) => k !== "note")
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 async function checkStapled(clientId: string, raw: unknown, d: CallDeps): Promise<void> {
@@ -263,7 +279,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const stapledClient = op.product === "accounting-documents" ? String(path_params?.["client-id"] ?? "") : undefined;
         if (stapledClient !== undefined) await checkStapled(stapledClient, f.metadata, d);
         // DATEV's stapled upload takes no document id, so it cannot recognise a repeat: the send record does.
-        const stapledKey = stapledClient !== undefined ? createHash("sha256").update(JSON.stringify([read.map((x) => x.sha256).sort(), f.metadata ?? null])).digest("hex") : undefined;
+        const stapledKey = stapledClient !== undefined ? createHash("sha256").update(JSON.stringify([read.map((x) => x.sha256).sort(), filingOf(f.metadata)])).digest("hex") : undefined;
         const earlier = stapledKey ? sentBefore("stapled", d.env, stapledClient!, stapledKey) : undefined;
         if (earlier && resend !== true) return err(`These files were already sent to this client on ${earlier.at} (${earlier.name}, ${earlier.status}). DATEV cannot tell a repeat of a stapled upload apart, so it would keep two copies. To send them again on purpose, call with resend: true.`);
         const listed = read.map((x) => ({ part: x.part, file: x.path, sent_as: x.name, bytes: x.bytes.length, content_type: x.type }));
@@ -292,7 +308,8 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const summary = [client ? `Client: ${describeClient(client)}` : "", `${op.method.toUpperCase()} ${op.id}`, String(url), ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].filter(Boolean).join("\n");
+        const shown = (t: string) => (client ? hideClientId(t, [client.client_id, client.guid]) : t);
+        const summary = [client ? `Client: ${describeClient(client)}` : "", ...[`${op.method.toUpperCase()} ${op.id}`, String(url), ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].map(shown)].filter(Boolean).join("\n");
         const denied = await humanApproval(server, d.env, summary);
         if (denied) return err(denied);
         const held = stapledKey ? await reserveSend("stapled", d.env, stapledClient!, stapledKey, read.map((x) => x.name).join(", "), earlier ? { seen: earlier.at } : false) : undefined;

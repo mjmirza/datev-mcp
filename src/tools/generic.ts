@@ -2,7 +2,7 @@ import { z } from "zod";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
-import { describeClient, gateCall } from "../api/client-gate.js";
+import { describeClient, gateCall, hideClientId } from "../api/client-gate.js";
 import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -103,14 +103,18 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
-          const summary = [client && `Client: ${describeClient(client)}`, `${op.method.toUpperCase()} ${op.id}`, buildUrl(op, d.env, input).toString(), path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
+          const shown = (t: string) => (client ? hideClientId(t, [client.client_id, client.guid]) : t);
+          const summary = [client && `Client: ${describeClient(client)}`, shown([`${op.method.toUpperCase()} ${op.id}`, buildUrl(op, d.env, input).toString(), path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n"))].filter(Boolean).join("\n");
           const denied = await humanApproval(server, d.env, summary);
           if (denied) return fail(denied);
         }
         const { bytes, ...r } = await callOperation(op, input, d);
         const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         // A redirect is not an answer: it is never followed, so nothing was read or done.
-        if (r.status >= 300 && r.status < 400) out.note = `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. Nothing was read or changed.`;
+        if (r.status >= 300 && r.status < 400)
+          out.note = op.write
+            ? `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. DATEV may already have applied this change, so check in DATEV before sending it again.`
+            : `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. Nothing was read.`;
         // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
         if (bytes && (r.status < 300 || r.status >= 400)) {
           if (save_to && r.status < 300 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);

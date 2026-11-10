@@ -16,7 +16,7 @@ import {
   type Report,
 } from "@seamless-engineering/datev-extf";
 import { buildHeaders, buildUrl, callOperation, CallError, UncertainSendError, problemFields, problemText, type CallDeps } from "../api/client.js";
-import { describeClient } from "../api/client-gate.js";
+import { describeClient, hideClientId } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { acceptedBefore, finishSend, reserveSend, sentBefore, type SentEntry } from "./sent-ledger.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -234,7 +234,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}\n${buildUrl(op, d.env, { pathParams: { "client-id": client_id } })}`);
+        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}\n${hideClientId(String(buildUrl(op, d.env, { pathParams: { "client-id": client_id } })), [client_id])}`);
         if (denied) return err(denied);
         // Reserved under the lock before the POST: two confirmations racing cannot both send the file.
         const held = await reserveSend("extf", d.env, client_id, sha256, file.name, resend === true ? { seen: earlier?.at } : false);
@@ -267,16 +267,21 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const retryAfter = Math.max(Number(r.retryAfter) || 5, 1);
         if (retryAfter > 20)
           return ok({ uploaded: true, imported: false, job_id: jobId, env: d.env, note: `DATEV asked to wait ${retryAfter} seconds before asking for the result. Check then with datev_extf_job (client_id ${client_id}, job_id ${jobId}). Do not send the file again.` });
-        await sleep(retryAfter * 1000);
-        let state = await jobOf(client_id, jobId, d);
-        // At most 6 job queries with growing waits, far below DATEV's 30-GETs-per-upload limit. RENAME_OK: the time bound became a count bound.
-        for (const wait of [3000, 5000, 8000, 10_000, 12_000]) {
-          if (state.result !== "pending") break;
-          await sleep(wait); // BESTPRACTICE_OK: polling a job is sequential by nature
-          state = await jobOf(client_id, jobId, d); // BESTPRACTICE_OK: same poll
+        // The file is with DATEV now: whatever happens while asking for the result, the job id is returned.
+        try {
+          await sleep(retryAfter * 1000);
+          let state = await jobOf(client_id, jobId, d);
+          // At most 6 job queries with growing waits, far below DATEV's 30-GETs-per-upload limit. RENAME_OK: the time bound became a count bound.
+          for (const wait of [3000, 5000, 8000, 10_000, 12_000]) {
+            if (state.result !== "pending") break;
+            await sleep(wait); // BESTPRACTICE_OK: polling a job is sequential by nature
+            state = await jobOf(client_id, jobId, d); // BESTPRACTICE_OK: same poll
+          }
+          await finish({ status: "sent", job_id: jobId, result: state.result }).catch(() => undefined);
+          return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated, ...(recorded ? { record: recorded } : {}) });
+        } catch (e) {
+          return { ...ok({ uploaded: true, imported: false, job_id: jobId, env: d.env, note: `DATEV accepted the file, but asking for the result stopped (${errorText(e)}). Check with datev_extf_job (client_id ${client_id}, job_id ${jobId}). Do not send the file again.` }), isError: true };
         }
-        await finish({ status: "sent", job_id: jobId, result: state.result }).catch(() => undefined);
-        return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated, ...(recorded ? { record: recorded } : {}) });
       } catch (e) {
         return err(errorText(e));
       }

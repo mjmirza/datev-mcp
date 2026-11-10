@@ -45,8 +45,10 @@ export async function requireClientService(
     const ended = dx && deps.onMissingPermission ? await deps.onMissingPermission().catch((e: Error) => ` Ending the connection failed (${e.message}).`) : "";
     const who = body?.name ? `"${String(body.name)}"` : "This client";
     const why = r.status >= 400 ? `DATEV answered HTTP ${r.status} for this client` : `${who} has not switched on ${anyOf.join(" or ")}`;
+    // DATEV's own help link, title, detail and request id stay with every 4xx (GEN rules on error answers).
+    const help = r.status >= 400 ? ` ${problemText(r.status, r.body)}` : "";
     throw new PermissionError(
-      `${why}. Nothing was sent. The client or their tax advisor switches the data service on at DATEV, see ${dx ? DX_ORDER_LINK : DATEV_SETUP_LINK}.${ended}`,
+      `${why}. Nothing was sent. The client or their tax advisor switches the data service on at DATEV, see ${dx ? DX_ORDER_LINK : DATEV_SETUP_LINK}.${ended}${help}`,
     );
   }
   return {

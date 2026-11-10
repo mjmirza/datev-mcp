@@ -27,6 +27,13 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
   return parts.length ? parts.join(", ") : `client ${c.client_id ?? "unknown"}`;
 }
 
+/** A URL or text for a person: DATEV's technical client id becomes {client}, the client is named on its own line. */
+export function hideClientId(text: string, ids: (string | undefined)[]): string {
+  let out = text;
+  for (const id of ids) if (id) out = out.split(encodeURIComponent(id)).join("{client}").split(id).join("{client}");
+  return out;
+}
+
 export interface CheckedClient {
   client_id: string;
   name?: string;

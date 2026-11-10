@@ -120,6 +120,7 @@ test("a write's approval dialog names the client by name and numbers, not only t
   const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
   await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
   assert.match(asked, /Client: Muster GmbH, consultant 455148, client 1/);
+  assert.ok(!asked.includes("455148-1"), "DATEV's technical client id is not shown to the person");
 });
 
 test("DATEV's API descriptions never ship: the package is private and the built index stays out of git", () => {
@@ -218,4 +219,15 @@ test("every DATEV requirement proof names a test that exists", () => {
     assert.ok(names.length, `${c[1]}: the proof names no test`);
     for (const n of names) assert.ok(testText.includes(`test("${n}"`), `${c[1]}: "${n}" is not a test`);
   }
+});
+
+test("tests and evals always keep their records in temporary folders, never the person's own", () => {
+  const root = join(import.meta.dirname, "..", "..");
+  const setup = readFileSync(join(root, "test", "setup.ts"), "utf8");
+  const evals = readFileSync(join(root, "test", "evals", "run.ts"), "utf8");
+  for (const [name, text] of [["test/setup.ts", setup], ["test/evals/run.ts", evals]] as const) {
+    assert.match(text, /process\.env\.DATEV_MCP_HOME = mkdtempSync/, `${name} sets a temporary home unconditionally`);
+    assert.match(text, /process\.env\.DATEV_MCP_LOG_DIR = mkdtempSync/, `${name} sets a temporary log folder unconditionally`);
+  }
+  assert.ok(process.env.DATEV_MCP_HOME?.startsWith(tmpdir()) || process.env.DATEV_MCP_HOME?.includes("datev-test-home-"));
 });

@@ -336,7 +336,10 @@ test("a write whose answer breaks off is still logged, and a retried error answe
   const lines: Line[] = [];
   const broken = () =>
     new Response(new ReadableStream({ start: (c) => (c.enqueue(new TextEncoder().encode("{")), c.error(new Error("socket hang up"))) }), { status: 201, headers: { "content-type": "application/json" } });
-  await assert.rejects(callOperation(op({ method: "post", write: true }), { pathParams: { "client-id": "1" } }, deps(async () => broken(), { httpLog: (e) => lines.push(e) })), /broke off/);
+  // DATEV took the write (201): the status and headers are kept, the cut body is marked, and the break is logged once.
+  const r = await callOperation(op({ method: "post", write: true }), { pathParams: { "client-id": "1" } }, deps(async () => broken(), { httpLog: (e) => lines.push(e) }));
+  assert.equal(r.status, 201);
+  assert.equal(r.truncated, true);
   assert.equal(lines.length, 1);
   assert.equal(lines[0]!.status, 201);
   assert.match(lines[0]!.error ?? "", /broke off/);

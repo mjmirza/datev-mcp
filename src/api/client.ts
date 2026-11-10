@@ -1,3 +1,4 @@
+import { serviceOfProduct } from "../auth/services.js";
 import { createHash } from "node:crypto";
 import { problemOf, problemText, type Problem } from "./problem.js";
 export { problemFields, problemOf, problemText } from "./problem.js";
@@ -121,7 +122,7 @@ function serviceKey(name: string, deps: CallDeps): string | undefined {
 /** Refuses an operation whose scopes the saved login does not hold. openid is part of every login. */
 function checkGranted(op: Operation, granted: ReadonlySet<string> | undefined, chosen?: ReadonlySet<string>): void {
   // An operation with no scope of its own is bounded by the data services chosen at login instead.
-  const product = op.product.replace(/-health$/, "");
+  const product = serviceOfProduct(op.product);
   if (chosen && !op.scopes.some((s) => s !== "openid") && !chosen.has(product))
     throw new CallError(`${op.id} belongs to ${product}, which is not part of the connected data services. Run "datev-mcp login --services ..." with ${product} added.`);
   if (!granted) return;
@@ -392,6 +393,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   let res: Response | undefined;
   let netErr: unknown;
   let read: Awaited<ReturnType<typeof readBody>> | undefined;
+  let cutOff: string | undefined;
   // DATEV requires a log line for every call: no call goes out while the log cannot be written.
   const logProblem = deps.httpLog && (deps.httpLogProblem ?? httpLogProblem)();
   if (logProblem) throw new CallError(`The technical HTTP log cannot be written (${logProblem}). DATEV requires it, so nothing was sent. Free disk space or fix DATEV_MCP_LOG_DIR, then try again.`);
@@ -423,7 +425,13 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
       read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
     } catch (e) {
       netErr = e; // the answer broke off while it was being read
-      if (op.method !== "get" || deps.signal?.aborted) {
+      if (op.method !== "get" && res.status >= 200 && res.status < 300) {
+        // DATEV took the write: its status and headers (Location, job id) arrived, only the body broke off.
+        // The one log line below records the break.
+        cutOff = e instanceof Error ? e.message : String(e);
+        read = { body: { cut_off: true, reason: cutOff }, truncated: true };
+        netErr = undefined;
+      } else if (op.method !== "get" || deps.signal?.aborted) {
         // A write may have reached DATEV: its headers and the break are logged before giving up.
         logLine({ error: `answer broke off: ${e instanceof Error ? e.message : String(e)}` });
         throw new UncertainSendError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
@@ -432,7 +440,11 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   }
   if (!res) logLine({ error: netErr instanceof Error ? netErr.message : String(netErr) });
   else if (!read) logLine(netErr !== undefined ? { error: `answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}` } : {});
-  else logLine(keepResponseBody(res.status, url.toString()) ? { response_body: clip(typeof read.body === "string" ? read.body : JSON.stringify(read.body)) } : {});
+  else
+    logLine({
+      ...(cutOff !== undefined ? { error: `answer broke off: ${cutOff}` } : {}),
+      ...(keepResponseBody(res.status, url.toString()) ? { response_body: clip(typeof read.body === "string" ? read.body : JSON.stringify(read.body)) } : {}),
+    });
   const retryAfter = res?.headers.get("retry-after") ?? null;
   if (res && retryAfter && (res.status === 429 || res.status === 503)) {
     const until = Date.now() + retryDelay(0, retryAfter);

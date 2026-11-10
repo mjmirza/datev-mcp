@@ -4,7 +4,7 @@ import { buildAuthorizeUrl } from "../auth/authorize.js";
 import { startCallbackServer } from "../auth/callback-server.js";
 import { verifyIdToken } from "../auth/id-token.js";
 import { newPkce, randomToken } from "../auth/pkce.js";
-import { selectServices, serviceLabel, serviceList, ServiceSelectionError } from "../auth/services.js";
+import { selectServices, serviceLabel, serviceList, servicesForScopes, ServiceSelectionError } from "../auth/services.js";
 import { exchangeCode, revokeToken, type FetchLike } from "../auth/token-client.js";
 import { revokePending } from "../auth/pending-revoke.js";
 import { TokenStore } from "../auth/token-store.js";
@@ -39,7 +39,11 @@ export interface LoginOptions {
 export function chooseScopes(cfg: Config, cliServices?: string): { services?: string[]; scopes: string[]; added?: string[] } {
   const list = cliServices ?? cfg.services;
   if (list !== undefined) return selectServices(list);
-  if (cfg.scopes?.length) return { scopes: cfg.scopes.includes("openid") ? cfg.scopes : ["openid", ...cfg.scopes] };
+  if (cfg.scopes?.length) {
+    const scopes = cfg.scopes.includes("openid") ? cfg.scopes : ["openid", ...cfg.scopes];
+    // Expert scopes still record the services they cover, so every service boundary applies to them too.
+    return { services: servicesForScopes(scopes), scopes };
+  }
   throw new ServiceSelectionError(`Choose the DATEV data services to connect: "datev-mcp login --services accounting-documents,accounting-extf-files". DATEV allows only the scopes of the services you use. ${serviceList()}`);
 }
 
@@ -88,6 +92,8 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
     const old = store.read();
     const sameApp = old?.clientId === cfg.creds.clientId;
     const stale = [...(sameApp ? (old?.pendingRevoke ?? []) : []), ...(sameApp && old?.tokens.refreshToken ? [old.tokens.refreshToken] : [])].filter((t) => t !== tokens.refreshToken);
+    // An ended connection may still hold an access token DATEV did not confirm as revoked: try once more before it is overwritten.
+    if (sameApp && old?.ended && old.tokens.expiresAt > Date.now()) await revokeToken(cfg.endpoints.revoke, old.tokens.accessToken, "access_token", cfg.creds, tokenOpts).catch(() => undefined);
     store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt, ...(stale.length ? { pendingRevoke: stale } : {}) });
   });
   const r = await revokePending(store, cfg.endpoints, cfg.creds, tokenOpts);

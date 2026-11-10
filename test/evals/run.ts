@@ -18,6 +18,10 @@ import { registerUploadTools } from "../../src/tools/upload.js";
 import { matchAccounts, type LedgerAccount } from "../../src/tools/accounts.js";
 import { fiscalYearIds, jobPhase } from "../../src/tools/accounting.js";
 
+// The evals send through the real tools, which keep send records: never in the person's own folders.
+process.env.DATEV_MCP_HOME = mkdtempSync(join(tmpdir(), "datev-eval-home-"));
+process.env.DATEV_MCP_LOG_DIR = mkdtempSync(join(tmpdir(), "datev-eval-logs-"));
+
 interface Result { category: string; op: string; pass: boolean; detail?: string }
 const results: Result[] = [];
 const pending: Promise<void>[] = [];
