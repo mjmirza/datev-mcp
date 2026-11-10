@@ -47,10 +47,10 @@ function createServer(cfg: Config): McpServer {
   const httpLog = (e: HttpLogEntry) => writeHttpLog(e);
   const session = new Session(store, cfg.endpoints, cfg.creds, { log: httpLog });
   // DATEV's Export rules: a missing permission revokes both tokens at once.
-  const onMissingPermission = async (accessToken?: string) => {
+  const onMissingPermission = async (used?: { accessToken: string; loginId?: string }) => {
     clearDataexchangeCache();
     clearClientGate();
-    return endForMissingPermission(cfg, { store, httpLog, accessToken });
+    return endForMissingPermission(cfg, { store, httpLog, ...used });
   };
   const identity = () => {
     try {
@@ -59,10 +59,10 @@ function createServer(cfg: Config): McpServer {
       return undefined;
     }
   };
-  // Each call remembers the token it used, so a 403 ends only the session that token belongs to.
+  // Each call remembers the token and login it used, so a 403 ends only that login, even after a refresh.
   const deps = (signal?: AbortSignal) => {
-    let used: string | undefined;
-    const token = async () => (used = await session.accessToken());
+    let used: { accessToken: string; loginId?: string } | undefined;
+    const token = async () => (used = await session.lease()).accessToken;
     return { env: cfg.env, creds: cfg.creds, token, signal, httpLog, grantedScopes: grantedScopes(store), chosenServices: chosenServices(store), onMissingPermission: () => onMissingPermission(used), identity };
   };
   // A refresh token an earlier login could not revoke is retried in the background: DATEV allows only one.

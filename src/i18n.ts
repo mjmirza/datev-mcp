@@ -23,6 +23,7 @@ const LOGIN_REASON: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^DATEV no longer accepts the saved session \(([^)]*)\)$/, (m) => `DATEV akzeptiert die gespeicherte Sitzung nicht mehr (${m[1]})`],
   [/^the connection was ended here and is not used again; DATEV has not confirmed every revoke yet$/, () => "die Verbindung wurde hier beendet und wird nicht mehr genutzt; DATEV hat noch nicht jeden Widerruf bestätigt"],
   [/^the connection was ended here and is not used again; DATEV confirmed every revoke$/, () => "die Verbindung wurde hier beendet und wird nicht mehr genutzt; DATEV hat jeden Widerruf bestätigt"],
+  [/^the connection was ended here and is not used again; the tokens DATEV did not confirm as revoked have expired$/, () => "die Verbindung wurde hier beendet und wird nicht mehr genutzt; die von DATEV nicht als widerrufen bestätigten Tokens sind abgelaufen"],
 ];
 
 const TARGET: Record<string, string> = { "the chart of accounts": "den Kontenplan" };

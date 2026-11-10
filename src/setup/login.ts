@@ -97,7 +97,7 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
     const openAccess = [...(sameApp ? (old?.pendingAccessRevoke ?? []) : []), ...(sameApp && old ? [{ token: old.tokens.accessToken, expiresAt: old.tokens.expiresAt }] : [])].filter((a) => a.expiresAt > Date.now() && a.token !== tokens.accessToken);
     const results = await Promise.allSettled(openAccess.map((a) => revokeToken(cfg.endpoints.revoke, a.token, "access_token", cfg.creds, tokenOpts)));
     const accessLeft = openAccess.filter((_, i) => results[i]!.status === "rejected");
-    store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt, ...(stale.length ? { pendingRevoke: stale } : {}), ...(accessLeft.length ? { pendingAccessRevoke: accessLeft } : {}) });
+    store.write({ env: cfg.env, clientId: cfg.creds.clientId, loginId: randomToken(), tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt, ...(stale.length ? { pendingRevoke: stale } : {}), ...(accessLeft.length ? { pendingAccessRevoke: accessLeft } : {}) });
   });
   const r = await revokePending(store, cfg.endpoints, cfg.creds, tokenOpts);
   if (r.revoked) log("The refresh token of the previous login was revoked at DATEV.");

@@ -25,6 +25,10 @@ export interface StoredSession {
   ended?: boolean;
   /** Access tokens of an earlier, ended login that DATEV has not confirmed as revoked, retried until they expire. */
   pendingAccessRevoke?: { token: string; expiresAt: number }[];
+  /** Random id of the login that saved this session; a refresh keeps it, a new login replaces it. */
+  loginId?: string;
+  /** Set on an ended session once a token DATEV never confirmed as revoked expired instead. */
+  revokeExpired?: boolean;
 }
 
 interface Sealed {

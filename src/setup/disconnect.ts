@@ -48,7 +48,7 @@ export async function disconnect(
       // A live access token DATEV did not confirm as revoked is kept on record and revoked again later.
       if (failed || accessError) {
         // A lost answer may hide a revoke that worked: no token is used again, and what DATEV did not confirm is retried.
-        store.write({ ...s, ended: true, pendingRevoke: left, pendingAccessRevoke: olderLeft, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: accessError ? s.tokens.expiresAt : 0 } });
+        store.write({ ...s, ended: true, pendingRevoke: left, pendingAccessRevoke: olderLeft, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: accessError || !accessLive ? s.tokens.expiresAt : 0 } });
         return notRemoved(((failed?.reason as Error | undefined) ?? accessError!).message);
       }
     }
@@ -71,15 +71,16 @@ export async function disconnect(
 /** DATEV's Export rules: without the data service, revoke both tokens at once and say exactly what happened. */
 export async function endForMissingPermission(
   cfg: Config,
-  opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void; accessToken?: string } = {},
+  opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void; accessToken?: string; loginId?: string } = {},
 ): Promise<string> {
   const store = opts.store ?? new TokenStore(cfg.env);
   const log = tokenLog(opts.httpLog ?? ((e: HttpLogEntry) => writeHttpLog(e)));
   return store.withLock(async () => {
     const s = store.read();
     if (!s || s.clientId !== cfg.creds.clientId) return "There was no saved connection to end.";
-    // A late 403 from an older token must not end a login saved since: only the refused token's session ends.
-    if (opts.accessToken !== undefined && s.tokens.accessToken !== opts.accessToken) return " A newer login replaced the refused connection, so it was kept.";
+    // A late 403 must not end a login saved since. The login id survives refreshes; older sessions fall back to the token.
+    const sameLogin = opts.loginId !== undefined && s.loginId !== undefined ? s.loginId === opts.loginId : opts.accessToken === undefined || s.tokens.accessToken === opts.accessToken;
+    if (!sameLogin) return " A newer login replaced the refused connection, so it was kept.";
     const callOpts = { fetch: opts.fetch, log };
     const refresh = [...new Set([...(s.pendingRevoke ?? []), ...(s.tokens.refreshToken ? [s.tokens.refreshToken] : [])])];
     const accessLive = s.tokens.expiresAt > Date.now();
@@ -95,7 +96,7 @@ export async function endForMissingPermission(
       // No token is used again after this, whatever DATEV answered: a lost answer may hide a revoke that worked.
       // Tokens DATEV did not confirm stay in pendingRevoke and are revoked again on the next call.
       // An access token whose revoke DATEV did not confirm keeps its expiry, so disconnect and status revoke it again.
-      store.write({ ...s, ended: true, pendingRevoke: left, pendingAccessRevoke: olderLeft, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: accessResult ? s.tokens.expiresAt : 0 } });
+      store.write({ ...s, ended: true, pendingRevoke: left, pendingAccessRevoke: olderLeft, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: accessResult || !accessLive ? s.tokens.expiresAt : 0 } });
       return ` The connection was ended here, but DATEV did not confirm revoking it, so it is revoked again on the next call. It can also be removed at ${REVOKE_UI}.`;
     }
     store.clear();

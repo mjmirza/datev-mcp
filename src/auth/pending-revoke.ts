@@ -21,7 +21,9 @@ export async function revokePending(
       if (!s?.pendingAccessRevoke) return;
       const { pendingAccessRevoke: _gone, ...rest } = s;
       const keep = earlier(s);
-      store.write(keep.length ? { ...rest, pendingAccessRevoke: keep } : rest);
+      // An ended session remembers that a token expired unconfirmed, so it never claims every revoke was confirmed.
+      const marked = s.ended && keep.length < s.pendingAccessRevoke.length ? { ...rest, revokeExpired: true } : rest;
+      store.write(keep.length ? { ...marked, pendingAccessRevoke: keep } : marked);
     });
   if (first?.clientId !== creds.clientId) {
     // Another app's tokens cannot be revoked here, but an expired one needs no revoke at all.
@@ -46,7 +48,8 @@ export async function revokePending(
     const left = list.filter((_, i) => results[i]!.status === "rejected");
     const { pendingRevoke: _drop, pendingAccessRevoke: _dropAccess, ...rest } = s;
     const tokens = access ? { ...s.tokens, expiresAt: 0 } : s.tokens;
-    store.write({ ...rest, tokens, ...(left.length ? { pendingRevoke: left } : {}), ...(accessLeft.length ? { pendingAccessRevoke: accessLeft } : {}) });
+    const expired = !!s.ended && (s.pendingAccessRevoke?.length ?? 0) > olderAccess.length;
+    store.write({ ...rest, ...(expired ? { revokeExpired: true } : {}), tokens, ...(left.length ? { pendingRevoke: left } : {}), ...(accessLeft.length ? { pendingAccessRevoke: accessLeft } : {}) });
     return { revoked: list.length - left.length, left: left.length };
   });
 }
