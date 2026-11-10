@@ -49,7 +49,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F30 | HIGH | Tokens issued before the identity check are abandoned, not revoked, when a later login step fails | R2-6 | fixed | 15dcb51 | a login without the full user name saves nothing |
 | F31 | HIGH | A body that breaks off is thrown before the call is logged | R2-7 | fixed | 6a099df | a write whose answer breaks off is still logged |
 | F32 | HIGH | A retried GET error answer is logged without its body | R2-9 | fixed | 6a099df | a write whose answer breaks off is still logged |
-| F33 | HIGH | Request bodies kept only as a hash | R2-10 | open | | decided with F20 |
+| F33 | HIGH | Request bodies kept only as a hash | R2-10 | fixed | b49460d | request bodies are logged as DATEV's minimum scope asks |
 | F34 | HIGH | Status reports ACTIVE without checking userinfo's shape and that `sub` matches the saved identity | R2-14 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
 | F35 | HIGH | Choosing accounting services silently adds the accounting-clients scope | R2-16 | open | | |
 | F36 | HIGH | Upload approval does not show the destination client, query and resolved URL | R2-18 | open | | |
