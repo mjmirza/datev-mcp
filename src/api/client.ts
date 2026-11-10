@@ -313,28 +313,44 @@ const join = (parts: Uint8Array[]): Uint8Array => {
   return out;
 };
 
-// An error answer cut off by the cap still has its title and help link at the end, so its last bytes are kept.
-const ERROR_TAIL_BYTES = 64 * 1024;
+// A cut error answer still carries DATEV's title and help link further on, so the rest is scanned for them.
+// The scan reads at most this much more and keeps only a short window, so a hostile body cannot stall it.
+const ERROR_SCAN_BYTES = 8 * 1024 * 1024;
+const SCAN_WINDOW = 4096;
+const PROBLEM_KEYS = ["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"];
 
-async function readCapped(res: Response, cap: number, keepTail = false): Promise<{ bytes: Uint8Array; overflow: boolean; tail?: Uint8Array }> {
+function scanFields(text: string, found: Record<string, unknown>): void {
+  for (const k of PROBLEM_KEYS) {
+    if (found[k] !== undefined) continue;
+    const m = text.match(new RegExp(`"${k}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,2000})"`));
+    if (!m) continue;
+    try {
+      found[k] = JSON.parse(`"${m[1]}"`) as string;
+    } catch {
+      found[k] = m[1];
+    }
+  }
+}
+
+async function readCapped(res: Response, cap: number, scan = false): Promise<{ bytes: Uint8Array; overflow: boolean; fields?: Record<string, unknown> }> {
   if (!res.body) return { bytes: new Uint8Array(), overflow: false };
   const reader = res.body.getReader();
   const parts: Uint8Array[] = [];
-  let tail: Uint8Array[] = [];
-  let tailSize = 0;
   let size = 0;
-  let seen = 0;
   let overflow = false;
+  const fields: Record<string, unknown> = {};
+  const decoder = new TextDecoder("utf-8");
+  let carry = "";
+  let scanned = 0;
   for (;;) {
     const { done, value } = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
     if (done) break;
     if (overflow) {
-      // Only the last bytes are kept, and the read still stops at the hard limit.
-      seen += value.length;
-      tail.push(value);
-      tailSize += value.length;
-      while (tail.length > 1 && tailSize - tail[0]!.length >= ERROR_TAIL_BYTES) tailSize -= tail.shift()!.length;
-      if (seen >= HARD_MAX_BYTES) break;
+      scanned += value.length;
+      const window = carry + decoder.decode(value, { stream: true });
+      scanFields(window, fields);
+      carry = window.slice(-SCAN_WINDOW);
+      if (scanned >= ERROR_SCAN_BYTES || PROBLEM_KEYS.slice(0, 2).every((k) => fields[k] !== undefined)) break;
       continue;
     }
     if (size + value.length > cap) {
@@ -342,43 +358,20 @@ async function readCapped(res: Response, cap: number, keepTail = false): Promise
       parts.push(value.subarray(0, cap - size));
       size = cap;
       overflow = true;
-      if (keepTail) {
-        tail = [rest];
-        tailSize = rest.length;
-        seen = cap + rest.length;
-        continue;
-      }
-      await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once the cap is hit
-      break;
+      if (!scan) break;
+      // The head is scanned too, through the same window, so a field cut at the cap is still found.
+      const head = new TextDecoder("utf-8").decode(join(parts).subarray(Math.max(0, cap - SCAN_WINDOW)));
+      const window = head + decoder.decode(rest, { stream: true });
+      scanned = rest.length;
+      scanFields(window, fields);
+      carry = window.slice(-SCAN_WINDOW);
+      continue;
     }
     parts.push(value);
     size += value.length;
   }
-  if (overflow && keepTail) await reader.cancel().catch(() => undefined);
-  return { bytes: join(parts), overflow, ...(overflow && keepTail ? { tail: join(tail).slice(-ERROR_TAIL_BYTES) } : {}) };
-}
-
-// The fields of a JSON problem answer that DATEV puts after a long detail, read from the kept head and tail.
-function problemFromParts(head: string, tail: string): Record<string, unknown> {
-  const field = (name: string) => {
-    for (const t of [tail, head]) {
-      const m = t.match(new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,2000})"`));
-      if (m) {
-        try {
-          return JSON.parse(`"${m[1]}"`) as string;
-        } catch {
-          return m[1];
-        }
-      }
-    }
-    return undefined;
-  };
-  const out: Record<string, unknown> = { cut_off: true };
-  for (const k of ["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"]) {
-    const v = field(k);
-    if (v !== undefined) out[k] = v;
-  }
-  return out;
+  if (overflow) await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once done
+  return { bytes: join(parts), overflow, ...(overflow && scan ? { fields } : {}) };
 }
 
 async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
@@ -388,8 +381,9 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   // A declared binary type gets its own byte budget; the text cap is about what fits in a conversation.
   const declaredBinary = media !== "" && !TEXTUAL.test(media);
   const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
-  const keepTail = res.status >= 400 && TEXTUAL.test(media);
-  const { bytes, overflow, tail } = await readCapped(res, byteCap, keepTail);
+  // Only a JSON error answer is scanned past the cap, for the fields DATEV puts after a long detail.
+  const scan = res.status >= 400 && /json/i.test(media);
+  const { bytes, overflow, fields } = await readCapped(res, byteCap, scan);
   const binary = media !== "" ? !TEXTUAL.test(media) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -399,7 +393,11 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const truncated = overflow || text.length > maxChars;
   const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
   // A cut error answer keeps DATEV's title, help link and request id from wherever they appeared.
-  if (truncated && keepTail && /json/i.test(media)) return { body: { ...problemFromParts(text, tail ? new TextDecoder("utf-8").decode(tail) : ""), text: slice }, truncated };
+  if (truncated && scan) {
+    const found: Record<string, unknown> = {};
+    scanFields(text, found);
+    return { body: { cut_off: true, ...found, ...Object.fromEntries(Object.entries(fields ?? {}).filter(([k]) => found[k] === undefined)), text: slice }, truncated };
+  }
   if (!truncated && /json/i.test(media)) {
     try {
       return { body: parseJsonOrLines(slice, /ndjson/i.test(media)), truncated };

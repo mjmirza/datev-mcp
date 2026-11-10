@@ -93,8 +93,11 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
     const sameApp = old?.clientId === cfg.creds.clientId;
     const stale = [...(sameApp ? (old?.pendingRevoke ?? []) : []), ...(sameApp && old?.tokens.refreshToken ? [old.tokens.refreshToken] : [])].filter((t) => t !== tokens.refreshToken);
     // An ended connection may still hold an access token DATEV did not confirm as revoked: try once more before it is overwritten.
-    if (sameApp && old?.ended && old.tokens.expiresAt > Date.now()) await revokeToken(cfg.endpoints.revoke, old.tokens.accessToken, "access_token", cfg.creds, tokenOpts).catch(() => undefined);
-    store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt, ...(stale.length ? { pendingRevoke: stale } : {}) });
+    // One DATEV did not confirm is kept with the new login and retried until it expires, never forgotten.
+    const openAccess = [...(sameApp ? (old?.pendingAccessRevoke ?? []) : []), ...(sameApp && old?.ended ? [{ token: old.tokens.accessToken, expiresAt: old.tokens.expiresAt }] : [])].filter((a) => a.expiresAt > Date.now());
+    const results = await Promise.allSettled(openAccess.map((a) => revokeToken(cfg.endpoints.revoke, a.token, "access_token", cfg.creds, tokenOpts)));
+    const accessLeft = openAccess.filter((_, i) => results[i]!.status === "rejected");
+    store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt, ...(stale.length ? { pendingRevoke: stale } : {}), ...(accessLeft.length ? { pendingAccessRevoke: accessLeft } : {}) });
   });
   const r = await revokePending(store, cfg.endpoints, cfg.creds, tokenOpts);
   if (r.revoked) log("The refresh token of the previous login was revoked at DATEV.");

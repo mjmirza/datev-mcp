@@ -21,7 +21,7 @@ const LOGIN_REASON: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^saved session belongs to a different DATEV app$/, () => "die gespeicherte Sitzung gehört zu einer anderen DATEV-App"],
   [/^session expired and has no refresh token$/, () => "die Sitzung ist abgelaufen und enthält kein Refresh-Token"],
   [/^DATEV no longer accepts the saved session \(([^)]*)\)$/, (m) => `DATEV akzeptiert die gespeicherte Sitzung nicht mehr (${m[1]})`],
-  [/^the connection was ended because a data service permission is missing$/, () => "die Verbindung wurde beendet, weil eine Datenservice-Freigabe fehlt"],
+  [/^the connection was ended here and is not used again; DATEV has not confirmed every revoke yet$/, () => "die Verbindung wurde hier beendet und wird nicht mehr genutzt; DATEV hat noch nicht jeden Widerruf bestätigt"],
 ];
 
 const TARGET: Record<string, string> = { "the chart of accounts": "den Kontenplan" };
@@ -222,7 +222,7 @@ const CHECK_NAMES: Record<string, string> = {
 // Only the final bracket describeClient appends is translated. The name before it is DATEV's text.
 const who = (s: string) =>
   s
-    .replace(/^unnamed client(?= \(|$)/, "Mandant ohne Namen")
+    .replace(/^unnamed client(?=(?: \((?:consultant \d+)?(?:, )?(?:client \d+)?\))?$)/, "Mandant ohne Namen")
     .replace(/ \((consultant \d+)?(, )?(client \d+)?\)$/, (all: string) => all.replace("consultant ", "Berater ").replace("client ", "Mandant "));
 
 // Single sentences the safety refusals are built from. A message no whole-message pattern matches is
@@ -315,7 +315,8 @@ function sentencesOf(s: string): string[] {
     }
   }
   if (start < s.length) out.push(s.slice(start));
-  return out;
+  // A bracket that never closes would hide every later sentence, so such a text is split the plain way.
+  return depth > 0 ? s.split(/(?<=\.)\s+/) : out;
 }
 
 function bySentence(message: string): string {

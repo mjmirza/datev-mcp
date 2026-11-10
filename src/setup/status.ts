@@ -57,7 +57,7 @@ export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; 
   if (!s) return { ...base, reason: "not connected" };
   let pending = s.pendingRevoke?.length ?? 0;
   // An ended connection's access token is retried too, until DATEV confirms or it expires.
-  if (pending || (s.ended && s.tokens.expiresAt > Date.now())) {
+  if (pending || (s.ended && s.tokens.expiresAt > Date.now()) || (s.pendingAccessRevoke ?? []).some((a) => a.expiresAt > Date.now())) {
     try {
       pending = (await revokePending(store, cfg.endpoints, cfg.creds, { fetch: opts.fetch, log: opts.httpLog && tokenLog(opts.httpLog) })).left;
     } catch {

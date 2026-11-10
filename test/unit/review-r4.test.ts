@@ -681,7 +681,7 @@ test("a disconnect whose revoke answer is lost never uses the refresh token agai
   assert.equal(r.removed, false);
   const tokenCalls: string[] = [];
   await assert.rejects(new Session(store, ENDPOINTS.sandbox, cfg.creds, { fetch: async (u) => (tokenCalls.push(String(u)), json(200, {})) }).accessToken(), /connection was ended/);
-  assert.deepEqual(tokenCalls, [], "the refresh token is never sent to /token again");
+  assert.deepEqual(tokenCalls.filter((u) => u === ENDPOINTS.sandbox.token), [], "the refresh token is never sent to /token again");
   assert.deepEqual(store.read()!.pendingRevoke, ["RT"]);
 });
 
@@ -796,4 +796,79 @@ test("a send record whose status is not a plain text counts as damaged, and a lo
   for (let n = 0; n < 12; n++) chain = { at: `2026-11-${String(n + 1).padStart(2, "0")}T00:00:00Z`, name: "x", status: n === 0 ? "sent" : "uncertain", ...(chain ? { previous: chain } : {}) };
   writeFileSync(join(home, "sent-sandbox.json"), JSON.stringify({ extf: { "455148-1": { abc: chain } } }));
   assert.equal(sentBefore("extf", "sandbox", "455148-1", "abc", { DATEV_MCP_HOME: home })!.status, "uncertain");
+});
+
+// Guards for the Grok attack of 2026-11-10 (ledger R10).
+
+const streamed = (status: number, contentType: string, chunks: Iterable<Uint8Array>, pulled = { bytes: 0 }) => {
+  const it = chunks[Symbol.iterator]();
+  return new Response(new ReadableStream<Uint8Array>({ pull(c) { const n = it.next(); if (n.done) c.close(); else { pulled.bytes += n.value.length; c.enqueue(n.value); } } }), { status, headers: { "content-type": contentType } });
+};
+const readDeps = (f: FetchLike): CallDeps => ({ env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: f, sleep: async () => undefined, maxBodyChars: 1000 });
+
+test("an error answer sent in tiny pieces past the read limit is scanned quickly and keeps DATEV's title", async () => {
+  const enc = new TextEncoder();
+  function* body() {
+    yield enc.encode(`{"detail":"`);
+    for (let n = 0; n < 300_000; n++) yield enc.encode("x");
+    yield enc.encode(`","type":"https://help.datev.de/tiny","title":"Tiny title"}`);
+  }
+  const started = Date.now();
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, readDeps(async () => streamed(403, "application/json", body())));
+  assert.ok(Date.now() - started < 5000, `took ${Date.now() - started} ms`);
+  assert.equal((r.body as Record<string, unknown>).title, "Tiny title");
+});
+
+test("a non-JSON error answer is not read past the read limit", async () => {
+  const pulled = { bytes: 0 };
+  function* body() {
+    for (let n = 0; n < 1000; n++) yield new Uint8Array(4096).fill(120);
+  }
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, readDeps(async () => streamed(500, "text/html", body(), pulled)));
+  assert.equal(r.truncated, true);
+  assert.ok(pulled.bytes < 200_000, `${pulled.bytes} bytes read`);
+});
+
+test("a title just after the read limit and far from the end of the answer is still kept", async () => {
+  const enc = new TextEncoder();
+  const head = `{"detail":"${"x".repeat(5000)}","title":"GAP TITLE","type":"https://help.datev.de/gap","more":"${"y".repeat(80_000)}"}`;
+  const bytes = enc.encode(head);
+  function* body() {
+    for (let at = 0; at < bytes.length; at += 1000) yield bytes.subarray(at, at + 1000);
+  }
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, readDeps(async () => streamed(403, "application/problem+json", body())));
+  assert.equal((r.body as Record<string, unknown>).title, "GAP TITLE");
+  assert.equal((r.body as Record<string, unknown>).type, "https://help.datev.de/gap");
+});
+
+test("a refused call on an ended connection retries the revoke and keeps an unconfirmed access token on record", async () => {
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r10-s-")), envKeyStore());
+  const later = Date.now() + 9e5;
+  store.write({ env: "sandbox", clientId: "cid", ended: true, tokens: { accessToken: "AT", expiresAt: later, obtainedAt: Date.now() }, pendingAccessRevoke: [{ token: "OLD-AT", expiresAt: later }] });
+  const bodies: string[] = [];
+  const f: FetchLike = async (_u, init) => (bodies.push(String(init?.body)), new URLSearchParams(String(init?.body)).get("token") === "OLD-AT" ? Promise.reject(new TypeError("socket hang up")) : new Response("", { status: 200 }));
+  await assert.rejects(new Session(store, ENDPOINTS.sandbox, { clientId: "cid" }, { fetch: f }).accessToken(), /connection was ended here and is not used again/);
+  for (let n = 0; n < 50 && store.read()!.tokens.expiresAt !== 0; n++) await new Promise((r) => setTimeout(r, 10));
+  assert.ok(bodies.some((b) => b.includes("token=AT&")) || bodies.some((b) => /token=AT($|&)/.test(b)), bodies.join(" | "));
+  assert.equal(store.read()!.tokens.expiresAt, 0, "the confirmed access token is done");
+  assert.deepEqual(store.read()!.pendingAccessRevoke, [{ token: "OLD-AT", expiresAt: later }], "the unconfirmed one stays on record");
+});
+
+test("a datev_call to an operation the client gate does not check hides the id in its path and query", async () => {
+  const h = await harness(() => json(200, {}, { location: "/clients/455148-1/x?next=/clients/455148-1/jobs&client-id=455148-1" }));
+  const r = await h.call("datev_call", { operation_id: "accounting-clients.getclient", path_params: { "client-id": "455148-1" } });
+  assert.equal(r.error, false, r.text);
+  const out = JSON.parse(r.text);
+  assert.ok(!out.url.includes("455148-1"), out.url);
+  assert.ok(!out.location.includes("455148-1"), out.location);
+});
+
+test("German keeps a client name that starts with unnamed client, and translates every sentence after an open bracket", () => {
+  assert.equal(localizeApproval("Client: unnamed client (Ost) (consultant 455148, client 1)", "de"), "Mandant: unnamed client (Ost) (Berater 455148, Mandant 1)");
+  assert.doesNotMatch(localize("Nothing was sent. (See the note. Try again later.", "de"), /Try again later/);
+});
+
+test("an empty stored service list falls back to the scopes DATEV granted", () => {
+  const hr = selectServices("hr-files").scopes.join(" ");
+  assert.ok(servicesOfSession({ services: [], tokens: { scope: hr } })!.includes("hr-files"));
 });

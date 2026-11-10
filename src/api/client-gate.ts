@@ -33,7 +33,10 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
   const hidden = new Set(ids.filter((x): x is string => !!x).flatMap((id) => [id, encodeURIComponent(id)]));
   const q = url.indexOf("?");
   const path = q < 0 ? url : url.slice(0, q);
-  return path.split("/").map((seg) => (hidden.has(seg) ? "{client}" : seg)).join("/") + (q < 0 ? "" : url.slice(q));
+  // In the query an id stands on its own between separators, also inside a nested address like next=/clients/id.
+  let query = q < 0 ? "" : url.slice(q);
+  for (const id of hidden) query = query.split(new RegExp(`(?<![A-Za-z0-9_-])${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_-])`)).join("{client}");
+  return path.split("/").map((seg) => (hidden.has(seg) ? "{client}" : seg)).join("/") + query;
 }
 
 /** Path ids for a person: the client's technical id is replaced, every other id is shown as sent. */

@@ -406,6 +406,30 @@ test("login checks the ID token, saves the name and chosen services, and revokes
   for (const l of out) assert.notEqual(localize(l, "de"), l, `every login line has a German version (F15): ${l.slice(0, 60)}`);
 });
 
+test("a new login keeps an ended login's access token on record when DATEV does not confirm its revoke", async () => {
+  const store = new TokenStore("sandbox", tmp(), envKeyStore());
+  const later = Date.now() + 9e5;
+  store.write({ env: "sandbox", clientId: "cid", ended: true, tokens: { accessToken: "OLD-AT", expiresAt: later, obtainedAt: Date.now() } });
+  let nonce = "";
+  const fake: FetchLike = async (u, init) => {
+    const url = String(u);
+    if (url === ep.jwks) return jwksFetch(u, init);
+    if (url === ep.token)
+      return new Response(JSON.stringify({ access_token: "NEW", refresh_token: "NEW-RT", expires_in: 900, id_token: idToken({ ...good, nonce }) }), { headers: { "content-type": "application/json" } });
+    if (url === ep.userinfo) return new Response(JSON.stringify({ sub: "user-1", name: "Max Muster" }), { headers: { "content-type": "application/json" } });
+    if (url === ep.revoke) return String(init?.body).includes("token=OLD-AT") ? Promise.reject(new TypeError("socket hang up")) : new Response(null, { status: 200 });
+    throw new Error(`unexpected ${url}`);
+  };
+  await login(cfg, { services: "hr-files", store, fetch: fake, httpLog: () => {}, log: () => {}, open: (authUrl) => {
+    const u = new URL(authUrl);
+    nonce = u.searchParams.get("nonce")!;
+    void fetch(`${u.searchParams.get("redirect_uri")}?code=C&state=${u.searchParams.get("state")}`);
+  } });
+  const s = store.read()!;
+  assert.equal(s.tokens.accessToken, "NEW");
+  assert.deepEqual(s.pendingAccessRevoke, [{ token: "OLD-AT", expiresAt: later }]);
+});
+
 test("a login without the full user name saves nothing and revokes the tokens DATEV just issued", async () => {
   const store = new TokenStore("sandbox", tmp(), envKeyStore());
   const revoked: string[] = [];

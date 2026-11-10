@@ -23,6 +23,8 @@ export interface StoredSession {
   /** Set when the connection was ended for a missing permission but DATEV did not confirm every revoke.
    *  No token is handed out again; the access token keeps its real expiry so it is still revoked. */
   ended?: boolean;
+  /** Access tokens of an earlier, ended login that DATEV has not confirmed as revoked, retried until they expire. */
+  pendingAccessRevoke?: { token: string; expiresAt: number }[];
 }
 
 interface Sealed {

@@ -3,6 +3,7 @@ import type { HttpLogEntry } from "../api/http-log.js";
 import { tokenLog } from "../setup/token-log.js";
 import { refreshTokens, TokenError, type ClientCredentials, type FetchLike } from "./token-client.js";
 import type { TokenStore } from "./token-store.js";
+import { revokePending } from "./pending-revoke.js";
 
 export class NeedsLoginError extends Error {
   constructor(reason: string) {
@@ -33,7 +34,11 @@ export class Session {
     const s = this.store.read();
     if (!s) throw new NeedsLoginError("no saved session");
     if (s.clientId !== this.creds.clientId) throw new NeedsLoginError("saved session belongs to a different DATEV app");
-    if (s.ended) throw new NeedsLoginError("the connection was ended because a data service permission is missing");
+    if (s.ended) {
+      // Each refused call retries the revokes DATEV has not confirmed, so they never wait for a status run.
+      void revokePending(this.store, this.endpoints, this.creds, { fetch: this.opts.fetch, log: this.opts.log && tokenLog(this.opts.log) }).catch(() => undefined);
+      throw new NeedsLoginError("the connection was ended here and is not used again; DATEV has not confirmed every revoke yet");
+    }
     if (s.tokens.expiresAt - SKEW_MS > this.now()) return s.tokens.accessToken;
     this.inflight ??= this.refresh().finally(() => {
       this.inflight = undefined;
@@ -46,7 +51,7 @@ export class Session {
       const s = this.store.read();
       if (!s) throw new NeedsLoginError("no saved session");
       if (s.clientId !== this.creds.clientId) throw new NeedsLoginError("saved session belongs to a different DATEV app");
-      if (s.ended) throw new NeedsLoginError("the connection was ended because a data service permission is missing");
+      if (s.ended) throw new NeedsLoginError("the connection was ended here and is not used again; DATEV has not confirmed every revoke yet");
       if (s.tokens.expiresAt - SKEW_MS > this.now()) return s.tokens.accessToken; // another process refreshed
       if (!s.tokens.refreshToken) throw new NeedsLoginError("session expired and has no refresh token");
       // On a dropped connection the token is kept on purpose: if DATEV never received it a retry succeeds, and if it did the session is lost either way.

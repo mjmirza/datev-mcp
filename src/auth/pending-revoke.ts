@@ -13,19 +13,23 @@ export async function revokePending(
   const first = store.read();
   // An ended connection's access token is revoked again too, until DATEV confirms or it expires.
   const accessOpen = (s: typeof first) => !!s?.ended && s.tokens.expiresAt > Date.now();
-  if ((!first?.pendingRevoke?.length && !accessOpen(first)) || first?.clientId !== creds.clientId) return { revoked: 0, left: first?.pendingRevoke?.length ?? 0 };
+  const earlier = (s: typeof first) => (s?.pendingAccessRevoke ?? []).filter((a) => a.expiresAt > Date.now());
+  if ((!first?.pendingRevoke?.length && !accessOpen(first) && !earlier(first).length) || first?.clientId !== creds.clientId) return { revoked: 0, left: first?.pendingRevoke?.length ?? 0 };
   return store.withLock(async () => {
     const s = store.read();
     const list = s?.pendingRevoke ?? [];
-    if (!s || (!list.length && !accessOpen(s))) return { revoked: 0, left: 0 };
-    const [results, access] = await Promise.all([
+    if (!s || (!list.length && !accessOpen(s) && !earlier(s).length)) return { revoked: 0, left: 0 };
+    const olderAccess = earlier(s);
+    const [results, access, older] = await Promise.all([
       Promise.allSettled(list.map((token) => revokeToken(endpoints.revoke, token, "refresh_token", creds, opts))),
       accessOpen(s) ? revokeToken(endpoints.revoke, s.tokens.accessToken, "access_token", creds, opts).then(() => true, () => false) : Promise.resolve(false),
+      Promise.allSettled(olderAccess.map((a) => revokeToken(endpoints.revoke, a.token, "access_token", creds, opts))),
     ]);
+    const accessLeft = olderAccess.filter((_, i) => older[i]!.status === "rejected");
     const left = list.filter((_, i) => results[i]!.status === "rejected");
-    const { pendingRevoke: _drop, ...rest } = s;
+    const { pendingRevoke: _drop, pendingAccessRevoke: _dropAccess, ...rest } = s;
     const tokens = access ? { ...s.tokens, expiresAt: 0 } : s.tokens;
-    store.write(left.length ? { ...rest, tokens, pendingRevoke: left } : { ...rest, tokens });
+    store.write({ ...rest, tokens, ...(left.length ? { pendingRevoke: left } : {}), ...(accessLeft.length ? { pendingAccessRevoke: accessLeft } : {}) });
     return { revoked: list.length - left.length, left: left.length };
   });
 }

@@ -71,7 +71,7 @@ export function servicesForScopes(scopes: string[]): string[] {
 /** The services a saved login covers: as chosen, or derived from its scopes. Unknown means none, so it fails closed. */
 export function servicesOfSession(s: { services?: string[]; scopes?: string[]; tokens?: { scope?: string } } | undefined): string[] | undefined {
   if (!s) return undefined;
-  if (s.services) return s.services;
+  if (s.services?.length) return s.services;
   const granted = s.scopes ?? s.tokens?.scope?.split(/\s+/).filter(Boolean);
   return granted ? servicesForScopes(granted) : [];
 }

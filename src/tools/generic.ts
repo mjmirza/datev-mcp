@@ -111,13 +111,14 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         const { bytes, ...r } = await callOperation(op, input, d);
         const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         // The answer names the client by its name, never by the technical id in the addresses DATEV used.
-        if (client) {
-          const ids = [client.client_id, client.guid];
+        // An operation the client gate does not check, like the client list itself, still hides the id it was given.
+        const ids = client ? [client.client_id, client.guid] : Object.entries(pp).filter(([k]) => /client/i.test(k)).map(([, v]) => String(v));
+        if (ids.length) {
           out.url = hideClientId(r.url, ids);
           if (r.location) out.location = hideClientId(r.location, ids);
           if (r.paging?.link) out.paging = { ...r.paging, link: hideClientId(r.paging.link, ids) };
-          out.client = shownClient(client);
         }
+        if (client) out.client = shownClient(client);
         // A redirect is not an answer: it is never followed, so nothing was read or done.
         if (r.status >= 300 && r.status < 400)
           out.note = op.write
