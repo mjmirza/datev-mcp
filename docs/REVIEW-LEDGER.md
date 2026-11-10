@@ -156,6 +156,8 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F137 | MEDIUM | A value holding every private-use character made the client id hiding search for a free marker for about 42 seconds, freezing the server | Codex R17 | fixed | 24e3dda | every private-use character in all three ranges returns in under 2 s |
 | F138 | LOW | When no free marker was left, the fallback hid the plain id but showed a percent-escaped copy of it | Codex R17 | fixed | 24e3dda | exhausted READ forms never leak an escaped id in any decoding |
 | F139 | LOW | The architecture doc promised the same bookings are never sent twice, but the check compares whole files, so a re-exported file counts as new | Codex R17 | fixed | fb60536 | the architecture doc promises duplicate detection per file, as the whole-file hash gives |
+| F140 | MEDIUM | A write whose connection broke after sending but before DATEV answered gave no warning that the change may already be applied | Codex R18 | fixed | 56ce434 | a write whose connection resets before DATEV answers warns it may be applied and is not resent |
+| F141 | LOW | An error answer that broke off below the read limit threw and lost its status, title and help link | Codex R18 | fixed | 56ce434 | a 403 that breaks off below the cap keeps its status, title and help link, logged as broken off |
 
 ## Evidence for rejected and disputed findings
 
