@@ -100,3 +100,11 @@ test("German mode shows the callback page in German", async () => {
   const wrong = await visit(mismatch, "de");
   assert.match(wrong.html, /Anmeldung nicht angenommen/);
 });
+
+test("the login command on the page never splits across lines", async () => {
+  for (const lang of ["en", "de"] as const) {
+    const { html } = await visit(`error=access_denied&state=${STATE}`, lang);
+    assert.match(html, /<code>datev-mcp login<\/code>/, lang);
+    assert.match(html, /code\{white-space:nowrap/, lang);
+  }
+});

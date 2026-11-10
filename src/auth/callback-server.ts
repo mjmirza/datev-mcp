@@ -29,7 +29,7 @@ main{width:100%;max-width:28rem;padding:clamp(1.5rem,5vw,2.25rem);background:var
 h1{margin:0 0 0.5rem;font-size:clamp(1.25rem,1.1rem + 0.8vw,1.6rem);line-height:1.25;font-weight:650;letter-spacing:-0.01em}
 p{margin:0 0 0.75rem;overflow-wrap:anywhere}
 .next{margin:1.25rem 0 0;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted-foreground)}
-code{font-family:ui-monospace,monospace;font-size:0.9em;padding:0.1em 0.35em;border:1px solid var(--border);border-radius:0.35rem}`;
+code{white-space:nowrap;font-family:ui-monospace,monospace;font-size:0.9em;padding:0.1em 0.35em;border:1px solid var(--border);border-radius:0.35rem}`;
 
 const CHECK = '<path d="M5 12.5l4.5 4.5L19 7.5"/>';
 const CROSS = '<path d="M7 7l10 10M17 7L7 17"/>';
@@ -40,7 +40,7 @@ function page(outcome: CallbackOutcome, answer?: string): string {
   const ok = outcome === "done";
   const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ok ? CHECK : CROSS}</svg>`;
   const detail = answer === undefined ? "" : `<p>${escapeHtml(t.answerLabel)} <code>${escapeHtml(answer)}</code></p>`;
-  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(t.title)}</title><style>${STYLE}</style></head><body><main class="${ok ? "ok" : "bad"}"><div class="mark">${icon}</div><h1>${escapeHtml(t.title)}</h1><p role="status">${escapeHtml(t.lead)}</p>${detail}<p class="next">${escapeHtml(t.next)}</p></main></body></html>`;
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(t.title)}</title><style>${STYLE}</style></head><body><main class="${ok ? "ok" : "bad"}"><div class="mark">${icon}</div><h1>${escapeHtml(t.title)}</h1><p role="status">${escapeHtml(t.lead)}</p>${detail}<p class="next">${escapeHtml(t.next).replace("datev-mcp login", "<code>datev-mcp login</code>")}</p></main></body></html>`;
 }
 
 const HEADERS = {
