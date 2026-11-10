@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { loginKey } from "../api/login-key.js";
 import { bounded, buildUrl, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { describeClient } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
@@ -172,7 +173,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         const sha256 = createHash("sha256").update(file.bytes).digest("hex");
         const documentId = documentGuid(client_id, sha256, { service: svc, ...metadata });
         const destination = buildUrl(op, d.env, { pathParams: { "client-id": client_id, "document-id": documentId } }).toString();
-        const who = [client.name, client.consultant_number !== undefined && `consultant ${client.consultant_number}`, client.client_number !== undefined && `client ${client.client_number}`].filter(Boolean).join(", ");
+        const who = describeClient(client);
         const fingerprint = { tool: "datev_upload_document", env: d.env, client_id, service: svc, document_id: documentId, file: file.path, name: file.name, content_type: contentType, sha256, metadata };
         if (confirm !== true) {
           return ok({

@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { clearClientGate } from "../../src/api/client-gate.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
 import { envKeyStore, loadOrCreateKey, type KeyStore } from "../../src/auth/session-key.js";
 import { ENDPOINTS } from "../../src/auth/endpoints.js";
@@ -13,7 +15,7 @@ import { TokenStore } from "../../src/auth/token-store.js";
 import { doctor } from "../../src/setup/doctor.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
 
-// Guards for ledger rows that were open before R6 (F16, F22, F39, F41, F42).
+// Guards for ledger rows that were open before R6 (F16, F22, F23, F39, F41, F42).
 process.env.DATEV_MCP_SESSION_KEY ??= "33".repeat(32);
 
 test("a corrupt plain text session is kept only as an encrypted copy", () => {
@@ -96,4 +98,26 @@ test("the setup and README login examples grant the service their first question
     const login = readFileSync(join(root, doc), "utf8").split("\n").find((l) => l.includes("index.js login --services"));
     assert.ok(login?.includes("accounting-dataexchange"), `${doc}: fiscal years, balances and the chart of accounts come from accounting-dataexchange`);
   }
+});
+
+test("a write's approval dialog names the client by name and numbers, not only the technical id", async () => {
+  clearClientGate();
+  const f: FetchLike = async (u, init) => {
+    const path = new URL(String(u)).pathname;
+    if ((init?.method ?? "GET").toUpperCase() === "GET" && /\/clients\/[^/]+$/.test(path))
+      return new Response(JSON.stringify({ id: "455148-1", name: "Muster GmbH", consultant_number: 455148, client_number: 1, services: [{ name: "Rechnungsdatenservice 1.0" }] }), { headers: { "content-type": "application/json" } });
+    return new Response("{}", { status: 201, headers: { "content-type": "application/json" } });
+  };
+  const server = new McpServer({ name: "t", version: "0" });
+  registerGenericTools(server, () => ({ env: "sandbox" as const, creds: { clientId: "c" }, token: async () => "T", fetch: f, sleep: async () => undefined }));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "t", version: "0" }, { capabilities: { elicitation: { form: {} } } });
+  let asked = "";
+  c.setRequestHandler(ElicitRequestSchema, async (req) => ((asked = String(req.params.message)), { action: "accept", content: { approve: true } }));
+  await c.connect(b);
+  const args = { operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs", path_params: { "client-id": "455148-1" }, body: { job_type: "x" } };
+  const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
+  await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
+  assert.match(asked, /Client: Muster GmbH, consultant 455148, client 1/);
 });

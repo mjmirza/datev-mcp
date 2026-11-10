@@ -16,6 +16,7 @@ import {
   type Report,
 } from "@seamless-engineering/datev-extf";
 import { buildHeaders, buildUrl, callOperation, CallError, UncertainSendError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { describeClient } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { finishSend, reserveSend, sentBefore } from "./sent-ledger.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -213,7 +214,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const client = await requireClientService(client_id, ["Buchungsdatenservice"], d);
         const earlier = sentBefore("extf", d.env, client_id, sha256);
         if (earlier && resend !== true) return err(alreadySent(earlier));
-        const who = [client.name, client.consultant_number !== undefined && `consultant ${client.consultant_number}`, client.client_number !== undefined && `client ${client.client_number}`].filter(Boolean).join(", ");
+        const who = describeClient(client);
         // A resend is bound to the earlier send the person saw, so a newer send in between needs a new preview.
         const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256, resend: resend === true, earlier_at: earlier?.at ?? null };
         if (confirm !== true) {

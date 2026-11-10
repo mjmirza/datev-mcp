@@ -21,6 +21,12 @@ export const CLIENT_CHECK: Record<string, string> = {
 
 export const SETUP_LINK = "http://go.datev.de/datenservices-einrichten";
 
+/** How a person recognises the client: its name and numbers, never the technical id alone. */
+export function describeClient(c: Pick<CheckedClient, "name" | "consultant_number" | "client_number"> & { client_id?: string }): string {
+  const parts = [c.name, c.consultant_number !== undefined && `consultant ${c.consultant_number}`, c.client_number !== undefined && `client ${c.client_number}`].filter(Boolean);
+  return parts.length ? parts.join(", ") : `client ${c.client_id ?? "unknown"}`;
+}
+
 export interface CheckedClient {
   client_id: string;
   name?: string;

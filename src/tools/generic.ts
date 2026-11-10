@@ -2,7 +2,7 @@ import { z } from "zod";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
-import { gateCall } from "../api/client-gate.js";
+import { describeClient, gateCall } from "../api/client-gate.js";
 import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -103,7 +103,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
-          const summary = [`${op.method.toUpperCase()} ${op.id}`, buildUrl(op, d.env, input).toString(), path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
+          const summary = [client && `Client: ${describeClient(client)}`, `${op.method.toUpperCase()} ${op.id}`, buildUrl(op, d.env, input).toString(), path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
           const denied = await humanApproval(server, d.env, summary);
           if (denied) return fail(denied);
         }
