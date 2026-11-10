@@ -20,6 +20,15 @@ import { registerUploadTools } from "./tools/upload.js";
 
 const VERSION = "0.0.1";
 
+function chosenServices(store: TokenStore): ReadonlySet<string> | undefined {
+  try {
+    const s = store.read()?.services;
+    return s ? new Set(s) : undefined;
+  } catch {
+    return undefined; // the token lookup reports the real problem
+  }
+}
+
 // The scopes DATEV actually granted to the saved login, or the ones requested if DATEV did not say.
 function grantedScopes(store: TokenStore): ReadonlySet<string> | undefined {
   try {
@@ -49,7 +58,7 @@ function createServer(cfg: Config): McpServer {
       return undefined;
     }
   };
-  const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), onMissingPermission, identity });
+  const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), chosenServices: chosenServices(store), onMissingPermission, identity });
   // A refresh token an earlier login could not revoke is retried in the background: DATEV allows only one.
   void revokePending(store, cfg.endpoints, cfg.creds, { log: tokenLog(httpLog) }).catch(() => undefined);
   registerConnectionTools(server, cfg, store, httpLog);

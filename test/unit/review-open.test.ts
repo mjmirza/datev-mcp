@@ -15,7 +15,7 @@ import { TokenStore } from "../../src/auth/token-store.js";
 import { doctor } from "../../src/setup/doctor.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
 
-// Guards for ledger rows that were open before R6 (F16, F22, F23, F24, F39, F41, F42).
+// Guards for ledger rows that were open before R6 (F12, F16, F22, F23, F24, F39, F41, F42).
 process.env.DATEV_MCP_SESSION_KEY ??= "33".repeat(32);
 
 test("a corrupt plain text session is kept only as an encrypted copy", () => {
@@ -128,4 +128,21 @@ test("DATEV's API descriptions never ship: the package is private and the built 
   assert.equal(pkg.private, true, "no registry release can carry the built index");
   const ignored = readFileSync(join(root, ".gitignore"), "utf8").split("\n").map((l) => l.trim());
   for (const p of ["dist/", "src/data/operations.json"]) assert.ok(ignored.includes(p), `${p} is git-ignored`);
+});
+
+test("an operation with no scope of its own is refused unless its service was chosen at login", async () => {
+  const { localize } = await import("../../src/i18n.js");
+  let sent = 0;
+  const f: FetchLike = async () => (sent++, new Response("[]", { headers: { "content-type": "application/json" } }));
+  const server = new McpServer({ name: "t", version: "0" });
+  registerGenericTools(server, () => ({ env: "sandbox" as const, creds: { clientId: "c" }, token: async () => "T", fetch: f, sleep: async () => undefined, chosenServices: new Set(["accounting-clients", "accounting-documents"]) }));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "t", version: "0" });
+  await c.connect(b);
+  const r = (await c.callTool({ name: "datev_call", arguments: { operation_id: "cashregister.gettenants" } })) as { isError?: boolean; content: { text: string }[] };
+  assert.equal(r.isError, true);
+  assert.match(r.content[0]!.text, /belongs to cashregister, which is not part of the connected data services/);
+  assert.equal(sent, 0, "nothing reached DATEV");
+  assert.match(localize(r.content[0]!.text, "de"), /gehört zu cashregister/);
 });

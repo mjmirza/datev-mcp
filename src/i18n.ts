@@ -118,6 +118,10 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
     (m) => `${m[1]} braucht den Scope ${m[2]}, der nicht zu den verbundenen Datenservices gehört. Führen Sie "datev-mcp login --services ..." mit dem zugehörigen Datenservice aus.`,
   ],
   [
+    /^(\S+) belongs to (\S+), which is not part of the connected data services\. Run "datev-mcp login --services \.\.\." with (\S+) added\.$/,
+    (m) => `${m[1]} gehört zu ${m[2]}, das nicht zu den verbundenen Datenservices gehört. Führen Sie "datev-mcp login --services ..." mit ${m[3]} aus.`,
+  ],
+  [
     /^(\S+) needs the (\S+) header\. Set (\S+) in the server's environment; it is never passed through the assistant\.$/,
     (m) => `${m[1]} braucht den Header ${m[2]}. Setzen Sie ${m[3]} in der Umgebung des Servers; er wird nie über den Assistenten weitergegeben.`,
   ],

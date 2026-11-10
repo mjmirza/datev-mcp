@@ -84,6 +84,8 @@ export interface CallDeps {
   maxBinaryBytes?: number;
   /** Scopes of the saved login. An operation outside them is refused before DATEV is asked. */
   grantedScopes?: ReadonlySet<string>;
+  /** The data services chosen at login. Unset for sessions from before services could be chosen. */
+  chosenServices?: ReadonlySet<string>;
   /** Writes one line of the technical HTTP log DATEV requires. Tests leave it out. */
   httpLog?: (entry: HttpLogEntry) => void;
   /** Reports why the HTTP log cannot be written. Defaults to the file log's own check. */
@@ -117,7 +119,11 @@ function serviceKey(name: string, deps: CallDeps): string | undefined {
 
 
 /** Refuses an operation whose scopes the saved login does not hold. openid is part of every login. */
-function checkGranted(op: Operation, granted: ReadonlySet<string> | undefined): void {
+function checkGranted(op: Operation, granted: ReadonlySet<string> | undefined, chosen?: ReadonlySet<string>): void {
+  // An operation with no scope of its own is bounded by the data services chosen at login instead.
+  const product = op.product.replace(/-health$/, "");
+  if (chosen && !op.scopes.some((s) => s !== "openid") && !chosen.has(product))
+    throw new CallError(`${op.id} belongs to ${product}, which is not part of the connected data services. Run "datev-mcp login --services ..." with ${product} added.`);
   if (!granted) return;
   const missing = op.scopes.filter((s) => s !== "openid" && !granted.has(s));
   if (missing.length)
@@ -473,7 +479,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
 
 // async so validation errors surface as a rejected promise, never a synchronous throw.
 export async function callOperation(op: Operation, input: CallInput, deps: CallDeps): Promise<CallResult> {
-  checkGranted(op, deps.grantedScopes);
+  checkGranted(op, deps.grantedScopes, deps.chosenServices);
   for (const name of serverHeadersOf(op))
     if (!serviceKey(name, deps)) throw new CallError(`${op.id} needs the ${name} header. Set ${SERVICE_KEY_ENV[name.toLowerCase()] ?? name} in the server's environment; it is never passed through the assistant.`);
   const url = buildUrl(op, deps.env, input);

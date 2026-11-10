@@ -21,6 +21,10 @@ const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Perso
   "my-tax-income-tax-documents": { label: "Belegbilderservice Einkommensteuer", group: "Steuern" },
   "property-tax-file-upload-api": { label: "Dokumentenservice Grundsteuer", group: "Steuern" },
   "master-data-master-clients": { label: "DATEV Basisdaten online (master-data:master-clients)", group: "Sonstiges" },
+  // No OAuth scope of their own, so only the choice at login keeps them out. Labels are DATEV's API titles.
+  cashregister: { label: "cashregister:import", group: "Sonstiges" },
+  "smarttransfer-inbound": { label: "smarttransfer:inbound", group: "Sonstiges" },
+  "smarttransfer-outbound": { label: "smarttransfer:outbound", group: "Sonstiges" },
 };
 
 // Every accounting service works on a client the user must have access to, which DATEV says to check in the client list.
