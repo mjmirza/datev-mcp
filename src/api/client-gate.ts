@@ -33,8 +33,9 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
   const plainIds = [...new Set(ids.filter((x): x is string => !!x))];
   if (!plainIds.length) return url;
   // One unit per raw piece, a %XX escape or one character, so each match maps back to the exact bytes it replaces.
-  const units = url.match(/%[0-9A-Fa-f]{2}|[\s\S]/gu) ?? [];
-  const char = (u: string) => (u.length === 3 && u[0] === "%" ? String.fromCharCode(parseInt(u.slice(1), 16)) : u.length === 1 ? u : "\ufffd");
+  // A %25XX escape is a character encoded twice, so it is read as that one character.
+  const units = url.match(/%25[0-9A-Fa-f]{2}|%[0-9A-Fa-f]{2}|[\s\S]/gu) ?? [];
+  const char = (u: string) => (u[0] === "%" && u.length >= 3 ? String.fromCharCode(parseInt(u.slice(-2), 16)) : u.length === 1 ? u : "\ufffd");
   const alts = plainIds.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   // An id stands on its own: no letter, digit or underscore beside it, and no digit joined to it by a dash.
   const ownWord = new RegExp(`(?<![A-Za-z0-9_])(?<![0-9]-)(?:${alts})(?![A-Za-z0-9_])(?!-[0-9])`, "gi");

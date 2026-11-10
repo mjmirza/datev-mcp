@@ -70,3 +70,8 @@ test("hiding an id in a query or fragment keeps every other byte as sent", () =>
   assert.equal(hideClientId("https://x/a?next=%2Fclients%2F455148%2D1%2Fjobs", ["455148-1"]), "https://x/a?next=%2Fclients%2F{client}%2Fjobs");
   assert.equal(hideClientId("https://x/a?doc=7&c=1455148-1", ["455148-1"]), "https://x/a?doc=7&c=1455148-1", "a longer number stays");
 });
+
+test("a client id encoded twice in a query is hidden too, and other bytes stay as sent", () => {
+  assert.equal(hideClientId("https://api.datev.de/x?next=%252F455148-1%252Fdocs&y=%25ZZ", ["455148-1"]), "https://api.datev.de/x?next=%252F{client}%252Fdocs&y=%25ZZ");
+  assert.equal(hideClientId("https://api.datev.de/x?next=%2534%2535%2535148-1", ["455148-1"]), "https://api.datev.de/x?next={client}");
+});
