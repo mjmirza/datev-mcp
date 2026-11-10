@@ -52,7 +52,7 @@ Inject the credentials from your password manager when you start the server, for
 
 ## 4. Log in once
 
-Choose the DATEV data services you actually use. DATEV allows only their scopes, so the server never asks for more.
+Choose the DATEV data services you use. DATEV allows only their scopes, so the server never asks for more.
 
 ```bash
 node dist/index.js services
