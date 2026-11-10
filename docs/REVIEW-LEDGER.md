@@ -35,7 +35,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F16 | HIGH | A quarantined corrupt session file stays in plaintext | R1-11 | open | | |
 | F17 | HIGH | Login completes without the full user name DATEV requires | R1-12, R2-13 | open | | |
 | F18 | MEDIUM | `azp` checked only for multiple audiences, `at_hash` never | R1-13, R2-23 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
-| F19 | MEDIUM | Client secret not trimmed | R1-14 | open | | |
+| F19 | MEDIUM | Client secret not trimmed | R1-14 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
 | F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | open | | decision pending, see rule 5 |
 | F21 | HIGH | A failed log write is reported once, then DATEV traffic continues unlogged | R1-16, R2-8 | open | | |
 | F22 | MEDIUM | `datev_call` treats 3xx as success | R1-17 | open | | |
@@ -59,7 +59,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | open | | |
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | open | | |
 | F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | open | | |
-| F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | open | | |
+| F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
 
 ## Evidence for rejected and disputed findings
 

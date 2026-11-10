@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { problemOf, problemText, type Problem } from "./problem.js";
-export { problemFields, problemOf, problemText, type Problem } from "./problem.js";
+export { problemFields, problemOf, problemText } from "./problem.js";
 import { bodyFingerprint, clip, iso, keepResponseBody, redactHeaders, type HttpLogEntry } from "./http-log.js";
 import type { DatevEnv } from "../auth/endpoints.js";
 import type { ClientCredentials, FetchLike } from "../auth/token-client.js";
