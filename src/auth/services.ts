@@ -3,7 +3,8 @@ import type { OperationIndex } from "../spec/types.js";
 
 // DATEV asks apps to name its data services the way DATEV does and to request only the scopes of the
 // services the customer chose. Labels are the DATEV-Datenservice names from the Schnittstellenvorgaben page.
-// Online-APIs without a data-service name show the API name and DATEV application as the product list writes them.
+// Sources: datev.de/web/de/berufsgruppenuebergreifend/mydatev/datenservices (the DATEV-Datenservices list) and the
+// developer portal product list. APIs that are no data service show the product and API name as DATEV writes them.
 const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Personalwirtschaft" | "Steuern" | "Sonstiges" }> = {
   "accounting-clients": { label: "accounting:clients (DATEV Rechnungswesen)", group: "Rechnungswesen" },
   "accounting-documents": { label: "Belegbilderservice Rechnungswesen", group: "Rechnungswesen" },
@@ -18,8 +19,8 @@ const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Perso
   "eau-api": { label: "Lohnaustauschdatenservice (hr:eau)", group: "Personalwirtschaft" },
   "hr-documents": { label: "Datenservice Dokumente Personalwirtschaft", group: "Personalwirtschaft" },
   "my-tax-income-tax-documents": { label: "Belegbilderservice Einkommensteuer", group: "Steuern" },
-  "property-tax-file-upload-api": { label: "property tax file upload API (DATEV DMS)", group: "Steuern" },
-  "master-data-master-clients": { label: "master-data:master-clients (DATEV Basisdaten online)", group: "Sonstiges" },
+  "property-tax-file-upload-api": { label: "Dokumentenservice Grundsteuer", group: "Steuern" },
+  "master-data-master-clients": { label: "DATEV Basisdaten online (master-data:master-clients)", group: "Sonstiges" },
 };
 
 // Every accounting service works on a client the user must have access to, which DATEV says to check in the client list.

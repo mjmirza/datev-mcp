@@ -195,8 +195,8 @@ test("data services carry DATEV's own names, spelled as DATEV writes them, never
     "Datenservice Dokumente Personalwirtschaft",
     "Belegbilderservice Einkommensteuer",
     "accounting:clients (DATEV Rechnungswesen)",
-    "master-data:master-clients (DATEV Basisdaten online)",
-    "property tax file upload API (DATEV DMS)",
+    "DATEV Basisdaten online (master-data:master-clients)",
+    "Dokumentenservice Grundsteuer",
   ])
     assert.ok(list.includes(name), name);
   assert.doesNotMatch(list, /Online-API|Einkommenssteuer/);
