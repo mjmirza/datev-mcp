@@ -401,6 +401,7 @@ test("login checks the ID token, saves the name and chosen services, and revokes
   assert.ok(s.scopes!.includes("datev:accounting:extf-files-import"));
   assert.ok(revoked.some((b) => b.includes("token=OLD-RT")), "only one valid refresh token at DATEV");
   assert.ok(out.some((l) => l.includes("Max Muster")));
+  assert.ok(out.some((l) => l.startsWith("Added accounting:clients")), "the added client list service is named, never added silently (F35)");
 });
 
 test("a login without the full user name saves nothing and revokes the tokens DATEV just issued", async () => {

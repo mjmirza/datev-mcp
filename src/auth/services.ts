@@ -37,7 +37,7 @@ function scopesOf(product: string): string[] {
 export class ServiceSelectionError extends Error {}
 
 /** Resolves a comma list of product ids into the chosen services and the exact scopes they need. */
-export function selectServices(list: string): { services: string[]; scopes: string[] } {
+export function selectServices(list: string): { services: string[]; scopes: string[]; added: string[] } {
   const asked = list.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
   if (!asked.length) throw new ServiceSelectionError(`Choose at least one DATEV data service. ${serviceList()}`);
   const unknown = asked.filter((p) => !Object.hasOwn(SERVICES, p));
@@ -46,7 +46,7 @@ export function selectServices(list: string): { services: string[]; scopes: stri
   if (asked.some((p) => NEEDS_CLIENT_LIST.has(p))) services.add("accounting-clients");
   const scopes = new Set<string>(["openid"]);
   for (const p of services) for (const sc of scopesOf(p)) scopes.add(sc);
-  return { services: [...services].sort(), scopes: [...scopes].sort() };
+  return { services: [...services].sort(), scopes: [...scopes].sort(), added: [...services].filter((p) => !asked.includes(p)) };
 }
 
 export function serviceList(): string {

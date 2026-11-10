@@ -99,7 +99,7 @@ function opQuestions(o: Op): QA[] {
   const uploadWrite = `Yes. ${typed ? `${code("datev_upload_file")} and ${code(typed)} send it` : `${code("datev_upload_file")} sends it`} only after the preview and confirmation code, and it is never retried.`;
   const optional = o.scopes.filter((x) => x !== "openid");
   const scopes = o.scopes.length
-    ? `${o.scopes.map(code).join(" and ")}.${optional.length ? ` The server requests ${optional.length > 1 ? "them" : "it"} at login unless ${code("DATEV_SCOPES")} leaves ${optional.length > 1 ? "them" : "it"} out.` : ""}${o.scopes.includes("openid") ? ` ${code("openid")} is always requested.` : ""}`
+    ? `${o.scopes.map(code).join(" and ")}.${optional.length ? ` The server requests ${optional.length > 1 ? "them" : "it"} at login only when you choose this data service.` : ""}${o.scopes.includes("openid") ? ` ${code("openid")} is always requested.` : ""}`
     : "DATEV's spec names no scope for it. Access depends on the app's product subscription.";
   const live = ledger.get(o.id);
   const failing = !o.write && live !== undefined && typeof live.status === "number" && live.status >= 300;

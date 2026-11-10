@@ -21,7 +21,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `master-data-master-clients.updateapp` need?
 
-`datev:master-data:master-clients:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:master-clients:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.updateapp` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `master-data-master-clients.updateapp` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.updateapp`?
 
@@ -53,7 +53,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `master-data-master-clients.search` need?
 
-`datev:master-data:master-clients:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:master-clients:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.search` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `master-data-master-clients.search` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.search`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `master-data-master-clients.findbyzmoid` need?
 
-`datev:master-data:master-clients:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:master-clients:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.findbyzmoid` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 119 ms.
 
 ### Is `master-data-master-clients.findbyzmoid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.findbyzmoid`?
 
@@ -117,7 +117,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `master-data-master-clients.findconsultantclientbyclientzmoid` need?
 
-`datev:master-data:master-clients:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:master-clients:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.findconsultantclientbyclientzmoid` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 404 on 2026-11-07. The test data has no such rec
 
 ### Is `master-data-master-clients.findconsultantclientbyclientzmoid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.findconsultantclientbyclientzmoid`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `master-data-master-clients.getinfo` need?
 
-`datev:master-data:org-info:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:org-info:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.getinfo` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 568 ms with 3 items.
 
 ### Is `master-data-master-clients.getinfo` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.getinfo`?
 
@@ -181,7 +181,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `master-data-master-clients.findall` need?
 
-`datev:master-data:master-clients:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:master-clients:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.findall` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 146 ms with 100 items.
 
 ### Is `master-data-master-clients.findall` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.findall`?
 
@@ -213,7 +213,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `master-data-master-clients.findcorporatestructurebyzmoid` need?
 
-`datev:master-data:org-info:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:org-info:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.findcorporatestructurebyzmoid` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ The DATEV sandbox answered HTTP 404 on 2026-11-07. The test data has no such rec
 
 ### Is `master-data-master-clients.findcorporatestructurebyzmoid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.findcorporatestructurebyzmoid`?
 
@@ -253,7 +253,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 174 ms with 107 items.
 
 ### Is `master-data-master-clients.getlegalforms` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.getlegalforms`?
 
@@ -277,7 +277,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `master-data-master-clients.findbynumber` need?
 
-`datev:master-data:org-info:read`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:master-data:org-info:read`. The server requests it at login only when you choose this data service.
 
 ### What did `master-data-master-clients.findbynumber` return in the DATEV sandbox?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "number" that no list call has returned 
 
 ### Is `master-data-master-clients.findbynumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.findbynumber`?
 
@@ -317,7 +317,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 107 ms with 253 items.
 
 ### Is `master-data-master-clients.getcountrycodes` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients.getcountrycodes`?
 

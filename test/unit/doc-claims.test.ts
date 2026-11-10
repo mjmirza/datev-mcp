@@ -12,6 +12,7 @@ const BANNED: [RegExp, string][] = [
   [/Default `human` in production, `token` in the sandbox/i, "production always asks a person (F10)"],
   [/Online-API (?:accounting|master|property)|Einkommenssteuer/, "DATEV's own data service names (F02)"],
   [/Ask DATEV to enable/i, "people using the app are never sent to DATEV for an integration problem (GEN-15)"],
+  [/every scope the operation index knows|`DATEV_SCOPES` leaves (?:it|them) out|overriding the service choice/i, "only the chosen services' scopes, DATEV_SCOPES only without a service choice (F13)"],
   [/Can I log out\?[^\n]*\n*[^\n]*Delete the session file/i, "logging out is datev-mcp disconnect, never deleting the file (F09)"],
 ];
 

@@ -56,7 +56,7 @@ Git ignores `.env/.env.local`, but the file is plain text, so do not keep a prod
 
 ```bash
 node --env-file=.env/.env.local dist/index.js services
-node --env-file=.env/.env.local dist/index.js login --services accounting-documents,accounting-extf-files
+node --env-file=.env/.env.local dist/index.js login --services accounting-dataexchange,accounting-documents,accounting-extf-files
 ```
 
 Pick the data services you will use from the `services` list. DATEV allows only their scopes, so the server asks for nothing more.

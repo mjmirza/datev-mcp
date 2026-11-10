@@ -51,7 +51,7 @@ Set `DATEV_MCP_NO_BROWSER=1`. The command prints the sign-in link and you open i
 
 ### Which scopes are requested?
 
-By default every scope the operation index knows. Set `DATEV_SCOPES` to a space separated list to request fewer.
+Only the scopes of the data services you choose with `login --services` or `DATEV_MCP_SERVICES`, plus `openid`. Choosing any accounting service also adds `accounting:clients`, because DATEV requires the client list check before it, and login says so. Without a service choice, experts can set `DATEV_SCOPES` to an exact list. With neither, login refuses and lists the services.
 
 ### Why can the server not tell me which scopes I got?
 

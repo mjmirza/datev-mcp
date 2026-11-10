@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.downloadreceiveddocumentbyid` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.downloadreceiveddocumentbyid` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.downloadreceiveddocumentbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.downloadreceiveddocumentbyid`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.getinboxdocumentids` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.getinboxdocumentids` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getinboxdocumentids` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getinboxdocumentids`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.getinboxdocumentmetadatabyid` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.getinboxdocumentmetadatabyid` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getinboxdocumentmetadatabyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getinboxdocumentmetadatabyid`?
 
@@ -117,7 +117,7 @@ Yes. `datev_upload_file` sends it only after the preview and confirmation code, 
 
 ### Which scope does `traffiqx-invoice.uploadzugferddata` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.uploadzugferddata` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `traffiqx-invoice.uploadzugferddata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.uploadzugferddata`?
 
@@ -149,7 +149,7 @@ Yes. `datev_upload_file` sends it only after the preview and confirmation code, 
 
 ### Which scope does `traffiqx-invoice.uploadstructureddata` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.uploadstructureddata` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `traffiqx-invoice.uploadstructureddata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.uploadstructureddata`?
 
@@ -181,7 +181,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.getdocumentstatusbyid` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.getdocumentstatusbyid` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getdocumentstatusbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getdocumentstatusbyid`?
 
@@ -213,7 +213,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.downloadsentdocumentbyid` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.downloadsentdocumentbyid` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.downloadsentdocumentbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.downloadsentdocumentbyid`?
 
@@ -245,7 +245,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.getoutboxdocumentids` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.getoutboxdocumentids` return in the DATEV sandbox?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getoutboxdocumentids` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getoutboxdocumentids`?
 
@@ -277,7 +277,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `traffiqx-invoice.getoutboxdocumentmetadatabyid` need?
 
-`openid` and `traffiqx:invoice`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`openid` and `traffiqx:invoice`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `traffiqx-invoice.getoutboxdocumentmetadatabyid` return in the DATEV sandbox?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getoutboxdocumentmetadatabyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getoutboxdocumentmetadatabyid`?
 

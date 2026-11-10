@@ -39,7 +39,7 @@ export const CURATED: Section[] = [
     ["What happens if two processes refresh at the same time?", "One refreshes, the other waits and then reads the new session. A process that loses the race adopts the newer session instead of deleting it."],
     ["Does a wrong client secret log me out?", "No. Only a rejected refresh token ends the session. A wrong secret shows an error and keeps the saved session."],
     ["How do I log in on a server without a browser?", "Set `DATEV_MCP_NO_BROWSER=1`. The command prints the sign-in link and you open it in any browser that can reach the machine's localhost."],
-    ["Which scopes are requested?", "By default every scope the operation index knows. Set `DATEV_SCOPES` to a space separated list to request fewer."],
+    ["Which scopes are requested?", "Only the scopes of the data services you choose with `login --services` or `DATEV_MCP_SERVICES`, plus `openid`. Choosing any accounting service also adds `accounting:clients`, because DATEV requires the client list check before it, and login says so. Without a service choice, experts can set `DATEV_SCOPES` to an exact list. With neither, login refuses and lists the services."],
     ["Why can the server not tell me which scopes I got?", "DATEV does not return the granted scopes in its token answer. A missing product only shows up as a 401 or 403 on first use."],
     ["Can I log out?", "Run `datev-mcp disconnect`. It revokes the connection at DATEV and then deletes the local session. Deleting the session file alone leaves the connection valid at DATEV, so never do that. Connected apps are also listed at https://apps.datev.de/tokrevui."],
     ["Does it support production?", "Yes, with `DATEV_ENV=production`, after DATEV has approved your app for production."],

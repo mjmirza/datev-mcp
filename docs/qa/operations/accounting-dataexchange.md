@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getjobstate` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getjobstate` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getjobstate` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getjobstate`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getfiscalyears` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getfiscalyears` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 133 ms with 1 items.
 
 ### Is `accounting-dataexchange.getfiscalyears` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getfiscalyears`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getfiscalyear` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getfiscalyear` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 253 ms with 1 items.
 
 ### Is `accounting-dataexchange.getfiscalyear` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getfiscalyear`?
 
@@ -117,7 +117,7 @@ Not your bookings. It starts an export job on DATEV's side. `datev_account_posti
 
 ### Which scope does `accounting-dataexchange.postaccountpostingsjob` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.postaccountpostingsjob` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The live tour of 2026-11-07 sent it to the DATEV sandbox through `datev_account_
 
 ### Is `accounting-dataexchange.postaccountpostingsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.postaccountpostingsjob`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getaccountingsequences` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getaccountingsequences` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 63 ms with 111 items.
 
 ### Is `accounting-dataexchange.getaccountingsequences` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getaccountingsequences`?
 
@@ -181,7 +181,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getgeneralledgeraccounts` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getgeneralledgeraccounts` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 235 ms.
 
 ### Is `accounting-dataexchange.getgeneralledgeraccounts` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getgeneralledgeraccounts`?
 
@@ -213,7 +213,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.gettermsofpayments` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.gettermsofpayments` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 50 ms with 7 items.
 
 ### Is `accounting-dataexchange.gettermsofpayments` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.gettermsofpayments`?
 
@@ -245,7 +245,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getagriculturalfinancialstatement` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getagriculturalfinancialstatement` return in the DATEV sandbox?
 
@@ -253,7 +253,7 @@ The DATEV sandbox answered HTTP 404 on 2026-11-07. The test data has no such rec
 
 ### Is `accounting-dataexchange.getagriculturalfinancialstatement` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getagriculturalfinancialstatement`?
 
@@ -277,7 +277,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getaccountpostingsjob` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getaccountpostingsjob` return in the DATEV sandbox?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getaccountpostingsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getaccountpostingsjob`?
 
@@ -309,7 +309,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `accounting-dataexchange.postopenitemsjob` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.postopenitemsjob` return in the DATEV sandbox?
 
@@ -317,7 +317,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dataexchange.postopenitemsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.postopenitemsjob`?
 
@@ -341,7 +341,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getopenitemsjob` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getopenitemsjob` return in the DATEV sandbox?
 
@@ -349,7 +349,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getopenitemsjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getopenitemsjob`?
 
@@ -373,7 +373,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getsumsandbalances` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getsumsandbalances` return in the DATEV sandbox?
 
@@ -381,7 +381,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 88 ms.
 
 ### Is `accounting-dataexchange.getsumsandbalances` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getsumsandbalances`?
 
@@ -405,7 +405,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `accounting-dataexchange.postsumsandbalancesquantityandweightjob` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.postsumsandbalancesquantityandweightjob` return in the DATEV sandbox?
 
@@ -413,7 +413,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dataexchange.postsumsandbalancesquantityandweightjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.postsumsandbalancesquantityandweightjob`?
 
@@ -437,7 +437,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dataexchange.getsumsandbalancesquantityandweightjob` need?
 
-`datev:accounting:exchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:accounting:exchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dataexchange.getsumsandbalancesquantityandweightjob` return in the DATEV sandbox?
 
@@ -445,7 +445,7 @@ The live sweep skipped it: needs a real "jobId" that no list call has returned y
 
 ### Is `accounting-dataexchange.getsumsandbalancesquantityandweightjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dataexchange.getsumsandbalancesquantityandweightjob`?
 

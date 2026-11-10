@@ -40,7 +40,7 @@ The server reads these environment variables.
 | `DATEV_CLIENT_SECRET` | No | Only for a Confidential app. Leave it out for a Public client, which production requires. A few APIs (Basisdaten online, SmartTransfer) work only with a Confidential client |
 | `DATEV_ENV` | No | `sandbox` (default) or `production` |
 | `DATEV_MCP_SERVICES` | No | Comma separated DATEV data services to connect, the same as `login --services`. Only their scopes are requested |
-| `DATEV_SCOPES` | No | Experts only. Exact space separated scopes, overriding the service choice |
+| `DATEV_SCOPES` | No | Experts only. Exact space separated scopes, used only when no data service is chosen |
 | `DATEV_MCP_HOME` | No | Absolute path for the session file. Default `$XDG_CONFIG_HOME/datev-mcp`, else `~/.config/datev-mcp` |
 | `DATEV_MCP_LOG_DIR` | No | Absolute path for the technical HTTP log. Default `<home>/logs` |
 | `DATEV_MCP_SESSION_KEY` | No | 64 hex characters. Encrypts the session when no OS credential store is available |
@@ -56,7 +56,7 @@ Choose the DATEV data services you actually use. DATEV allows only their scopes,
 
 ```bash
 node dist/index.js services
-node dist/index.js login --services accounting-documents,accounting-extf-files
+node dist/index.js login --services accounting-dataexchange,accounting-documents,accounting-extf-files
 ```
 
 `services` lists every data service with the name DATEV uses for it. A browser opens at DATEV. After you sign in, the server checks DATEV's ID token (signature, issuer, app, nonce and expiry) and reads your name from DATEV's userinfo. Nothing is saved if the ID token check fails.
@@ -84,7 +84,7 @@ Every call to DATEV, including token calls, is written to a daily JSON lines fil
 node dist/index.js doctor
 ```
 
-Each line is `OK` or `FAIL` with a short reason. It checks the credentials are present, the operation index loaded, a session exists, it yields a valid access token (refreshed only when due), DATEV's userinfo answers, and the clients API answers.
+Each line is `OK` or `FAIL` with a short reason. It checks the credentials are present, the operation index loaded, a session exists, it yields a valid access token (refreshed only when due), DATEV's userinfo answers, and, when an accounting service is connected, the clients API answers.
 
 ## 6. Connect your AI client
 
@@ -97,6 +97,8 @@ claude mcp add datev -- node /absolute/path/to/datev-mcp/dist/index.js
 Any other MCP client takes `node` as the command and the path to `dist/index.js` as its one argument. If you use a launcher script that injects the credentials, point the client at the launcher as the command, with an empty argument list.
 
 ## 7. First questions to try
+
+These use the Datenservice Export Rechnungswesen (`accounting-dataexchange`) from the login example above.
 
 1. "List my DATEV clients."
 2. "Which fiscal years does my first client have?"

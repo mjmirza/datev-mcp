@@ -36,7 +36,7 @@ export interface LoginOptions {
   open?: (url: string) => void;
 }
 
-export function chooseScopes(cfg: Config, cliServices?: string): { services?: string[]; scopes: string[] } {
+export function chooseScopes(cfg: Config, cliServices?: string): { services?: string[]; scopes: string[]; added?: string[] } {
   const list = cliServices ?? cfg.services;
   if (list !== undefined) return selectServices(list);
   if (cfg.scopes?.length) return { scopes: cfg.scopes.includes("openid") ? cfg.scopes : ["openid", ...cfg.scopes] };
@@ -46,7 +46,7 @@ export function chooseScopes(cfg: Config, cliServices?: string): { services?: st
 export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void> {
   const log = opts.log ?? ((s: string) => process.stderr.write(`${s}\n`));
   const httpLog = opts.httpLog ?? ((e: HttpLogEntry) => writeHttpLog(e));
-  const { services, scopes } = chooseScopes(cfg, opts.services);
+  const { services, scopes, added } = chooseScopes(cfg, opts.services);
   for (const w of setupWarnings(cfg)) log(`WARNING: ${w}`);
   const state = randomToken();
   const nonce = randomToken();
@@ -54,6 +54,8 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
   const cb = await startCallbackServer(state, { timeoutMs: 600_000 });
   const url = buildAuthorizeUrl(cfg.endpoints, { clientId: cfg.creds.clientId, redirectUri: cb.redirectUri, scopes, state, nonce, codeChallenge: pkce.challenge });
   if (services) log(`Connecting these DATEV data services: ${services.map(serviceLabel).join(", ")}.`);
+  // Never widen the request silently: say which service was added and why.
+  if (added?.length) log(`Added ${added.map(serviceLabel).join(", ")}, because DATEV requires checking the client list before any accounting data service.`);
   log(`Opening the DATEV ${cfg.env} login in your browser. If nothing opens, visit:\n\n  ${url}\n`);
   if (opts.open) opts.open(url);
   else if (process.env.DATEV_MCP_NO_BROWSER !== "1") openBrowser(url); // set to 1 over SSH, or to open the link in a browser of your choice

@@ -21,7 +21,7 @@ Yes. Through `datev_upload_extf` it goes through the preview and confirmation co
 
 ### Which scope does `accounting-extf-files.importextffile` need?
 
-`datev:accounting:extf-files-import`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:accounting:extf-files-import`. The server requests it at login only when you choose this data service.
 
 ### What did `accounting-extf-files.importextffile` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The live tour of 2026-11-07 sent it to the DATEV sandbox through `datev_upload_e
 
 ### Is `accounting-extf-files.importextffile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-extf-files.importextffile`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-extf-files.getjobs` need?
 
-`datev:accounting:extf-files-import`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:accounting:extf-files-import`. The server requests it at login only when you choose this data service.
 
 ### What did `accounting-extf-files.getjobs` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 145 ms with 3 items.
 
 ### Is `accounting-extf-files.getjobs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-extf-files.getjobs`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-extf-files.getjob` need?
 
-`datev:accounting:extf-files-import`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:accounting:extf-files-import`. The server requests it at login only when you choose this data service.
 
 ### What did `accounting-extf-files.getjob` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 135 ms.
 
 ### Is `accounting-extf-files.getjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-extf-files.getjob`?
 

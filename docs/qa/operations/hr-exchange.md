@@ -21,7 +21,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.saveabsencelug` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.saveabsencelug` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveabsencelug` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveabsencelug`?
 
@@ -53,7 +53,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.deleteabsencelug` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.deleteabsencelug` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteabsencelug` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteabsencelug`?
 
@@ -85,7 +85,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.saveabsencelodas` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.saveabsencelodas` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveabsencelodas` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveabsencelodas`?
 
@@ -117,7 +117,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.deleteabsencelodas` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.deleteabsencelodas` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteabsencelodas` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteabsencelodas`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getclient` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getclient` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 144 ms.
 
 ### Is `hr-exchange.getclient` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getclient`?
 
@@ -181,7 +181,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.saveemployeebyclientid` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.saveemployeebyclientid` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveemployeebyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveemployeebyclientid`?
 
@@ -213,7 +213,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updateemployeelistbyclientid` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updateemployeelistbyclientid` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateemployeelistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateemployeelistbyclientid`?
 
@@ -245,7 +245,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updateemployeebypersonnelnumber` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updateemployeebypersonnelnumber` return in the DATEV sandbox?
 
@@ -253,7 +253,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateemployeebypersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateemployeebypersonnelnumber`?
 
@@ -277,7 +277,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment` return in the DATEV sandbox?
 
@@ -285,7 +285,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment`?
 
@@ -309,7 +309,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment` return in the DATEV sandbox?
 
@@ -317,7 +317,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment`?
 
@@ -341,7 +341,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.saveemploymentperiodsbyemployee` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.saveemploymentperiodsbyemployee` return in the DATEV sandbox?
 
@@ -349,7 +349,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveemploymentperiodsbyemployee` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveemploymentperiodsbyemployee`?
 
@@ -373,7 +373,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber` return in the DATEV sandbox?
 
@@ -381,7 +381,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber`?
 
@@ -405,7 +405,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber` return in the DATEV sandbox?
 
@@ -413,7 +413,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber`?
 
@@ -437,7 +437,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid` return in the DATEV sandbox?
 
@@ -445,7 +445,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid`?
 
@@ -469,7 +469,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber` return in the DATEV sandbox?
 
@@ -477,7 +477,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber`?
 
@@ -501,7 +501,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber` return in the DATEV sandbox?
 
@@ -509,7 +509,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber`?
 
@@ -533,7 +533,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid` return in the DATEV sandbox?
 
@@ -541,7 +541,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid`?
 
@@ -565,7 +565,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobclientresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobclientresult` return in the DATEV sandbox?
 
@@ -573,7 +573,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 147 ms.
 
 ### Is `hr-exchange.getjobclientresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobclientresult`?
 
@@ -597,7 +597,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobemployeeresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobemployeeresult` return in the DATEV sandbox?
 
@@ -605,7 +605,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 69 ms.
 
 ### Is `hr-exchange.getjobemployeeresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobemployeeresult`?
 
@@ -629,7 +629,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobemploymentperiodresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobemploymentperiodresult` return in the DATEV sandbox?
 
@@ -637,7 +637,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 94 ms.
 
 ### Is `hr-exchange.getjobemploymentperiodresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobemploymentperiodresult`?
 
@@ -661,7 +661,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobmonthrecordresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobmonthrecordresult` return in the DATEV sandbox?
 
@@ -669,7 +669,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 82 ms.
 
 ### Is `hr-exchange.getjobmonthrecordresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobmonthrecordresult`?
 
@@ -693,7 +693,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobindividualdataresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobindividualdataresult` return in the DATEV sandbox?
 
@@ -701,7 +701,7 @@ The DATEV sandbox answered HTTP 501 on 2026-11-07. DATEV refused the request. Th
 
 ### Is `hr-exchange.getjobindividualdataresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobindividualdataresult`?
 
@@ -725,7 +725,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobabsenceresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobabsenceresult` return in the DATEV sandbox?
 
@@ -733,7 +733,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 147 ms.
 
 ### Is `hr-exchange.getjobabsenceresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobabsenceresult`?
 
@@ -757,7 +757,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobabsenceresult_1` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobabsenceresult_1` return in the DATEV sandbox?
 
@@ -765,7 +765,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 144 ms.
 
 ### Is `hr-exchange.getjobabsenceresult_1` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobabsenceresult_1`?
 
@@ -789,7 +789,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobgrosspaymentresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobgrosspaymentresult` return in the DATEV sandbox?
 
@@ -797,7 +797,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 150 ms.
 
 ### Is `hr-exchange.getjobgrosspaymentresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobgrosspaymentresult`?
 
@@ -821,7 +821,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobhourlywageresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobhourlywageresult` return in the DATEV sandbox?
 
@@ -829,7 +829,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 136 ms.
 
 ### Is `hr-exchange.getjobhourlywageresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobhourlywageresult`?
 
@@ -853,7 +853,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjoberrorresult` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjoberrorresult` return in the DATEV sandbox?
 
@@ -861,7 +861,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 149 ms.
 
 ### Is `hr-exchange.getjoberrorresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjoberrorresult`?
 
@@ -885,7 +885,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjobresultstatus` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjobresultstatus` return in the DATEV sandbox?
 
@@ -893,7 +893,7 @@ The DATEV sandbox answered HTTP 301 on 2026-11-07. That is a redirect, not a ref
 
 ### Is `hr-exchange.getjobresultstatus` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobresultstatus`?
 
@@ -917,7 +917,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getjob` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getjob` return in the DATEV sandbox?
 
@@ -925,7 +925,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 137 ms.
 
 ### Is `hr-exchange.getjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjob`?
 
@@ -949,7 +949,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.deletejob` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.deletejob` return in the DATEV sandbox?
 
@@ -957,7 +957,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deletejob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deletejob`?
 
@@ -981,7 +981,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.createjob` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.createjob` return in the DATEV sandbox?
 
@@ -989,7 +989,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.createjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.createjob`?
 
@@ -1013,7 +1013,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.savemonthrecordsbyemployee` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.savemonthrecordsbyemployee` return in the DATEV sandbox?
 
@@ -1021,7 +1021,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savemonthrecordsbyemployee` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savemonthrecordsbyemployee`?
 
@@ -1045,7 +1045,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.savemonthrecordsonclientlevel` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.savemonthrecordsonclientlevel` return in the DATEV sandbox?
 
@@ -1053,7 +1053,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savemonthrecordsonclientlevel` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savemonthrecordsonclientlevel`?
 
@@ -1077,7 +1077,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getresthook` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getresthook` return in the DATEV sandbox?
 
@@ -1085,7 +1085,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 145 ms with 1 items.
 
 ### Is `hr-exchange.getresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getresthook`?
 
@@ -1109,7 +1109,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.registerresthook` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.registerresthook` return in the DATEV sandbox?
 
@@ -1117,7 +1117,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.registerresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.registerresthook`?
 
@@ -1141,7 +1141,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exchange.getresthookbyid` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.getresthookbyid` return in the DATEV sandbox?
 
@@ -1149,7 +1149,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 153 ms.
 
 ### Is `hr-exchange.getresthookbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getresthookbyid`?
 
@@ -1173,7 +1173,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.updateresthook` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.updateresthook` return in the DATEV sandbox?
 
@@ -1181,7 +1181,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateresthook`?
 
@@ -1205,7 +1205,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.deleteresthook` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.deleteresthook` return in the DATEV sandbox?
 
@@ -1213,7 +1213,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteresthook`?
 
@@ -1237,7 +1237,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `hr-exchange.posttestresthooks` need?
 
-`datev:hr:payrolldataexchange` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataexchange` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-exchange.posttestresthooks` return in the DATEV sandbox?
 
@@ -1245,7 +1245,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.posttestresthooks` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.posttestresthooks`?
 

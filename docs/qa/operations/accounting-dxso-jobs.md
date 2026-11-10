@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dxso-jobs.get_clients` need?
 
-`accounting:clients:read` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:clients:read` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.get_clients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 352 ms with 6 items.
 
 ### Is `accounting-dxso-jobs.get_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dxso-jobs.get_clients_client_id` need?
 
-`accounting:clients:read` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:clients:read` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.get_clients_client_id` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 479 ms.
 
 ### Is `accounting-dxso-jobs.get_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id`?
 
@@ -85,7 +85,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `accounting-dxso-jobs.post_clients_client_id_dxso_jobs` need?
 
-`accounting:dxso-jobs` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:dxso-jobs` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.post_clients_client_id_dxso_jobs` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.post_clients_client_id_dxso_jobs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.post_clients_client_id_dxso_jobs`?
 
@@ -117,7 +117,7 @@ Yes. `datev_upload_file` sends it only after the preview and confirmation code, 
 
 ### Which scope does `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` need?
 
-`accounting:dxso-jobs` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:dxso-jobs` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id` need?
 
-`accounting:dxso-jobs` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:dxso-jobs` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id`?
 
@@ -181,7 +181,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id` need?
 
-`accounting:dxso-jobs` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:dxso-jobs` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id`?
 
@@ -213,7 +213,7 @@ Yes. Through `datev_call` it goes through the preview and confirmation code, and
 
 ### Which scope does `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id` need?
 
-`accounting:dxso-jobs` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:dxso-jobs` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id`?
 
@@ -245,7 +245,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries` need?
 
-`accounting:dxso-jobs` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:dxso-jobs` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries` return in the DATEV sandbox?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries`?
 
