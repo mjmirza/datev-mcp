@@ -110,3 +110,13 @@ test("a disconnect of a session from another app registration says which tokens 
   assert.match(r.message, /4 token\(s\) of another DATEV app registration could not be revoked here/);
   assert.notEqual(localize(r.message, "de"), r.message, "the message has a German version");
 });
+
+test("an expired backlog entry of another app registration's session is dropped, a live one is kept and nothing is sent", async () => {
+  const store = newStore();
+  const later = Date.now() + 9e5;
+  store.write({ env: "sandbox", clientId: "other-app", tokens: { accessToken: "AT", expiresAt: later, obtainedAt: Date.now() }, pendingAccessRevoke: [{ token: "GONE", expiresAt: Date.now() - 1000 }, { token: "LIVE", expiresAt: later }] });
+  let sent = 0;
+  await revokePending(store, ep, cfg.creds, { fetch: (async () => (sent++, new Response("", { status: 200 }))) as FetchLike });
+  assert.equal(sent, 0);
+  assert.deepEqual(store.read()?.pendingAccessRevoke?.map((a) => a.token), ["LIVE"]);
+});

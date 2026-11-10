@@ -98,3 +98,17 @@ test("the error scan keeps a numeric request id, also one cut at a scan batch ed
   const r2 = await callOperation(getOperation("accounting-clients.getclients")!, {}, deps(async () => s));
   assert.equal((r2.body as Record<string, unknown>).request_id, "12345");
 });
+
+test("an error answer exactly as long as the read limit that then goes quiet is not waited for", { timeout: 15_000 }, async () => {
+  const shell = `{"detail":"","title":"EXACT"`;
+  const exact = enc.encode(`{"detail":"${"x".repeat(1000 * 4 + 4 - shell.length)}","title":"EXACT"`);
+  assert.equal(exact.length, 1000 * 4 + 4);
+  const started = Date.now();
+  const quiet = (signal?: AbortSignal | null) =>
+    new Response(new ReadableStream<Uint8Array>({ start(c) { c.enqueue(exact); signal?.addEventListener("abort", () => c.error(signal.reason)); } }), { status: 403, headers: { "content-type": "application/json" } });
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, deps(async (_u, init) => quiet(init?.signal), { deadlineMs: 9000 }));
+  assert.ok(Date.now() - started < 6000, `took ${Date.now() - started} ms`);
+  assert.equal(r.status, 403);
+  assert.equal((r.body as Record<string, unknown>).title, "EXACT");
+});
+

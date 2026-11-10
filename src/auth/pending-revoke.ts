@@ -14,16 +14,22 @@ export async function revokePending(
   // An ended connection's access token is revoked again too, until DATEV confirms or it expires.
   const accessOpen = (s: typeof first) => !!s?.ended && s.tokens.expiresAt > Date.now();
   const earlier = (s: typeof first) => (s?.pendingAccessRevoke ?? []).filter((a) => a.expiresAt > Date.now());
-  if (first?.clientId !== creds.clientId) return { revoked: 0, left: first?.pendingRevoke?.length ?? 0 };
   // Expired access tokens need no revoke, so their record is dropped instead of kept forever.
-  if (!first.pendingRevoke?.length && !accessOpen(first) && !earlier(first).length) {
-    if (first.pendingAccessRevoke) await store.withLock(async () => {
+  const dropExpired = () =>
+    store.withLock(async () => {
       const s = store.read();
       if (!s?.pendingAccessRevoke) return;
       const { pendingAccessRevoke: _gone, ...rest } = s;
       const keep = earlier(s);
       store.write(keep.length ? { ...rest, pendingAccessRevoke: keep } : rest);
     });
+  if (first?.clientId !== creds.clientId) {
+    // Another app's tokens cannot be revoked here, but an expired one needs no revoke at all.
+    if (first?.pendingAccessRevoke?.some((a) => a.expiresAt <= Date.now())) await dropExpired();
+    return { revoked: 0, left: first?.pendingRevoke?.length ?? 0 };
+  }
+  if (!first.pendingRevoke?.length && !accessOpen(first) && !earlier(first).length) {
+    if (first.pendingAccessRevoke) await dropExpired();
     return { revoked: 0, left: 0 };
   }
   return store.withLock(async () => {
