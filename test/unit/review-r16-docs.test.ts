@@ -40,3 +40,9 @@ test("the architecture doc names the EXTF sent ledger the code keeps", () => {
   assert.match(arch, /sent-sandbox\.json/);
   assert.doesNotMatch(arch, /The one thing kept/);
 });
+
+test("the architecture doc promises duplicate detection per file, as the whole-file hash gives", () => {
+  assert.ok(read("src/tools/extf.ts").includes('createHash("sha256").update(file.bytes)'));
+  assert.ok(arch.includes("hash of its exact bytes"));
+  assert.ok(!arch.includes("same bookings are never sent") && !arch.includes("same bookings are not sent"));
+});

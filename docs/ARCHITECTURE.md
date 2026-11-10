@@ -49,7 +49,7 @@ Writes never go out on the AI's word alone.
 
 1. The tool first returns a preview of exactly what would be sent, with the client shown by name and numbers.
 2. Against DATEV production, a person approves that preview in the AI client, which asks through MCP elicitation. A client that cannot ask is refused and nothing is sent. In the sandbox, when the client cannot ask, the preview's confirm code approves the write, unless `DATEV_MCP_CONFIRM=human` is set.
-3. The write is sent. For EXTF booking batches a sent ledger records each batch, so the same bookings are not sent to DATEV twice by accident.
+3. The write is sent. For EXTF booking batches a sent ledger records each file by a hash of its exact bytes, so the same file is not sent to DATEV twice by accident. A file exported again, for example with a new creation time in its header, counts as a new file, so the person still checks for duplicate bookings in DATEV.
 4. When DATEV answers with a server error or a timeout, the answer says the change may already be applied and should be checked in DATEV before sending again.
 
 ## Tokens and sign-in
@@ -65,7 +65,7 @@ Writes never go out on the AI's word alone.
 - No background polling. DATEV is called when a tool is used, and once at start-up to retry revoking a token DATEV did not confirm before.
 - No database of client data. Answers pass through to the AI client. Two things are kept in an owner-only folder on this computer.
   - The technical HTTP log DATEV requires, kept at least 14 days. It holds request bodies and the answer body of failed requests and job status calls, which can contain client data.
-  - The EXTF sent ledger, `sent-sandbox.json` or `sent-production.json`. For each uploaded batch it keeps the client id, file name, content hash, time, job id and result, so the same bookings are never sent twice. It is not pruned, because forgetting a batch would allow a duplicate send. `datev-mcp disconnect` leaves it in place.
+  - The EXTF sent ledger, `sent-sandbox.json` or `sent-production.json`. For each uploaded batch it keeps the client id, file name, a hash of the file's exact bytes, time, job id and result, so the same file is not sent twice by accident. It is not pruned, because forgetting a batch would allow a duplicate send. `datev-mcp disconnect` leaves it in place.
 - No DATEV specifications, descriptions or logos in this repository. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Where to read more
