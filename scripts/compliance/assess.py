@@ -1,10 +1,12 @@
-import re, sys
+import json
+import re
+import sys
 from collections import OrderedDict
 
 SRC = sys.argv[1]
 OUT = sys.argv[2]
 
-M, P, O, NA, NO = "met", "partial", "open", "n/a", "needs-owner"
+M, P, OPEN, NA, NO = "met", "partial", "open", "n/a", "needs-owner"
 NOOFF = "app never requests offline_access (no long-term token; scopes come from services.ts:31-35, none is offline_access or datev:iam:client)"
 GEN_ONLY = "only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this"
 
@@ -115,7 +117,7 @@ A = {
         "A new login revokes the previous refresh token and keeps unconfirmed ones encrypted and retried (src/auth/pending-revoke.ts); a failed login revokes the tokens it received (ledger F05, F30)",
     ),
     "GEN-30": (
-        O,
+        OPEN,
         "Access token is not revoked after a data exchange; it lives until expiry (src/auth/session.ts:36)",
     ),
     "GEN-31": (NA, NOOFF),
@@ -319,7 +321,7 @@ A = {
         "document_type is required for every Belegbilderservice document and checked against the client's types; the two-type demo is the owner's",
     ),
     "DOCS-08": (
-        O,
+        OPEN,
         "No compression or readability handling; files are sent as-is up to 20 MB (src/tools/documents.ts:13,78)",
     ),
     "DOCS-09": (M, "note sent in metadata (src/tools/documents.ts:65,82)"),
@@ -373,7 +375,7 @@ A = {
         "Owner demonstrates one document upload in sandbox (tool: datev_upload_document)",
     ),
     "EXTF-10": (
-        O,
+        OPEN,
         "datev_write_extf_batch has no Beleglink (column 20) field (src/tools/extf.ts:83-95)",
     ),
     "EXTF-11": (
@@ -397,14 +399,14 @@ A = {
         "Owner prepares productive DATEV Rechnungswesen/Unternehmen online test client",
     ),
     "EXTF-16": (NO, "Owner demonstrates two documents from different months"),
-    "EXTF-17": (O, "No compression; same gap as DOCS-08"),
+    "EXTF-17": (OPEN, "No compression; same gap as DOCS-08"),
     "EXTF-18": (NO, "Owner sends booking data for two months"),
     "EXTF-19": (
         P,
         "Debitoren/Kreditoren files can be validated (src/tools/extf.ts:99-120) and uploaded if supplied, but the app cannot generate them",
     ),
     "EXTF-20": (NO, "Owner verifies error-free import in DATEV Rechnungswesen"),
-    "EXTF-21": (O, "Needs Beleglink support (EXTF-10)"),
+    "EXTF-21": (OPEN, "Needs Beleglink support (EXTF-10)"),
     "EXTF-22": (
         P,
         "Validation, local size limits and help links handle some challenges; resend protection (EXTF-11) and permission filtering (EXTF-03) are missing",
@@ -430,7 +432,7 @@ A = {
         NO,
         "Owner creates special-case sample files (several cases need fields the writer lacks, see EXTFF-05)",
     ),
-    "EXTFF-09": (O, "No Debitoren/Kreditoren writer"),
+    "EXTFF-09": (OPEN, "No Debitoren/Kreditoren writer"),
     "EXTFF-10": (
         NO,
         "Owner creates a business-partner sample file (no writer in the app, EXTFF-09)",
@@ -458,19 +460,19 @@ A = {
         "A denied client gives a clear refusal with a hint to check the numbers or ask the administrator, DATEV's setup page and help link (src/api/client-gate.ts)",
     ),
     "DXSO-06": (
-        O,
+        OPEN,
         "Status 'connected' relies on userinfo (src/setup/status.ts:66-69), not on GET clients/{client-id}",
     ),
     "DXSO-07": (
-        O,
+        OPEN,
         "Dataset prerequisites (Erweitert, fiscal year, account length, ledgers) not checked",
     ),
     "DXSO-08": (
-        O,
+        OPEN,
         "No configuration validation via GET /clients/{client-id} before transfer",
     ),
-    "DXSO-09": (O, "No reaction to configuration changes"),
-    "DXSO-10": (O, "ledger_folder_names not read or applied"),
+    "DXSO-09": (OPEN, "No reaction to configuration changes"),
+    "DXSO-10": (OPEN, "ledger_folder_names not read or applied"),
     "DXSO-11": (
         M,
         "Single file <= 20 MB and total <= 50 MB per upload (src/tools/upload.ts:15-16), within DATEV's 20/150 MB",
@@ -479,14 +481,14 @@ A = {
         P,
         "File names with control characters, quotes and Windows-reserved characters refused (src/tools/upload.ts:30-35), but non-ASCII names are allowed",
     ),
-    "DXSO-13": (O, "No bundling of same-ledger/month data; " + GEN_ONLY),
+    "DXSO-13": (OPEN, "No bundling of same-ledger/month data; " + GEN_ONLY),
     "DXSO-14": (
-        O,
+        OPEN,
         "Job status and protocol-entries not fetched or shown automatically; "
         + GEN_ONLY,
     ),
     "DXSO-15": (
-        O,
+        OPEN,
         "HTTP log keeps job bodies 30 days only (src/api/http-log.ts:8); no 1-year processing protocol store",
     ),
     "DXSO-16": (
@@ -495,18 +497,18 @@ A = {
     ),
     # 12 DXSO file
     "DXSOF-01": (
-        O,
+        OPEN,
         "App does not generate DXSO XML; it uploads whatever file it is given",
     ),
-    "DXSOF-02": (O, "No XSD validation of XML files before upload"),
+    "DXSOF-02": (OPEN, "No XSD validation of XML files before upload"),
     "DXSOF-03": (NO, "Owner test-imports XML into a test dataset"),
     "DXSOF-04": (
-        O,
+        OPEN,
         "No XML generation, so base data depends entirely on the supplied file",
     ),
     "DXSOF-05": (NO, "Owner produces sample ZIPs"),
     "DXSOF-06": (NO, "Owner produces correction sample"),
-    "DXSOF-07": (O, "No XML generation (see DXSOF-04)"),
+    "DXSOF-07": (OPEN, "No XML generation (see DXSOF-04)"),
     "DXSOF-08": (NO, "Owner produces daily cash report sample"),
     "DXSOF-09": (NO, "Owner produces single-transaction sample"),
     # 13 dataexchange
@@ -556,15 +558,15 @@ A = {
         "Owner subscribes via 'Kostenpflichtig abonnieren' and pays from 2027",
     ),
     # 14 TRAFFIQX
-    "TQ-01": (O, "No place to enter TRAFFIQX provider/ID; " + GEN_ONLY),
-    "TQ-02": (O, GEN_ONLY),
-    "TQ-03": (O, "No connection check after login for traffiqx-invoice"),
-    "TQ-04": (O, "No per-use-case connection check"),
+    "TQ-01": (OPEN, "No place to enter TRAFFIQX provider/ID; " + GEN_ONLY),
+    "TQ-02": (OPEN, GEN_ONLY),
+    "TQ-03": (OPEN, "No connection check after login for traffiqx-invoice"),
+    "TQ-04": (OPEN, "No per-use-case connection check"),
     "TQ-05": (
-        O,
+        OPEN,
         "Status 'connected' does not depend on a TRAFFIQX 200 (src/setup/status.ts:66-69)",
     ),
-    "TQ-06": (O, "No revoke on connection-check failure"),
+    "TQ-06": (OPEN, "No revoke on connection-check failure"),
     "TQ-07": (
         P,
         "Required X-App-Display-Name header is enforced (src/api/client.ts:37-40) but its value comes from the caller, not pinned to the portal app name",
@@ -573,33 +575,33 @@ A = {
         P,
         "Errors carry DATEV's help link (src/api/problem.ts); no further self-help offered",
     ),
-    "TQ-09": (O, "No inbox sync; " + GEN_ONLY),
+    "TQ-09": (OPEN, "No inbox sync; " + GEN_ONLY),
     "TQ-10": (
         P,
         "document_id is returned in tool answers but not kept across the lifecycle",
     ),
-    "TQ-11": (O, "Validation status not highlighted"),
-    "TQ-12": (O, "No notice for invalid e-invoices"),
+    "TQ-11": (OPEN, "Validation status not highlighted"),
+    "TQ-12": (OPEN, "No notice for invalid e-invoices"),
     "TQ-13": (
-        O,
+        OPEN,
         "ZIP not extracted or archived; binary only saved or base64-returned (src/tools/generic.ts:105-109)",
     ),
-    "TQ-14": (O, "No GoBD archiving statement"),
+    "TQ-14": (OPEN, "No GoBD archiving statement"),
     "TQ-15": (
         P,
         "Upload paths reachable via datev_upload_file (src/tools/upload.ts); 'sent' proof by owner",
     ),
-    "TQ-16": (O, GEN_ONLY),
-    "TQ-17": (O, "document_id not stored"),
-    "TQ-18": (O, "Status values not interpreted"),
+    "TQ-16": (OPEN, GEN_ONLY),
+    "TQ-17": (OPEN, "document_id not stored"),
+    "TQ-18": (OPEN, "Status values not interpreted"),
     "TQ-19": (
         P,
         "App never polls on its own; nothing limits an assistant polling via datev_call",
     ),
-    "TQ-20": (O, "No ordering of download after 'sent'"),
-    "TQ-21": (O, "No GoBD archiving statement"),
-    "TQ-22": (O, "No ordering of metadata fetch after 'sent'"),
-    "TQ-23": (O, "Delivery channel not checked or shown"),
+    "TQ-20": (OPEN, "No ordering of download after 'sent'"),
+    "TQ-21": (OPEN, "No GoBD archiving statement"),
+    "TQ-22": (OPEN, "No ordering of metadata fetch after 'sent'"),
+    "TQ-23": (OPEN, "Delivery channel not checked or shown"),
     "TQ-24": (NO, "Owner demonstrates per-channel sends and an error case"),
     "TQ-25": (NO, "Owner contacts b4value; customer needs a provider contract"),
     "TQ-26": (
@@ -613,7 +615,7 @@ A = {
         "hr-files calls read GET /v1/clients/{client-id} first; datev_check_client shows success and reproduces the refusal for numbers without permission",
     ),
     "HRIMP-03": (
-        O,
+        OPEN,
         "Status 'connected' not tied to GET clients (src/setup/status.ts:66-69)",
     ),
     "HRIMP-04": (
@@ -662,7 +664,7 @@ A = {
     "HRPAY-10": (NA, "Same as HRPAY-09"),
     "HRPAY-11": (NA, "Same as HRPAY-09"),
     "HRPAY-12": (NO, "Owner tests from a dedicated test system"),
-    "HRPAY-13": (O, "No paged HR client list with numbers and company name"),
+    "HRPAY-13": (OPEN, "No paged HR client list with numbers and company name"),
     "HRPAY-14": (NA, "Descriptive note, no obligation"),
     # 18 exports
     "HREXP-01": (M, "Manual trigger only"),
@@ -671,7 +673,7 @@ A = {
         M,
         "hr-exports reads GET /clients/{client-id} first; datev_check_client is where the person enters the numbers",
     ),
-    "HREXP-04": (O, "Status 'connected' not tied to GET clients"),
+    "HREXP-04": (OPEN, "Status 'connected' not tied to GET clients"),
     "HREXP-05": (
         M,
         "Same understandable refusal with hint as HRPAY-05 (src/api/client-gate.ts)",
@@ -685,10 +687,10 @@ A = {
         "All retrieved data is returned to the person (src/tools/generic.ts:102-110)",
     ),
     "HREXP-08": (NO, "Owner tests from a dedicated test system"),
-    "HREXP-09": (O, "Nothing prevents both filters in one call"),
+    "HREXP-09": (OPEN, "Nothing prevents both filters in one call"),
     # 19 exchange
     "HREX-01": (NO, "Owner names the use cases at the review"),
-    "HREX-02": (O, "No counter-booking logic; " + GEN_ONLY),
+    "HREX-02": (OPEN, "No counter-booking logic; " + GEN_ONLY),
     "HREX-03": (
         M,
         "hr-exchange reads GET /clients/{client-id} first and datev_check_client shows whether it succeeded",
@@ -697,40 +699,40 @@ A = {
         P,
         "Jobs can be created through datev_call with preview and approval (src/tools/generic.ts:81-101)",
     ),
-    "HREX-05": (O, "No forced full read before create/change"),
-    "HREX-06": (O, "No 1-minute wait before status queries"),
-    "HREX-07": (O, "No once-per-minute polling limit"),
-    "HREX-08": (O, "No 15-minute stop rule"),
-    "HREX-09": (O, "No initial sync"),
-    "HREX-10": (O, "No local store to reconcile"),
+    "HREX-05": (OPEN, "No forced full read before create/change"),
+    "HREX-06": (OPEN, "No 1-minute wait before status queries"),
+    "HREX-07": (OPEN, "No once-per-minute polling limit"),
+    "HREX-08": (OPEN, "No 15-minute stop rule"),
+    "HREX-09": (OPEN, "No initial sync"),
+    "HREX-10": (OPEN, "No local store to reconcile"),
     "HREX-11": (
         P,
         "Calls and job bodies logged 30 days (src/api/http-log.ts); results not stored as a user-facing log",
     ),
-    "HREX-12": (O, GEN_ONLY),
-    "HREX-13": (O, GEN_ONLY),
-    "HREX-14": (O, "No check that IDs come from a prior read"),
-    "HREX-15": (O, GEN_ONLY),
-    "HREX-16": (O, "No read-before-write for employees"),
-    "HREX-17": (O, GEN_ONLY),
+    "HREX-12": (OPEN, GEN_ONLY),
+    "HREX-13": (OPEN, GEN_ONLY),
+    "HREX-14": (OPEN, "No check that IDs come from a prior read"),
+    "HREX-15": (OPEN, GEN_ONLY),
+    "HREX-16": (OPEN, "No read-before-write for employees"),
+    "HREX-17": (OPEN, GEN_ONLY),
     "HREX-18": (
-        O,
+        OPEN,
         "Request bodies are not validated against the schema's required fields (src/api/client.ts:215-238)",
     ),
-    "HREX-19": (O, "Duplicate personnel numbers not caught"),
-    "HREX-20": (O, GEN_ONLY),
+    "HREX-19": (OPEN, "Duplicate personnel numbers not caught"),
+    "HREX-20": (OPEN, GEN_ONLY),
     "HREX-21": (NA, "COULD option, nothing required"),
-    "HREX-22": (O, "No full read of absences before writing"),
-    "HREX-23": (O, GEN_ONLY),
-    "HREX-24": (O, GEN_ONLY),
-    "HREX-25": (O, GEN_ONLY),
-    "HREX-26": (O, "No existence check for month records"),
-    "HREX-27": (O, GEN_ONLY),
-    "HREX-28": (O, GEN_ONLY),
+    "HREX-22": (OPEN, "No full read of absences before writing"),
+    "HREX-23": (OPEN, GEN_ONLY),
+    "HREX-24": (OPEN, GEN_ONLY),
+    "HREX-25": (OPEN, GEN_ONLY),
+    "HREX-26": (OPEN, "No existence check for month records"),
+    "HREX-27": (OPEN, GEN_ONLY),
+    "HREX-28": (OPEN, GEN_ONLY),
     "HREX-29": (NO, "Owner tests from a dedicated test system"),
-    "HREX-30": (O, "No automatic GET job after changes"),
-    "HREX-31": (O, "No duplicate handling"),
-    "HREX-32": (O, "No validation GET after PUT"),
+    "HREX-30": (OPEN, "No automatic GET job after changes"),
+    "HREX-31": (OPEN, "No duplicate handling"),
+    "HREX-32": (OPEN, "No validation GET after PUT"),
     "HREX-33": (
         P,
         "Changes traceable only through the 30-day HTTP log (src/api/http-log.ts:8)",
@@ -744,7 +746,7 @@ A = {
     "EAU-03": (NO, "Owner demonstrates a request"),
     "EAU-04": (P, "Feedback data is returned in the tool answer; no dedicated display"),
     "EAU-05": (NO, "Owner demonstrates DELETE (reachable via datev_call with preview)"),
-    "EAU-06": (O, "No warning about § 5 (1) EntgFG or the 4th-day rule"),
+    "EAU-06": (OPEN, "No warning about § 5 (1) EntgFG or the 4th-day rule"),
     # 21 hr documents
     "HRDOCS-01": (
         M,
@@ -758,26 +760,26 @@ A = {
         M,
         "my-tax-income-tax-documents reads GET /clients/{client-id} first; datev_check_client is where the person enters the numbers",
     ),
-    "MYTAX-03": (O, "Status 'connected' not tied to GET clients"),
-    "MYTAX-04": (O, "tax-years not checked per transfer day"),
+    "MYTAX-03": (OPEN, "Status 'connected' not tied to GET clients"),
+    "MYTAX-04": (OPEN, "tax-years not checked per transfer day"),
     "MYTAX-05": (NO, "Owner explains tax-year mapping"),
     "MYTAX-06": (M, "No per-document check"),
-    "MYTAX-07": (O, "Folders not checked per transfer day"),
+    "MYTAX-07": (OPEN, "Folders not checked per transfer day"),
     "MYTAX-08": (NO, "Owner explains folder mapping"),
     "MYTAX-09": (M, "No per-document check"),
-    "MYTAX-10": (O, "No automatic tax-year creation"),
+    "MYTAX-10": (OPEN, "No automatic tax-year creation"),
     "MYTAX-11": (NO, "Owner demonstrates two uploads (via datev_upload_file)"),
-    "MYTAX-12": (O, "No compression"),
+    "MYTAX-12": (OPEN, "No compression"),
     # 23
     "PT-01": (NA, "No service-specific requirements exist"),
     # 24
     "MD-01": (NO, "Owner signs the supplementary agreement and consultation"),
     "MD-02": (NO, "Owner bears per-call costs; expand is a caller parameter"),
     "MD-03": (P, GEN_ONLY),
-    "MD-04": (O, "No ETag storage or conditional requests"),
+    "MD-04": (OPEN, "No ETag storage or conditional requests"),
     "MD-05": (NO, "Owner books data areas; rights admin unlocks clients"),
     # 25
-    "CR-01": (O, "No device registration/init-file flow; " + GEN_ONLY),
+    "CR-01": (OPEN, "No device registration/init-file flow; " + GEN_ONLY),
     "CR-02": (NA, "App is not a cash register and owns no register serial"),
     "CR-03": (
         P,
@@ -788,7 +790,7 @@ A = {
         "Bearer sent on every request (src/api/client.ts:361); Request-Id header must come from the caller",
     ),
     "CR-05": (
-        O,
+        OPEN,
         "App supports only the Authorization Code flow (src/auth/authorize.ts:17); cashregister also has no scopes (ledger F12)",
     ),
     # 26
@@ -816,7 +818,7 @@ A = {
     "LOGIN-09": (NA, "Same as LOGIN-01"),
 }
 
-ORDER = [M, P, O, NA, NO]
+ORDER = [M, P, OPEN, NA, NO]
 
 with open(SRC, encoding="utf-8") as fh:
     lines = fh.read().split("\n")
@@ -942,7 +944,7 @@ open_must = []
 for sec, cnt, rows in summary:
     for rid, lvl, req, src in rows:
         st, ev = A[rid]
-        if st in (O, P) and is_must(lvl):
+        if st in (OPEN, P) and is_must(lvl):
             open_must.append((rid, st, ev))
 ranked = [i for i, _ in IMPACT]
 open_must.sort(key=lambda x: ranked.index(x[0]) if x[0] in ranked else 999)
@@ -961,7 +963,6 @@ out.append("")
 with open(OUT, "w", encoding="utf-8") as fh:
     fh.write("\n".join(out))
 # Machine-readable summary for "datev-mcp compliance": per section counts and the open MUST ids.
-import json
 
 JSON_OUT = sys.argv[3] if len(sys.argv) > 3 else None
 if JSON_OUT:
@@ -970,7 +971,7 @@ if JSON_OUT:
         "open_must": [{"id": rid, "status": st} for rid, st, _ in open_must],
     }
     for sec, cnt, rows in summary:
-        c = {M: 0, P: 0, O: 0, NA: 0, NO: 0}
+        c = {M: 0, P: 0, OPEN: 0, NA: 0, NO: 0}
         for rid, lvl, req, src in rows:
             c[A[rid][0]] += 1
         data["sections"].append(
@@ -991,7 +992,7 @@ print(
     "open_must",
     len(open_must),
     "open",
-    sum(1 for x in open_must if x[1] == O),
+    sum(1 for x in open_must if x[1] == OPEN),
     "partial",
     sum(1 for x in open_must if x[1] == P),
 )
