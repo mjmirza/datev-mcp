@@ -29,7 +29,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.downloadreceiveddocumentbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.downloadreceiveddocumentbyid`?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getinboxdocumentids` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getinboxdocumentids`?
 
@@ -93,7 +93,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getinboxdocumentmetadatabyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getinboxdocumentmetadatabyid`?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `traffiqx-invoice.uploadzugferddata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.uploadzugferddata`?
 
@@ -157,7 +157,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `traffiqx-invoice.uploadstructureddata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.uploadstructureddata`?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getdocumentstatusbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getdocumentstatusbyid`?
 
@@ -221,7 +221,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.downloadsentdocumentbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.downloadsentdocumentbyid`?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getoutboxdocumentids` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getoutboxdocumentids`?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "traffiqx_id" that no list call has retu
 
 ### Is `traffiqx-invoice.getoutboxdocumentmetadatabyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `traffiqx-invoice.getoutboxdocumentmetadatabyid`?
 

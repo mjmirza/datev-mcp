@@ -61,8 +61,8 @@ A = {
     ),
     "GEN-14": (NO, "Owner uses DATEV's ticket system and cooperates"),
     "GEN-15": (
-        P,
-        "docs/SETUP.md:111 and docs/qa/troubleshooting.md:30 tell users to 'Ask DATEV to enable the product'; rephrase so the vendor handles it",
+        M,
+        "Sandbox gateway refusals are raised by the app owner through DATEV's ticket system; the docs and Q&A no longer send people to DATEV for an integration problem, guarded by doc-claims.test.ts",
     ),
     "GEN-16": (
         M,
@@ -250,16 +250,16 @@ A = {
         "Data-service names as DATEV writes them in CLI and tool output (src/auth/services.ts:8-24); some labels add the API id in brackets",
     ),
     "DOC-02": (
-        O,
-        "No hint with http://go.datev.de/datenservices-einrichten anywhere in the code or docs",
+        M,
+        "datev-mcp services, datev_check_client and every permission refusal show the steps before first use with http://go.datev.de/datenservices-einrichten (src/index.ts, src/api/client-gate.ts, src/api/permission.ts)",
     ),
     "DOC-03": (
-        P,
-        "Setup is bundled in docs/SETUP.md, but it covers the developer portal, not the customer's DATEV-side ordering and activation of the data service",
+        M,
+        "docs/DATA-SERVICES.md bundles everything a client, tax advisor and the person setting up datev-mcp needs per data service",
     ),
     "DOC-04": (
-        P,
-        "docs/SETUP.md lists vendor-side steps; missing DATEV-side activation steps and the ordering/setup link",
+        M,
+        "docs/DATA-SERVICES.md names each data service, the DATEV-side steps with the setup link, and the datev-mcp steps and settings",
     ),
     "DOC-05": (
         NO,

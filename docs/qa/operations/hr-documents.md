@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `hr-documents.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.getclients`?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-documents.uploaddocument` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.uploaddocument`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `hr-documents.getclientbyconsultantclientnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.getclientbyconsultantclientnumber`?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-documents.uploaddocumentbyconsultantclientnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.uploaddocumentbyconsultantclientnumber`?
 

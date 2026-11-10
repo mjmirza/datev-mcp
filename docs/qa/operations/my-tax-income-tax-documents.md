@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 324 ms with 11 items.
 
 ### Is `my-tax-income-tax-documents.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getclients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 376 ms.
 
 ### Is `my-tax-income-tax-documents.getclient` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getclient`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 57 ms.
 
 ### Is `my-tax-income-tax-documents.getincometaxyears` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getincometaxyears`?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `my-tax-income-tax-documents.createincometaxyear` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.createincometaxyear`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "tax-year" that no list call has returne
 
 ### Is `my-tax-income-tax-documents.getincometaxfolders` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getincometaxfolders`?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `my-tax-income-tax-documents.saveincometaxdocument` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.saveincometaxdocument`?
 

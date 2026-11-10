@@ -63,7 +63,7 @@ The other fields are not used.
 
 ## Full requirement checklist
 
-Every DATEV interface requirement, general and per data service, with its status in datev-mcp and the evidence, is in [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). `datev-mcp compliance` shows the same for a running installation.
+Every DATEV interface requirement, general and per data service, with its status in datev-mcp and the evidence, is in [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). `datev-mcp compliance` shows the same for a running installation. The requirements themselves, paraphrased with their DATEV source page, are in [requirements.md](../scripts/compliance/requirements.md).
 
 ## Still open, needs DATEV or a live run
 

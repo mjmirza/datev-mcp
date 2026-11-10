@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 148 ms with 6 items.
 
 ### Is `hr-payrollreports.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getclients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 240 ms.
 
 ### Is `hr-payrollreports.getclientbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getclientbyclientid`?
 
@@ -93,7 +93,7 @@ The live sweep skipped it: needs a real "period" that no list call has returned 
 
 ### Is `hr-payrollreports.getpdfdocuments` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getpdfdocuments`?
 
@@ -125,7 +125,7 @@ The live sweep skipped it: needs a real "period" that no list call has returned 
 
 ### Is `hr-payrollreports.getstatus` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getstatus`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "period" that no list call has returned 
 
 ### Is `hr-payrollreports.getemployeenumbersbyperiod` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getemployeenumbersbyperiod`?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a value for required query "document_types".
 
 ### Is `hr-payrollreports.getdocumentmetadata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getdocumentmetadata`?
 

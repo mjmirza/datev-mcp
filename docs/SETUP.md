@@ -109,7 +109,7 @@ Any other MCP client takes `node` as the command and the path to `dist/index.js`
 |---|---|---|
 | `DATEV login needed` | The refresh token expired or was used up | Run `node dist/index.js login` again |
 | HTTP 401 or 403 | The app is not subscribed to that product, or the scope was not granted | Check the product subscription in the portal |
-| HTTP 500 with "Sandboxing policy error" | DATEV's sandbox gateway refuses that resource for your app | Nothing is wrong with the request. Ask DATEV to enable the product for the sandbox |
+| HTTP 500 with "Sandboxing policy error" | DATEV's sandbox gateway refuses that resource for your app | Nothing is wrong with the request. The app owner raises it with DATEV through the developer portal's ticket system; people using the app are never sent to DATEV for it. |
 | HTTP 429 | DATEV's rate limit | Wait and try again. Reads retry by themselves a few times. Writes are never retried, so nothing is sent twice. When DATEV names a time to wait, every call to that service pauses until then |
 | "not part of the connected data services" | The operation belongs to a service you did not choose at login | Run `login --services` again with that service added |
 | "needs your approval in the client" | Production writes always ask you first, and this client cannot ask | Use a client that supports MCP elicitation. In the sandbox, `DATEV_MCP_CONFIRM=token` also works |

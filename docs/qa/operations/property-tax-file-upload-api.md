@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `property-tax-file-upload-api.uploadfile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `property-tax-file-upload-api.uploadfile`?
 

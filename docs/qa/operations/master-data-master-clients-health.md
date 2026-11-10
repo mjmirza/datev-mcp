@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `master-data-master-clients-health.info` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients-health.info`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `master-data-master-clients-health.health` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `master-data-master-clients-health.health`?
 

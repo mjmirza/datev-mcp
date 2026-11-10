@@ -29,7 +29,7 @@ It has not been called live yet.
 
 ### Is `cashregister.gettenants` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.gettenants`?
 
@@ -61,7 +61,7 @@ It was not called live, and it has no sandbox server, so the server refuses it i
 
 ### Is `cashregister.createreport` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.createreport`?
 
@@ -93,7 +93,7 @@ It was not called live, and it has no sandbox server, so the server refuses it i
 
 ### Is `cashregister.importfile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.importfile`?
 
@@ -125,7 +125,7 @@ It has not been called live yet.
 
 ### Is `cashregister.gettselogsinfo` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `cashregister.gettselogsinfo`?
 

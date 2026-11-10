@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 352 ms with 6 items.
 
 ### Is `accounting-dxso-jobs.get_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 479 ms.
 
 ### Is `accounting-dxso-jobs.get_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id`?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.post_clients_client_id_dxso_jobs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.post_clients_client_id_dxso_jobs`?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.post_clients_client_id_dxso_jobs_job_id_files`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id`?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.put_clients_client_id_dxso_jobs_job_id`?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.delete_clients_client_id_dxso_jobs_job_id`?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id_protocol_entries`?
 

@@ -43,7 +43,13 @@ async function main(argv: string[]): Promise<number> {
     return r.removed ? 0 : 1;
   }
   if (cmd === "services") {
-    process.stdout.write(`${serviceList()}\n`);
+    process.stdout.write(`${localize(serviceList(), lang)}\n`);
+    // DATEV asks apps to show, at the data service, what has to happen at DATEV before first use.
+    const setup =
+      lang === "de"
+        ? "Vor der ersten Nutzung bestellt der Mandant oder die Kanzlei den Datenservice bei DATEV und schaltet ihn frei: http://go.datev.de/datenservices-einrichten. Alle Schritte je Datenservice: docs/DATA-SERVICES.md"
+        : "Before first use, the client or the tax advisor orders the data service at DATEV and switches it on: http://go.datev.de/datenservices-einrichten. All steps per data service: docs/DATA-SERVICES.md";
+    process.stdout.write(`${setup}\n`);
     return 0;
   }
   if (cmd === "compliance") {

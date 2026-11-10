@@ -3,8 +3,8 @@
   {
    "title": "1. General interface requirements (Allgemeine Schnittstellenvorgaben)",
    "counts": {
-    "met": 24,
-    "partial": 5,
+    "met": 25,
+    "partial": 4,
     "open": 1,
     "n/a": 4,
     "needs-owner": 10
@@ -117,9 +117,9 @@
   {
    "title": "5. Help and documentation requirements (Vorgaben zu Hilfen und Dokumentationen)",
    "counts": {
-    "met": 1,
-    "partial": 2,
-    "open": 1,
+    "met": 4,
+    "partial": 0,
+    "open": 0,
     "n/a": 0,
     "needs-owner": 1
    },
@@ -660,18 +660,6 @@
   {
    "id": "EXTFF-09",
    "status": "open"
-  },
-  {
-   "id": "DOC-02",
-   "status": "open"
-  },
-  {
-   "id": "DOC-03",
-   "status": "partial"
-  },
-  {
-   "id": "DOC-04",
-   "status": "partial"
   },
   {
    "id": "DXSO-01",

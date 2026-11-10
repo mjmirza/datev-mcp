@@ -217,6 +217,7 @@ The sandbox may only hold test data. Using this with real clients needs DATEV's 
 ## More documentation
 
 - [Setup](docs/SETUP.md)
+- [Putting a DATEV data service into operation](docs/DATA-SERVICES.md)
 - [Security](docs/SECURITY.md)
 - [Validation](docs/VALIDATION.md)
 - [Endpoint audit](docs/ENDPOINT-AUDIT.md)
