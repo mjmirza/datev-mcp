@@ -29,7 +29,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F10 | BLOCKER | `DATEV_MCP_CONFIRM=token` lets production writes through without a human | R1-7, R2-4 | fixed | 134c625 | a production write is never sent on a confirm code alone |
 | F11 | HIGH | Postings export job (a POST) created without approval | R1-7, R2-19 | rejected | - | The postings export job is a read export that changes no bookings, so it is outside the write approval by decision. datev_call still asks for a confirm code for the same operation |
 | F12 | HIGH | cashregister and SmartTransfer have no scopes, so the chosen-service boundary does not apply | R1-8, R2-15 | open | | |
-| F13 | LOW | `DATEV_SCOPES` precedence and "all scopes by default" documented wrongly | R1-8, R2-31, R2-32 | open | | |
+| F13 | LOW | `DATEV_SCOPES` precedence and "all scopes by default" documented wrongly | R1-8, R2-31, R2-32 | fixed | 4e66d5f | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F14 | HIGH | Docs claim write retries, redirects followed, nothing saved on a failed check | R1-9, R2-30 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F15 | HIGH | German mode leaves login, services, doctor, previews and approvals in English | R1-10, R2-21 | open | | |
 | F16 | HIGH | A quarantined corrupt session file stays in plaintext | R1-11 | fixed | b3996d8 | a corrupt plain text session is kept only as an encrypted copy |
@@ -51,14 +51,14 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F32 | HIGH | A retried GET error answer is logged without its body | R2-9 | fixed | 6a099df | a write whose answer breaks off is still logged |
 | F33 | HIGH | Request bodies kept only as a hash | R2-10 | fixed | b49460d | request bodies are logged as DATEV's minimum scope asks |
 | F34 | HIGH | Status reports ACTIVE without checking userinfo's shape and that `sub` matches the saved identity | R2-14 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
-| F35 | HIGH | Choosing accounting services silently adds the accounting-clients scope | R2-16 | open | | |
+| F35 | HIGH | Choosing accounting services silently adds the accounting-clients scope | R2-16 | fixed | 4e66d5f | login checks the ID token, saves the name and chosen services, and revokes the previous refresh token |
 | F36 | HIGH | Upload approval does not show the destination client, query and resolved URL | R2-18 | fixed | 6182745 | documents use only the client's document types and the field rules of the chosen service |
 | F37 | HIGH | Uploads do not check the client list and the service before sending | R2-20 | fixed | 6182745 | a document is refused before sending when the client has not switched the service on, with DATEV's setup link |
 | F38 | MEDIUM | A `null` token answer crashes before it is logged | R2-22 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
 | F39 | MEDIUM | Session key creation not serialised across environments | R2-24 | fixed | b3996d8 | a session key stored by another process while this one waited is used, not overwritten |
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | fixed | b3996d8 | doctor never calls accounting-clients when the login chose no accounting service |
-| F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | open | | |
+| F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | fixed | 4e66d5f | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
 | F44 | HIGH | The client gate checks the first client alias it finds, not the client the URL actually targets | R4-1 | fixed | e9b7706 | the permission check reads the client the URL targets, never a surplus parameter |
 | F45 | HIGH | hr-documents uploads by `client_guid` skip the client check | R4-2 | fixed | e9b7706 | an hr-documents upload by GUID is checked through DATEV's client list |
