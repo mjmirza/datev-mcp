@@ -15,7 +15,7 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { buildHeaders, buildUrl, callOperation, CallError, UncertainSendError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, MAY_BE_APPLIED, UncertainSendError, problemFields, problemText, type CallDeps } from "../api/client.js";
 import { describeClient, hideClientId } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { acceptedBefore, finishSend, reserveSend, sentBefore, type SentEntry } from "./sent-ledger.js";
@@ -254,7 +254,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
           // whether DATEV took it, so the send stays uncertain and the file is never sent again by accident.
           // 429 is no proof either: a write is never retried for it, because it may have been applied.
           await finish(r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429 ? { status: "refused" } : { status: "uncertain" });
-          const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
+          const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}), ...(r.status >= 500 || r.status === 408 ? { note: localize(MAY_BE_APPLIED) } : {}) };
           return { ...ok(out), isError: true };
         }
         const jobId = r.location?.split("?")[0]?.split("/").filter(Boolean).pop();

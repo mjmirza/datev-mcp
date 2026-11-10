@@ -3,7 +3,7 @@ import { humanApproval } from "./approval.js";
 import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, UncertainSendError, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, MAY_BE_APPLIED, mediaMatches, problemFields, UncertainSendError, type CallDeps } from "../api/client.js";
 import { describeClient, gateCall, hideClientId, shownClient } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -324,7 +324,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         }
         // Only a clear 4xx means DATEV did not take the files; a 5xx, 408 or redirect may hide a stored upload.
         await finish(r.status >= 200 && r.status < 300 ? "sent" : r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429 ? "refused" : "uncertain");
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}), ...(r.status >= 500 || r.status === 408 ? { note: localize(MAY_BE_APPLIED) } : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

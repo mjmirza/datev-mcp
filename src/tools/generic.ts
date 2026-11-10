@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { Operation } from "../spec/types.js";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, MAY_BE_APPLIED, problemFields, type CallDeps } from "../api/client.js";
 import { describeClient, gateCall, hideClientId, hideClientParams, hideClientValues, shownClient } from "../api/client-gate.js";
 import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
@@ -143,12 +143,17 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
             ? `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. DATEV may already have applied this change, so check in DATEV before sending it again.`
             : `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. Nothing was read.`;
         // A server error on a write proves nothing: DATEV may still have applied it.
-        if (op.write && (r.status >= 500 || r.status === 408)) out.note = "DATEV may already have applied this change, so check in DATEV before sending it again.";
+        const warn = op.write && (r.status >= 500 || r.status === 408) ? MAY_BE_APPLIED : undefined;
+        if (warn) out.note = localize(warn);
         // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
         if (bytes && (r.status < 300 || r.status >= 400)) {
           if (save_to && r.status < 300 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
           else if (bytes.length <= INLINE_BINARY_MAX && !r.truncated) out.base64 = Buffer.from(bytes).toString("base64");
-          else out.note = r.truncated ? `The file is larger than ${(r.body as { cut_at_bytes?: number }).cut_at_bytes ?? HARD_MAX_BYTES} bytes and was not read completely. Nothing was saved.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
+          else {
+            const why = r.truncated ? `The file is larger than ${(r.body as { cut_at_bytes?: number }).cut_at_bytes ?? HARD_MAX_BYTES} bytes and was not read completely. Nothing was saved.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
+            // The may-be-applied warning is never replaced, only joined.
+            out.note = localize(warn ? `${warn} ${why}` : why);
+          }
         }
         return r.status >= 300 ? { ...text(out), isError: true } : text(out);
       } catch (e) {

@@ -439,6 +439,8 @@ const scanText = (text: string): Record<string, unknown> => {
 const SCAN_IDLE_MS = 2000;
 // The whole scan past the cap ends here too, so an answer that keeps dribbling cannot hold the call open.
 const SCAN_TOTAL_MS = 5000;
+// A body that fills the cap waits this long for its clean close, so a slow but complete file is not called cut.
+const AT_CAP_MS = 5000;
 
 async function idleRead(reader: ReadableStreamDefaultReader<Uint8Array>, ms: number): Promise<Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>["read"]>> | "idle"> {
   let timer: NodeJS.Timeout | undefined;
@@ -492,12 +494,17 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
         broke = e instanceof Error ? e.message : String(e);
         break; // a break past the cap keeps the head and the fields found so far
       }
-    } else if (scan && size >= cap) {
-      // A head exactly at the cap that then goes quiet counts as cut off, not as a stall.
-      next = await idleRead(reader, SCAN_IDLE_MS); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+    } else if (size >= cap) {
+      // At the cap only a clean close is awaited: going quiet or breaking off keeps the head as cut off.
+      try {
+        next = await idleRead(reader, scan ? SCAN_IDLE_MS : AT_CAP_MS); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+      } catch (e) {
+        broke = e instanceof Error ? e.message : String(e);
+        next = "idle";
+      }
       if (next === "idle") {
         overflow = true;
-        queue(join(parts));
+        if (scan) queue(join(parts));
       }
     } else next = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
     if (next === "idle" || next.done) break;
@@ -541,7 +548,7 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const binary = media !== "" ? !TEXTUAL.test(media) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
-    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow, bytes };
+    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow, bytes, ...(broke !== undefined ? { broke } : {}) };
   }
   const text = new TextDecoder("utf-8").decode(bytes);
   const truncated = overflow || text.length > maxChars;
@@ -558,7 +565,7 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
       /* fall through to text */
     }
   }
-  return { body: slice, truncated };
+  return { body: slice, truncated, ...(broke !== undefined ? { broke } : {}) };
 }
 
 interface Prepared {
@@ -569,6 +576,14 @@ interface Prepared {
   extraHeaders: Record<string, string>;
   deps: CallDeps;
   deadline: number;
+}
+
+export const MAY_BE_APPLIED = "DATEV may already have applied this change, so check in DATEV before sending it again.";
+
+// A write whose answer broke off may still have been applied, so the person is told to check first.
+function brokeOff(e: unknown, write: boolean): string {
+  const why = (e instanceof Error ? e.message : String(e)).replace(/\.+$/, "");
+  return `DATEV's answer broke off: ${why}.${write ? ` ${MAY_BE_APPLIED}` : ""}`;
 }
 
 async function attempt(p: Prepared, n: number): Promise<CallResult> {
@@ -640,7 +655,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
       } else if (op.method !== "get" || deps.signal?.aborted) {
         // A write may have reached DATEV: its headers and the break are logged before giving up.
         logLine({ error: `answer broke off: ${e instanceof Error ? e.message : String(e)}` });
-        throw new UncertainSendError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
+        throw new UncertainSendError(brokeOff(e, op.method !== "get"));
       }
     }
   }
@@ -677,7 +692,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   if (!read) {
     if (netErr !== undefined) {
       if ((netErr as Error).name === "TimeoutError" || Date.now() >= p.deadline - 100) throw new UncertainSendError("Ran out of time while reading DATEV's answer. Try again, or narrow the request.");
-      throw new UncertainSendError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+      throw new UncertainSendError(brokeOff(netErr, op.method !== "get"));
     }
     read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
   }
