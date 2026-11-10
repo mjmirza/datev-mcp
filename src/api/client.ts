@@ -316,16 +316,22 @@ const join = (parts: Uint8Array[]): Uint8Array => {
 // A cut JSON error answer still carries DATEV's title and help link further on, so the rest is scanned for them.
 // A streaming tokenizer reads it in batches up to the hard limit, so state carries over and the cost stays linear.
 const SCAN_BATCH = 64 * 1024;
-const PROBLEM_KEYS = new Set(["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"]);
+const PROBLEM_KEYS = new Set(["title", "type", "detail", "help_url", "helpUrl", "more_information", "message", "error", "error_description", "error_uri", "request_id", "requestId"]);
 // A value longer than this is kept cut at this length, so one huge field cannot grow memory.
 const SCAN_VALUE_MAX = 2000;
 const ESCAPES: Record<string, string> = { b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" };
 
-// Only keys of the outermost object count, so a nested error list cannot hide the answer's own fields.
+// Keys of the outermost object count, or of a list's first object, plus errors[0], as problemOf reads them.
+// Each kept value is capped, so the memory used stays bounded whatever the answer's size.
 class FieldScanner {
   readonly found: Record<string, unknown> = {};
   private depth = 0;
-  private top = false;
+  // The object whose keys are read (its depth, 0 for none) and where they go.
+  private level = 0;
+  private into: Record<string, unknown> = this.found;
+  private outer = 0;
+  private listFirst = false;
+  private errorsAt = 0;
   private phase: "key" | "colon" | "value" | "after" = "after";
   private key: string | undefined;
   private inString = false;
@@ -335,6 +341,13 @@ class FieldScanner {
   private sink: "key" | "value" | undefined;
   private buf = "";
   private num: string | undefined;
+
+  private collect(level: number, into: Record<string, unknown>): void {
+    this.level = level;
+    this.into = into;
+    this.phase = "key";
+    this.key = undefined;
+  }
 
   feed(text: string): void {
     for (let i = 0; i < text.length; i++) {
@@ -376,20 +389,46 @@ class FieldScanner {
         this.num = undefined;
         this.phase = "after";
       }
+      const own = this.level > 0 && this.depth === this.level;
+      // Only an object as the first member of errors is read; any other first member ends the search.
+      if (this.errorsAt > 0 && this.depth === this.errorsAt && c > 32 && c !== 123 && c !== 93) this.errorsAt = 0;
       if (c === 34) {
         this.inString = true;
         this.buf = "";
-        this.sink = this.depth === 1 && this.top ? (this.phase === "key" ? "key" : this.phase === "value" && this.wanted() ? "value" : undefined) : undefined;
-        if (this.depth === 1 && this.top && this.phase === "value" && this.sink === undefined) this.phase = "after";
+        this.sink = own ? (this.phase === "key" ? "key" : this.phase === "value" && this.wanted() ? "value" : undefined) : undefined;
+        if (own && this.phase === "value" && this.sink === undefined) this.phase = "after";
       } else if (c === 123 || c === 91) {
         if (this.depth === 0) {
-          this.top = c === 123;
-          this.phase = "key";
-        } else if (this.depth === 1) this.phase = "after";
+          if (c === 123) {
+            this.outer = 1;
+            this.collect(1, this.found);
+          } else this.listFirst = true;
+        } else if (own) {
+          if (c === 91 && this.phase === "value" && this.key === "errors" && this.level === 1 && this.found.errors === undefined) this.errorsAt = 2;
+          this.phase = "after";
+        } else if (c === 123 && this.listFirst && this.depth === 1) {
+          this.listFirst = false;
+          this.collect(2, this.found);
+        } else if (c === 123 && this.errorsAt > 0 && this.depth === this.errorsAt) {
+          this.errorsAt = 0;
+          const first: Record<string, unknown> = {};
+          this.found.errors = [first];
+          this.collect(3, first);
+        }
         this.depth++;
       } else if (c === 125 || c === 93) {
         if (this.depth > 0) this.depth--;
-      } else if (this.depth === 1 && this.top) {
+        if (this.errorsAt > this.depth) this.errorsAt = 0;
+        if (this.level > this.depth) {
+          // Leaving errors[0] returns to the outer object; leaving the read object ends reading.
+          if (this.level === 3 && this.outer === 1) {
+            this.level = 1;
+            this.into = this.found;
+            this.phase = "after";
+          } else this.level = 0;
+          this.key = undefined;
+        }
+      } else if (own) {
         if (c === 58 && this.phase === "colon") this.phase = "value";
         else if (c === 44) {
           this.phase = "key";
@@ -403,7 +442,7 @@ class FieldScanner {
   }
 
   private wanted(): boolean {
-    return this.key !== undefined && PROBLEM_KEYS.has(this.key) && this.found[this.key] === undefined;
+    return this.key !== undefined && PROBLEM_KEYS.has(this.key) && this.into[this.key] === undefined;
   }
 
   private add(ch: string): void {
@@ -411,7 +450,7 @@ class FieldScanner {
   }
 
   private store(value: string): void {
-    if (this.key !== undefined && this.found[this.key] === undefined) this.found[this.key] = value;
+    if (this.key !== undefined && this.into[this.key] === undefined) this.into[this.key] = value;
   }
 
   private endString(): void {
@@ -436,8 +475,7 @@ const scanText = (text: string): Record<string, unknown> => {
   return s.found;
 };
 
-const SCAN_IDLE_MS = 2000;
-// The whole scan past the cap ends here too, so an answer that keeps dribbling cannot hold the call open.
+// The whole scan from the cap on ends here, so an answer that keeps dribbling cannot hold the call open.
 const SCAN_TOTAL_MS = 5000;
 // A body that fills the cap waits this long for its clean close, so a slow but complete file is not called cut.
 const AT_CAP_MS = 5000;
@@ -496,8 +534,10 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       }
     } else if (size >= cap) {
       // At the cap only a clean close is awaited: going quiet or breaking off keeps the head as cut off.
+      // A scanned error body starts its total scan limit here, so where the chunks split does not matter.
+      if (scan && scanEnd === 0) scanEnd = Date.now() + SCAN_TOTAL_MS;
       try {
-        next = await idleRead(reader, scan ? SCAN_IDLE_MS : AT_CAP_MS); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+        next = await idleRead(reader, scan ? Math.max(0, scanEnd - Date.now()) : AT_CAP_MS); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
       } catch (e) {
         broke = e instanceof Error ? e.message : String(e);
         next = "idle";
@@ -518,7 +558,7 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       parts.push(value.subarray(0, cap - size));
       overflow = true;
       if (!scan) break;
-      scanEnd = Date.now() + SCAN_TOTAL_MS;
+      if (scanEnd === 0) scanEnd = Date.now() + SCAN_TOTAL_MS;
       // The tokenizer reads from the first byte, so it knows which keys belong to the outermost object.
       read = 0;
       queue(join(parts));
@@ -685,8 +725,9 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   if (deps.signal?.aborted && !res) throw new UncertainSendError("The call was cancelled");
   if (!res) {
     // A request cut off by the call budget is a timeout, so callers can keep partial work and resume.
+    // A write may have reached DATEV before the time ran out, so it is checked first, never blindly resent.
     if ((netErr as Error | undefined)?.name === "TimeoutError" || Date.now() >= p.deadline - 100)
-      throw new UncertainSendError("Ran out of time while waiting for DATEV to answer. Try again, or narrow the request.");
+      throw new UncertainSendError(`Ran out of time while waiting for DATEV to answer. ${op.method !== "get" ? MAY_BE_APPLIED : "Try again, or narrow the request."}`);
     throw new UncertainSendError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
   }
   if (!read) {
