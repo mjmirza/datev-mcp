@@ -320,7 +320,9 @@ function perOperation(op: Operation) {
 const permissionRead = (url: string) =>
   /\/fiscal-years$/.test(new URL(url).pathname)
     ? json(200, [19920101])
-    : /\/clients$/.test(new URL(url).pathname)
+    : /\/document-types$/.test(new URL(url).pathname)
+      ? json(200, [{ name: "Rechnungseingang" }])
+      : /\/clients$/.test(new URL(url).pathname)
       ? json(200, { clients: [{ client_guid: "3f2504e0-4f89-41d3-9a0c-0305e82c3301", consultant_number: 1000, client_number: 1, name: "Eval GmbH" }] })
       : json(200, { name: "Eval GmbH", consultant_number: 1000, client_number: 1, services: ["Belegbilderservice", "Buchungsdatenservice", "Rechnungsdatenservice 1.0", "Datenservice Export Rechnungswesen"].map((name) => ({ name })) });
 
@@ -387,6 +389,8 @@ async function uploadShapes() {
       props.filter(([, s]) => (s.type === "array" ? s.items?.format : s.format) === "binary").map(([name, s]) => [name, s.type === "array" ? [fixture(extFor(name), n++), fixture(extFor(name), n++)] : fixture(extFor(name), n++)]),
     );
     const fields = Object.fromEntries(props.filter(([name]) => !(name in files) && (schema.required ?? []).includes(name)).map(([name, s]) => [name, sampleValue(s)]));
+    // A stapled document carries a document type of the client, as DATEV's document rules require.
+    if (op.id === "accounting-documents.put_clients_client_id_documents_stapled") fields.metadata = JSON.stringify({ document_type: "Rechnungseingang" });
     const g = validInput(op);
     const args = { operation_id: op.id, path_params: g.pathParams, query: g.query, headers: g.headers, files, fields };
     const preview = (await c.callTool({ name: "datev_upload_file", arguments: args })) as { content: { text: string }[]; isError?: boolean };

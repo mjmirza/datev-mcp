@@ -130,7 +130,7 @@ test("an EXTF send whose answer is lost still counts as sent", async () => {
   const again = await harness(extfDatev());
   const second = await again.call("datev_upload_extf", { client_id: "455148-1", file_path: file });
   assert.equal(second.error, true);
-  assert.match(second.text, /answer never arrived/);
+  assert.match(second.text, /answer was lost or was a server error/);
   assert.ok(!again.seen.some((s) => s.method === "POST"));
 });
 
@@ -229,4 +229,155 @@ test("an earlier send is not shown to a login without permission for the client"
   assert.equal(r.error, true);
   assert.match(r.text, /has not switched on Buchungsdatenservice/);
   assert.doesNotMatch(r.text, /EXTF_R4E|job J9|already sent/);
+});
+
+// Round 5: the Codex check of the R4 fixes, ledger F46 to F68.
+
+test("a stapled upload follows the document rules of datev_upload_document", async () => {
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : json(200, client(["Belegbilderservice", "Buchungsdatenservice"]))));
+  const base = { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-1" }, files: { files: [pdf] } };
+  const invented = await h.call("datev_upload_file", { ...base, fields: { metadata: { document_type: "INVENTED" } } });
+  assert.match(invented.text, /"INVENTED" is not a document type of this client/);
+  const partial = await h.call("datev_upload_file", { ...base, fields: { metadata: { document_type: "Rechnungseingang", category: "App" } } });
+  assert.match(partial.text, /needs category, folder and register together/);
+  const none = await h.call("datev_upload_file", base);
+  assert.match(none.text, /Belegbilderservice needs a document_type/);
+  assert.ok(!h.seen.some((s) => s.method === "PUT"));
+});
+
+test("two deliberate resends at once reach DATEV only once", async () => {
+  const file = await extfFile("EXTF_R5A.csv", 5101);
+  const first = await harness(extfDatev());
+  assert.equal((await first.confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file })).error, false);
+  const h = await harness(extfDatev({ post: async () => (await new Promise((r) => setTimeout(r, 30)), json(202, {}, { location: "/clients/455148-1/extf-files/jobs/J9", "retry-after": "1" })) }));
+  const args = { client_id: "455148-1", file_path: file, resend: true };
+  const previews = await Promise.all([h.call("datev_upload_extf", args), h.call("datev_upload_extf", args)]);
+  await Promise.all(previews.map((p) => h.call("datev_upload_extf", { ...args, confirm: true, confirm_token: JSON.parse(p.text).confirm_token })));
+  assert.equal(h.seen.filter((s) => s.method === "POST").length, 1);
+});
+
+test("a refused resend keeps the record of the earlier accepted send", async () => {
+  const file = await extfFile("EXTF_R5B.csv", 5102);
+  assert.equal((await (await harness(extfDatev())).confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file })).error, false);
+  const refused = await harness(extfDatev({ post: () => json(400, { title: "bad" }) }));
+  assert.equal((await refused.confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file, resend: true })).error, true);
+  const again = await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file });
+  assert.match(again.text, /already sent to this client/);
+});
+
+test("a send record with the wrong shape counts as damaged", async () => {
+  const home = mkdtempSync(join(tmpdir(), "datev-r5-home-"));
+  const prev = process.env.DATEV_MCP_HOME;
+  process.env.DATEV_MCP_HOME = home;
+  try {
+    writeFileSync(join(home, "sent-sandbox.json"), JSON.stringify({ extf: [] }));
+    const file = await extfFile("EXTF_R5C.csv", 5103);
+    const r = await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file });
+    assert.match(r.text, /is damaged/);
+  } finally {
+    if (prev === undefined) delete process.env.DATEV_MCP_HOME;
+    else process.env.DATEV_MCP_HOME = prev;
+  }
+});
+
+test("a gateway error after the POST keeps the file counted as sent", async () => {
+  const file = await extfFile("EXTF_R5D.csv", 5104);
+  assert.equal((await (await harness(extfDatev({ post: () => json(503, {}) }))).confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file })).error, true);
+  const again = await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file });
+  assert.match(again.text, /may already be imported/);
+});
+
+test("a send cancelled before it left releases its reservation", async () => {
+  const file = await extfFile("EXTF_R5E.csv", 5105);
+  const ctl = new AbortController();
+  const h = await harness(extfDatev(), { signal: ctl.signal, token: async () => (ctl.abort(), "T") });
+  const preview = JSON.parse((await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file })).text);
+  await h.call("datev_upload_extf", { client_id: "455148-1", file_path: file, confirm: true, confirm_token: preview.confirm_token });
+  assert.ok(!h.seen.some((s) => s.method === "POST"), "nothing left");
+  const again = await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file });
+  assert.equal(again.error, false, again.text);
+});
+
+test("no field value can imitate another in the document id", () => {
+  const sha = "ef".repeat(32);
+  const a = documentGuid("455148-1", sha, { service: "buchungsdatenservice", category: "x&folder=y", folder: "z", register: "2026/03" });
+  const b = documentGuid("455148-1", sha, { service: "buchungsdatenservice", category: "x", folder: "y&folder=z", register: "2026/03" });
+  assert.notEqual(a, b);
+});
+
+test("the same filing uploaded twice reaches the same DATEV document id", async () => {
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? json(201, {}) : json(200, client(["Belegbilderservice"]))));
+  const args = { client_id: "455148-4", file_path: pdf, document_type: "Rechnungseingang" };
+  await h.confirmed("datev_upload_document", args);
+  await h.confirmed("datev_upload_document", args);
+  const puts = h.seen.filter((s) => s.method === "PUT").map((s) => s.path);
+  assert.equal(puts.length, 2);
+  assert.equal(puts[0], puts[1]);
+});
+
+test("a token refresh keeps the daily document type read, a new login does not", async () => {
+  let token = "A";
+  let sub = "user-1";
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : json(200, client(["Belegbilderservice"]))), { token: async () => token, identity: () => sub });
+  const args = { client_id: "455148-5", file_path: pdf, document_type: "Rechnungseingang" };
+  await h.call("datev_upload_document", args);
+  token = "B";
+  await h.call("datev_upload_document", args);
+  assert.equal(h.seen.filter((s) => s.path.endsWith("/document-types")).length, 1, "refresh keeps the read");
+  sub = "user-2";
+  await h.call("datev_upload_document", args);
+  assert.equal(h.seen.filter((s) => s.path.endsWith("/document-types")).length, 2, "another person reads again");
+});
+
+test("an hr-documents GUID mapping is never reused by another login", async () => {
+  const GUID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+  let sub = "user-1";
+  let list = [{ client_guid: GUID, consultant_number: 455148, client_number: 1 }];
+  const h = await harness((s) => (s.path.endsWith("/clients") ? json(200, { clients: list }) : json(200, client())), { identity: () => sub });
+  await h.call("datev_upload_file", { operation_id: "hr-documents.uploaddocument", path_params: { client_guid: GUID }, files: { file: pdf } });
+  sub = "user-2";
+  list = [];
+  const r = await h.call("datev_upload_file", { operation_id: "hr-documents.uploaddocument", path_params: { client_guid: GUID }, files: { file: pdf } });
+  assert.match(r.text, /not in this login's DATEV client list/);
+});
+
+test("a partly revoked connection never hands out the revoked access token again", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r5-s-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  const f: FetchLike = async (_u, init) => (String(init?.body).includes("refresh_token") ? new Response("{}", { status: 500 }) : new Response("", { status: 200 }));
+  await endForMissingPermission(cfg, { store, fetch: f, httpLog: () => {} });
+  assert.ok((store.read()?.tokens.expiresAt ?? 1) <= Date.now(), "the revoked access token counts as expired");
+});
+
+test("one caller cancelling a shared document type read does not fail the others", async () => {
+  const ctl = new AbortController();
+  let calls = 0;
+  const server = new McpServer({ name: "t", version: "0" });
+  const f: FetchLike = async (u) => (new URL(String(u)).pathname.endsWith("/document-types") ? new Promise<Response>((r) => setTimeout(() => r(json(200, [{ name: "Rechnungseingang" }])), 30)) : json(200, client(["Belegbilderservice"])));
+  registerDocumentTools(server, () => ({ env: "sandbox", creds: { clientId: "c" }, token: async () => "CANCEL", fetch: f, signal: calls++ === 0 ? ctl.signal : undefined }));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "t", version: "0" });
+  await c.connect(b);
+  const first = c.callTool({ name: "datev_document_types", arguments: { client_id: "455148-6" } });
+  const second = c.callTool({ name: "datev_document_types", arguments: { client_id: "455148-6" } });
+  setTimeout(() => ctl.abort(), 5);
+  const [, r2] = (await Promise.all([first, second])) as { isError?: boolean; content: { text: string }[] }[];
+  assert.notEqual(r2!.isError, true, r2!.content[0]!.text);
+});
+
+test("a cancelled document type read does not wait for a token that never comes", async () => {
+  const ctl = new AbortController();
+  const server = new McpServer({ name: "t", version: "0" });
+  registerDocumentTools(server, () => ({ env: "sandbox", creds: { clientId: "c" }, token: () => new Promise<string>(() => {}), fetch: async () => json(200, []), signal: ctl.signal }));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "t", version: "0" });
+  await c.connect(b);
+  setTimeout(() => ctl.abort(), 10);
+  const started = Date.now();
+  const r = (await c.callTool({ name: "datev_document_types", arguments: { client_id: "455148-8" } })) as { isError?: boolean };
+  assert.equal(r.isError, true);
+  assert.ok(Date.now() - started < 2000, "the cancel ended the wait");
 });

@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { bounded, callOperation, CallError, problemText, type CallDeps } from "./client.js";
+import { loginKey } from "./login-key.js";
+import { callOperation, CallError, problemText, type CallDeps } from "./client.js";
 import { getOperation } from "../tools/catalog.js";
 import type { Operation } from "../spec/types.js";
 
@@ -26,6 +26,8 @@ export interface CheckedClient {
   name?: string;
   consultant_number?: number;
   client_number?: number;
+  /** hr-documents: the client's GUID as DATEV names it. */
+  guid?: string;
   /** hr-payrollreports: the report types this client grants. */
   access_granted?: string[];
 }
@@ -70,9 +72,7 @@ export async function checkClient(product: string, clientId: string, deps: CallD
   const op = id ? getOperation(id) : undefined;
   if (!op) throw new CallError(`No permission check is known for ${product}`);
   const deadline = opts.deadline ?? Date.now() + 50_000;
-  const token = await bounded(deps.token(), deadline, deps.signal, "while getting a DATEV access token");
-  const who = createHash("sha256").update(`${deps.creds.clientId}|${token}`).digest("hex").slice(0, 16);
-  const key = `${deps.env}|${who}|${product}|${clientId}`;
+  const key = `${await loginKey(deps, deadline)}|${product}|${clientId}`;
   const hit = checked.get(key);
   if (!opts.fresh && hit && hit.day === day()) return hit.client;
   const r = await callOperation(op, { pathParams: checkParams(op, clientId) }, { ...deps, maxBodyChars: Math.max(deps.maxBodyChars ?? 0, 100_000), deadlineMs: Math.max(1000, deadline - Date.now()) });
@@ -90,6 +90,7 @@ export async function checkClient(product: string, clientId: string, deps: CallD
     name: typeof b.name === "string" ? b.name : typeof b.company_name === "string" ? b.company_name : undefined,
     consultant_number: num(b.consultant_number ?? b.consultantNumber),
     client_number: num(b.client_number ?? b.clientNumber),
+    ...(typeof b.client_guid === "string" ? { guid: b.client_guid } : {}),
     ...(Array.isArray(types?.access_granted) ? { access_granted: (types.access_granted as unknown[]).filter((x): x is string => typeof x === "string") } : {}),
   };
   checked.set(key, { day: day(), client });
@@ -103,7 +104,7 @@ async function clientIdForGuid(product: string, guid: string, deps: CallDeps): P
   const listId = product === "hr-documents" ? "hr-documents.getclients" : undefined;
   const op = listId ? getOperation(listId) : undefined;
   if (!op) throw new CallError(`${product} names its client by GUID, which this server cannot check. Nothing was sent.`);
-  const key = `${deps.env}|${deps.creds.clientId}|${guid}`;
+  const key = `${await loginKey(deps, Date.now() + 50_000)}|${guid}`;
   const hit = guids.get(key);
   if (hit && hit.day === day()) return hit.clientId;
   const r = await callOperation(op, {}, { ...deps, maxBodyChars: Math.max(deps.maxBodyChars ?? 0, 5_000_000) });
@@ -128,6 +129,8 @@ export async function gateCall(op: Operation, pathParams: Record<string, unknown
   if (clientId === undefined) return undefined;
   if (!/^\d{4,7}-\d{1,5}$/.test(clientId)) throw new CallError(`"${clientId}" is not a consultant-client number such as 455148-1. Nothing was sent.`);
   const client = await checkClient(op.product, clientId, deps);
+  if (target.guid !== undefined && client.guid !== undefined && client.guid !== target.guid)
+    throw new CallError(`DATEV names a different GUID for client ${clientId} than ${target.guid}. Nothing was sent.`);
   // Payroll reports: DATEV lists per client which report types are granted; ask only for those, and fail closed.
   const wanted = query?.document_types;
   if (op.product === "hr-payrollreports" && wanted !== undefined) {

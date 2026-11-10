@@ -94,6 +94,8 @@ export interface CallDeps {
   cooldowns?: Map<string, number>;
   /** Ends the connection when DATEV says the client lacks Datenservice Export Rechnungswesen, as that service's rules require. */
   onMissingPermission?: () => Promise<string>;
+  /** DATEV's user id of the saved login, so caches survive token refreshes but never a login change. */
+  identity?: () => string | undefined;
 }
 
 const defaultCooldowns = new Map<string, number>();
@@ -399,6 +401,8 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
       ...(res ? { status: res.status, status_text: res.statusText, response_headers: redactHeaders(res.headers) } : {}),
       ...extra,
     });
+  // A cancel that arrived while the token was fetched stops the call here, provably before anything left.
+  if (deps.signal?.aborted) throw new CallError("The call was cancelled before DATEV was asked");
   try {
     // redirect "manual": fetch would forward X-DATEV-Client-Secret to whatever host a redirect names.
     res = await (deps.fetch ?? fetch)(url, { method: op.method.toUpperCase(), headers, body: p.body, redirect: "manual", signal: AbortSignal.any([AbortSignal.timeout(Math.min(30_000, left)), ...(deps.signal ? [deps.signal] : [])]) });

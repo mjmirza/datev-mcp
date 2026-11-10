@@ -3,7 +3,8 @@ import { humanApproval } from "./approval.js";
 import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildUrl, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { loginKey } from "../api/login-key.js";
+import { bounded, buildUrl, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
 import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
@@ -54,8 +55,9 @@ const level = z.string().min(1).max(30);
 
 /** RFC 4122 id from client, file hash and filing: the same filing sent again reaches the same DATEV document. */
 export function documentGuid(clientId: string, sha256: string, filing: Record<string, string> = {}): string {
-  const where = Object.keys(filing).sort().map((k) => `${k}=${filing[k]}`).join("&");
-  const h = createHash("sha256").update(`${clientId}:${sha256}:${where}`).digest().subarray(0, 16);
+  // JSON keeps values apart, so no field value can imitate another field.
+  const where = JSON.stringify(Object.keys(filing).sort().map((k) => [k, filing[k]]));
+  const h = createHash("sha256").update(JSON.stringify([clientId, sha256, where])).digest().subarray(0, 16);
   h[6] = (h[6]! & 0x0f) | 0x50;
   h[8] = (h[8]! & 0x3f) | 0x80;
   const x = h.toString("hex");
@@ -88,19 +90,20 @@ const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/B
 const inFlight = new Map<string, Promise<DocumentType[]>>();
 
 /** One read per login, client and Berlin day; parallel callers share the read in flight. RENAME_OK: one cached path for both tools. */
-async function documentTypesToday(clientId: string, d: CallDeps): Promise<DocumentType[]> {
-  const token = await d.token();
-  const who = createHash("sha256").update(`${d.creds.clientId}|${token}`).digest("hex").slice(0, 16);
-  const key = `${d.env}|${who}|${clientId}`;
+export async function documentTypesToday(clientId: string, d: CallDeps): Promise<DocumentType[]> {
+  const deadline = Date.now() + (d.deadlineMs ?? 55_000);
+  const key = `${await loginKey(d, deadline)}|${clientId}`;
   const hit = typeCache.get(key);
   if (hit && hit.day === today()) return hit.types;
-  const running = inFlight.get(key);
-  if (running) return running;
-  const read = fetchDocumentTypes(clientId, d)
-    .then((types) => (typeCache.set(key, { day: today(), types }), types))
-    .finally(() => inFlight.delete(key));
-  inFlight.set(key, read);
-  return read;
+  let read = inFlight.get(key);
+  if (!read) {
+    // The shared read belongs to no single caller: one caller's cancel must not fail the others.
+    read = fetchDocumentTypes(clientId, { ...d, signal: undefined })
+      .then((types) => (typeCache.set(key, { day: today(), types }), types))
+      .finally(() => inFlight.delete(key));
+    inFlight.set(key, read);
+  }
+  return bounded(read, deadline, d.signal, "while reading the client's document types");
 }
 
 const SERVICE = { belegbilderservice: "Belegbilderservice", buchungsdatenservice: "Buchungsdatenservice" } as const;

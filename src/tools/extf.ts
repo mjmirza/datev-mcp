@@ -171,7 +171,9 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
   };
   const alreadySent = (e: { at: string; name: string; status: string; job_id?: string }) =>
     e.status === "sending"
-      ? `This file was being sent to this client on ${e.at} (${e.name}) and DATEV's answer never arrived, so it may already be imported. Check the batch in DATEV Rechnungswesen; to send it again on purpose, call with resend: true.`
+      ? `This file is being sent to this client right now (started ${e.at}). Wait for that send to finish.`
+      : e.status === "uncertain"
+      ? `This file was being sent to this client on ${e.at} (${e.name}) and DATEV's answer was lost or was a server error, so it may already be imported. Check the batch in DATEV Rechnungswesen; to send it again on purpose, call with resend: true.`
       : `This file was already sent to this client on ${e.at} (${e.name}${e.job_id ? `, job ${e.job_id}` : ""}). DATEV requires booking data to be sent only once. To send it again on purpose, call with resend: true.`;
 
   const jobAnswer = (clientId: string, jobId: string, result: string, job: Record<string, unknown>, env: string, extraFields: Record<string, unknown> = {}) => {
@@ -212,7 +214,8 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const earlier = sentBefore("extf", d.env, client_id, sha256);
         if (earlier && resend !== true) return err(alreadySent(earlier));
         const who = [client.name, client.consultant_number !== undefined && `consultant ${client.consultant_number}`, client.client_number !== undefined && `client ${client.client_number}`].filter(Boolean).join(", ");
-        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256, resend: resend === true };
+        // A resend is bound to the earlier send the person saw, so a newer send in between needs a new preview.
+        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256, resend: resend === true, earlier_at: earlier?.at ?? null };
         if (confirm !== true) {
           return ok({
             preview: true,
@@ -230,24 +233,26 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}\n${buildUrl(op, d.env, { pathParams: { "client-id": client_id } })}`);
         if (denied) return err(denied);
         // Reserved under the lock before the POST: two confirmations racing cannot both send the file.
-        const raced = await reserveSend("extf", d.env, client_id, sha256, file.name, resend === true);
-        if (raced) return err(alreadySent(raced));
+        const held = await reserveSend("extf", d.env, client_id, sha256, file.name, resend === true ? { seen: earlier?.at } : false);
+        if ("blocked" in held) return err(alreadySent(held.blocked));
+        const finish = (outcome: Parameters<typeof finishSend>[5]) => finishSend("extf", d.env, client_id, sha256, held.reservation, outcome);
         // A lost answer leaves the reservation in place, so the file counts as sent until DATEV shows otherwise.
         let r;
         try {
           r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
         } catch (e) {
           // Refused before DATEV was asked: release. Unknown outcome: the reservation stays.
-          if (!(e instanceof UncertainSendError)) await finishSend("extf", d.env, client_id, sha256, { accepted: false }).catch(() => undefined);
+          await finish(e instanceof UncertainSendError ? { status: "uncertain" } : { status: "refused" }).catch(() => undefined);
           throw e;
         }
         if (r.status < 200 || r.status >= 300) {
-          await finishSend("extf", d.env, client_id, sha256, { accepted: false });
+          // A 4xx is DATEV refusing the file. A 5xx may come from a gateway after DATEV took it, so it stays uncertain.
+          await finish(r.status >= 500 ? { status: "uncertain" } : { status: "refused" });
           const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
           return { ...ok(out), isError: true };
         }
         const jobId = r.location?.split("?")[0]?.split("/").filter(Boolean).pop();
-        const recorded = await finishSend("extf", d.env, client_id, sha256, { accepted: true, job_id: jobId }).then(
+        const recorded = await finish({ status: "sent", job_id: jobId }).then(
           () => undefined,
           (e: Error) => `The file was accepted, but the send record could not be updated (${e.message}); it still counts as sent.`,
         );
@@ -265,7 +270,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
           await sleep(wait); // BESTPRACTICE_OK: polling a job is sequential by nature
           state = await jobOf(client_id, jobId, d); // BESTPRACTICE_OK: same poll
         }
-        await finishSend("extf", d.env, client_id, sha256, { accepted: true, job_id: jobId, result: state.result }).catch(() => undefined);
+        await finish({ status: "sent", job_id: jobId, result: state.result }).catch(() => undefined);
         return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated, ...(recorded ? { record: recorded } : {}) });
       } catch (e) {
         return err(errorText(e));

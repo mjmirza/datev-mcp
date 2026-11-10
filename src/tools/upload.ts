@@ -11,7 +11,7 @@ import { localize } from "../i18n.js";
 import type { Operation } from "../spec/types.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
-import { mimeFor } from "./documents.js";
+import { documentTypesToday, mimeFor } from "./documents.js";
 import { FileError, readLocalFile } from "./files.js";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
@@ -126,6 +126,26 @@ function checkField(op: Operation, name: string, value: unknown, schema: Schema,
   }
 }
 
+async function checkStapled(clientId: string, raw: unknown, d: CallDeps): Promise<void> {
+  let meta: Record<string, unknown>;
+  try {
+    meta = typeof raw === "string" ? (JSON.parse(raw) as Record<string, unknown>) : ((raw ?? {}) as Record<string, unknown>);
+  } catch {
+    throw new UploadError("The metadata field is not valid JSON.");
+  }
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) throw new UploadError("The metadata field must be a JSON object.");
+  const levels = ["category", "folder", "register"].filter((k) => meta[k] !== undefined).length;
+  if (levels && levels !== 3) throw new UploadError("Buchungsdatenservice needs category, folder and register together.");
+  const service = levels ? "Buchungsdatenservice" : "Belegbilderservice";
+  if (!levels && typeof meta.document_type !== "string") throw new UploadError("Belegbilderservice needs a document_type in metadata. List them with datev_document_types.");
+  await requireClientService(clientId, [service], d);
+  if (typeof meta.document_type === "string") {
+    const types = await documentTypesToday(clientId, d);
+    if (!types.some((t) => t.name === meta.document_type))
+      throw new UploadError(`"${meta.document_type}" is not a document type of this client. Available: ${types.map((t) => t.name).join(", ") || "none"}.`);
+  }
+}
+
 function plan(operationId: string, files: Record<string, string | string[]>, fields: Record<string, unknown>) {
   const op = getOperation(operationId);
   if (!op) throw new UploadError(`Unknown operation "${operationId}". Use datev_search_operations first.`);
@@ -237,8 +257,8 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const read = readAll(op, order, files, fieldBytes);
         // Local checks first, then DATEV's permission reads.
         const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
-        // Stapled documents land in Belegbilderservice or Buchungsdatenservice, so that service must be switched on too.
-        if (op.product === "accounting-documents") await requireClientService(String(path_params?.["client-id"] ?? ""), ["Belegbilderservice", "Buchungsdatenservice"], d);
+        // Stapled documents follow the same rules as datev_upload_document: service, document type, filing fields.
+        if (op.product === "accounting-documents") await checkStapled(String(path_params?.["client-id"] ?? ""), f.metadata, d);
         const listed = read.map((x) => ({ part: x.part, file: x.path, sent_as: x.name, bytes: x.bytes.length, content_type: x.type }));
         const fingerprint = {
           tool: TOOL,

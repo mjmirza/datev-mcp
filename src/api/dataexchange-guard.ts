@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { bounded, callOperation, CallError, problemText, type CallDeps } from "./client.js";
+import { loginKey } from "./login-key.js";
+import { callOperation, CallError, problemText, type CallDeps } from "./client.js";
 import { requireClientService } from "./permission.js";
 import { getOperation } from "../tools/catalog.js";
 
@@ -59,9 +59,7 @@ async function get(id: string, pathParams: Record<string, string>, deps: CallDep
 /** Permission, fiscal years and year settings before any Datenservice Export call, each read at most every 10 minutes. */
 export async function dataexchangeGuard(clientId: string, fiscalYearId: string | undefined, deps: CallDeps, deadline = Date.now() + 50_000): Promise<{ fiscal_years: string[]; settings?: FiscalYearSettings }> {
   // The key carries who is asking, so a new login never inherits the previous one's checks.
-  const token = await bounded(deps.token(), deadline, deps.signal, "while getting a DATEV access token");
-  const who = createHash("sha256").update(`${deps.creds.clientId}|${token}`).digest("hex").slice(0, 16);
-  const key = `${deps.env}|${who}|${clientId}`;
+  const key = `${await loginKey(deps, deadline)}|${clientId}`;
   const now = Date.now();
   for (const m of [permitted, years, settings] as Map<string, unknown>[]) for (const [k, v] of m) if (now - (typeof v === "number" ? v : (v as { at: number }).at) > TTL_MS) m.delete(k);
 

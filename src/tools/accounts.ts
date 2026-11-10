@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { bounded, callOperation, CallError, problemText, type CallDeps } from "../api/client.js";
+import { loginKey } from "../api/login-key.js";
+import { callOperation, CallError, problemText, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { dataexchangeGuard } from "../api/dataexchange-guard.js";
@@ -53,9 +53,7 @@ export async function loadAccountChart(clientId: string, fiscalYearId: string, d
   // The key carries who is asking: a login or app change must never be served the previous user's cached chart.
   // The budget starts before the token wait, so a held session lock cannot push the call past the client timeout.
   const deadline = Date.now() + (deps.deadlineMs ?? 55_000);
-  const token = await bounded(deps.token(), deadline, deps.signal, "while getting a DATEV access token");
-  const who = createHash("sha256").update(`${deps.creds.clientId}|${token}`).digest("hex").slice(0, 16);
-  const key = `${deps.env}|${who}|${clientId}|${fiscalYearId}`;
+  const key = `${await loginKey(deps, deadline)}|${clientId}|${fiscalYearId}`;
   const hit = cache.get(key);
   if (hit && now - hit.at < CACHE_MS) return hit.chart;
   await dataexchangeGuard(clientId, fiscalYearId, deps, deadline);

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CallError } from "../api/client.js";
@@ -11,8 +12,12 @@ import { storeDir } from "../paths.js";
 export interface SentEntry {
   at: string;
   name: string;
-  /** sending: reserved before the POST; it stays when DATEV's answer is lost, so the outcome is treated as sent. */
-  status: "sending" | "sent";
+  /** sending: a send in progress. uncertain: DATEV's answer was lost or was a gateway error, so it may be imported. */
+  status: "sending" | "uncertain" | "sent";
+  /** Which send owns the entry, so a finished send never changes another one's record. */
+  reservation?: string;
+  /** The record a deliberate resend replaced, restored when DATEV refuses the resend. */
+  previous?: Omit<SentEntry, "previous">;
   job_id?: string;
   result?: string;
 }
@@ -31,12 +36,17 @@ function load(env: string, vars: NodeJS.ProcessEnv): Ledger {
   }
   try {
     const v = JSON.parse(text) as unknown;
-    if (v && typeof v === "object" && !Array.isArray(v)) return v as Ledger;
+    if (isLedger(v)) return v;
   } catch {
     // reported below
   }
   throw new CallError(`The record of earlier sends at ${ledgerFile(env, vars)} is damaged. Nothing was sent. Check or move the file, then try again.`);
 }
+
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+// Every level must be an object and every entry carry a name and a status, or the record is treated as damaged.
+const isLedger = (v: unknown): v is Ledger =>
+  isObject(v) && Object.values(v).every((byClient) => isObject(byClient) && Object.values(byClient).every((byHash) => isObject(byHash) && Object.values(byHash).every((e) => isObject(e) && typeof e.name === "string" && typeof e.status === "string")));
 
 function save(env: string, all: Ledger, vars: NodeJS.ProcessEnv): void {
   mkdirSync(storeDir(vars), { recursive: true, mode: 0o700 });
@@ -48,38 +58,58 @@ function save(env: string, all: Ledger, vars: NodeJS.ProcessEnv): void {
 
 const locked = <T>(env: DatevEnv, vars: NodeJS.ProcessEnv, fn: () => T) => new TokenStore(env, storeDir(vars)).withLock(async () => fn());
 
+/** A send whose process stopped mid-way leaves "sending"; after this long it counts as uncertain. */
+const STALE_MS = 15 * 60_000;
+const current = (e: SentEntry | undefined): SentEntry | undefined => (e?.status === "sending" && Date.now() - Date.parse(e.at) > STALE_MS ? { ...e, status: "uncertain" } : e);
+
 /** The earlier send of this file to this client, if any. Throws when the record cannot be read. */
 export function sentBefore(kind: string, env: DatevEnv, clientId: string, sha256: string, vars: NodeJS.ProcessEnv = process.env): SentEntry | undefined {
-  return load(env, vars)[kind]?.[clientId]?.[sha256];
+  return current(load(env, vars)[kind]?.[clientId]?.[sha256]);
 }
 
-/** Reserves the send before the POST. Returns the earlier entry instead when it exists and resend is not set. */
-export function reserveSend(kind: string, env: DatevEnv, clientId: string, sha256: string, name: string, resend: boolean, vars: NodeJS.ProcessEnv = process.env): Promise<SentEntry | undefined> {
+/** Reserves the send before the POST and returns its reservation id, or the earlier entry that blocks it. */
+export function reserveSend(
+  kind: string,
+  env: DatevEnv,
+  clientId: string,
+  sha256: string,
+  name: string,
+  /** For a deliberate resend: the time of the record the person saw in the preview. Any newer send blocks it. */
+  resend: false | { seen?: string },
+  vars: NodeJS.ProcessEnv = process.env,
+): Promise<{ reservation: string } | { blocked: SentEntry }> {
   return locked(env, vars, () => {
     const all = load(env, vars);
-    const earlier = all[kind]?.[clientId]?.[sha256];
-    if (earlier && !resend) return earlier;
-    ((all[kind] ??= {})[clientId] ??= {})[sha256] = { at: new Date().toISOString(), name, status: "sending" };
+    const earlier = current(all[kind]?.[clientId]?.[sha256]);
+    // A send in progress blocks even a deliberate resend; a finished or uncertain one only without resend.
+    if (earlier && (earlier.status === "sending" || !resend || earlier.at !== resend.seen)) return { blocked: earlier };
+    const reservation = randomUUID();
+    const { previous: _older, ...prior } = earlier ?? ({} as SentEntry);
+    ((all[kind] ??= {})[clientId] ??= {})[sha256] = { at: new Date().toISOString(), name, status: "sending", reservation, ...(earlier ? { previous: prior } : {}) };
     save(env, all, vars);
-    return undefined;
+    return { reservation };
   });
 }
 
-/** Records DATEV's answer. A definite refusal releases the reservation, an accepted file is kept as sent. */
+/** Records DATEV's answer for this reservation only. A refusal restores the earlier record, if any. */
 export function finishSend(
   kind: string,
   env: DatevEnv,
   clientId: string,
   sha256: string,
-  outcome: { accepted: false } | { accepted: true; job_id?: string; result?: string },
+  reservation: string,
+  outcome: { status: "refused" } | { status: "uncertain" } | { status: "sent"; job_id?: string; result?: string },
   vars: NodeJS.ProcessEnv = process.env,
 ): Promise<void> {
   return locked(env, vars, () => {
     const all = load(env, vars);
     const entries = all[kind]?.[clientId];
     const entry = entries?.[sha256];
-    if (!entries || !entry) return;
-    if (!outcome.accepted) delete entries[sha256];
+    if (!entries || !entry || entry.reservation !== reservation) return;
+    if (outcome.status === "refused") {
+      if (entry.previous) entries[sha256] = entry.previous;
+      else delete entries[sha256];
+    } else if (outcome.status === "uncertain") entries[sha256] = { ...entry, status: "uncertain" };
     else entries[sha256] = { ...entry, status: "sent", job_id: outcome.job_id ?? entry.job_id, result: outcome.result ?? entry.result };
     save(env, all, vars);
   });

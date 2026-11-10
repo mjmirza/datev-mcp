@@ -42,7 +42,14 @@ function createServer(cfg: Config): McpServer {
     clearClientGate();
     return endForMissingPermission(cfg, { store, httpLog });
   };
-  const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), onMissingPermission });
+  const identity = () => {
+    try {
+      return store.read()?.identity?.sub;
+    } catch {
+      return undefined;
+    }
+  };
+  const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), onMissingPermission, identity });
   // A refresh token an earlier login could not revoke is retried in the background: DATEV allows only one.
   void revokePending(store, cfg.endpoints, cfg.creds, { log: tokenLog(httpLog) }).catch(() => undefined);
   registerConnectionTools(server, cfg, store, httpLog);
