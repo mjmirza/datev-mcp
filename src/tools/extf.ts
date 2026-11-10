@@ -15,7 +15,9 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { buildHeaders, callOperation, CallError, problemFields, type CallDeps } from "../api/client.js";
+import { buildHeaders, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { requireClientService } from "../api/permission.js";
+import { recordSent, sentBefore } from "./sent-ledger.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -158,21 +160,38 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
     },
   );
 
+  // DATEV: an EXTF import answers 202 even for a broken or infected file, so only the job result counts.
+  const jobOf = async (clientId: string, jobId: string, d: CallDeps): Promise<{ result: string; job: Record<string, unknown> }> => {
+    const op = getOperation("accounting-extf-files.getjob");
+    if (!op) throw new CallError("EXTF job operation missing from the index");
+    const r = await callOperation(op, { pathParams: { "client-id": clientId, "job-id": jobId } }, d);
+    if (r.status !== 200 || !r.body || typeof r.body !== "object") throw new CallError(`DATEV returned HTTP ${r.status} for ${op.id}: ${problemText(r.status, r.body)}`);
+    const job = r.body as Record<string, unknown>;
+    return { result: typeof job.result === "string" ? job.result : "pending", job };
+  };
+  const jobAnswer = (clientId: string, jobId: string, result: string, job: Record<string, unknown>, env: string, extraFields: Record<string, unknown> = {}) => {
+    const base = { job_id: jobId, result, records: job.number_of_accounting_records, file: job.filename, env, ...extraFields };
+    if (result === "succeeded") return ok({ imported: true, ...base });
+    if (result === "failed") return { ...ok({ imported: false, ...base, validation_details: job.validation_details, note: "DATEV did not import the file. Fix the reasons in validation_details, then send it again with resend: true." }), isError: true };
+    return ok({ imported: false, ...base, note: `DATEV is still processing the file. Check again with datev_extf_job (client_id ${clientId}, job_id ${jobId}). Do not send it again.` });
+  };
+
   server.registerTool(
     "datev_upload_extf",
     {
       title: "Upload an EXTF file to DATEV",
       description:
-        "Send a checked EXTF file to a DATEV client's accounting (extf-files import). The file is validated first and refused if it has errors. The first call returns a preview and a confirm_token. Show it to the user, then call again with confirm: true and that token.",
+        "Send a checked EXTF file to a DATEV client's accounting (Buchungsdatenservice). The file is validated first and refused if it has errors, the server checks at DATEV that the client switched Buchungsdatenservice on, and a file that was already sent to this client is refused unless resend is true (for a deliberate support case). The first call returns a preview and a confirm_token. Show it to the user, then call again with confirm: true and that token. After sending, the server waits for DATEV's import job and reports imported only when DATEV confirms it.",
       inputSchema: {
         client_id: z.string().describe("Technical client id from datev_list_clients (format consultant-client, e.g. 12345-1). Never invent one."),
         file_path: z.string(),
+        resend: z.boolean().optional().describe("Send a file again that was already sent to this client. Only for a deliberate support case"),
         confirm: z.boolean().optional(),
         confirm_token: z.string().optional().describe("The token returned by the preview"),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
     },
-    async ({ client_id, file_path, confirm, confirm_token }, extra) => {
+    async ({ client_id, file_path, resend, confirm, confirm_token }, extra) => {
       try {
         const file = readLocalFile(file_path, MAX_EXTF_BYTES);
         const summary = summarizeReport(validateBytes(file.bytes), "de");
@@ -182,11 +201,18 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         // DATEV requires the name pattern EXTF_*.csv; checked here so a preview is never confirmed for a file DATEV refuses.
         buildHeaders(op, { headers: { Filename: file.name } });
         const d = deps(extra.signal);
-        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256: createHash("sha256").update(file.bytes).digest("hex") };
+        const sha256 = createHash("sha256").update(file.bytes).digest("hex");
+        const earlier = sentBefore("extf", d.env, client_id, sha256);
+        if (earlier && resend !== true)
+          return err(`This file was already sent to this client on ${earlier.at} (${earlier.name}${earlier.job_id ? `, job ${earlier.job_id}` : ""}). DATEV requires booking data to be sent only once. To send it again on purpose, call with resend: true.`);
+        const client = await requireClientService(client_id, ["Buchungsdatenservice"], d);
+        const who = [client.name, client.consultant_number !== undefined && `consultant ${client.consultant_number}`, client.client_number !== undefined && `client ${client.client_number}`].filter(Boolean).join(", ");
+        const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256, resend: resend === true };
         if (confirm !== true) {
           return ok({
             preview: true,
-            note: `Nothing was sent. This imports ${summary.rows} rows into DATEV ${d.env} client ${client_id}. Ask the user, then call again with confirm: true and this confirm_token.`,
+            note: `Nothing was sent. This imports ${summary.rows} rows into Buchungsdatenservice of ${who} in DATEV ${d.env}${earlier ? ", AGAIN although it was sent before" : ""}. Ask the user, then call again with confirm: true and this confirm_token.`,
+            client: { name: client.name, consultant_number: client.consultant_number, client_number: client.client_number },
             file: file.path,
             header: summary.header,
             warnings: summary.warnings,
@@ -195,11 +221,48 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into client ${client_id}`);
+        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}`);
         if (denied) return err(denied);
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
-        return out.uploaded ? ok(out) : { ...ok(out), isError: true };
+        if (r.status < 200 || r.status >= 300) {
+          const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
+          return { ...ok(out), isError: true };
+        }
+        const jobId = r.location?.split("?")[0]?.split("/").filter(Boolean).pop();
+        recordSent("extf", d.env, client_id, sha256, { at: new Date().toISOString(), name: file.name, job_id: jobId });
+        if (!jobId) return { ...ok({ uploaded: true, imported: false, note: "DATEV accepted the file but named no job, so the import cannot be confirmed. Check the batch in DATEV Rechnungswesen.", env: d.env }), isError: true };
+        // DATEV: wait the Retry-After seconds before the first job query.
+        const sleep = d.sleep ?? ((ms: number) => new Promise<void>((res) => setTimeout(res, ms)));
+        const first = Math.min(Math.max(Number(r.retryAfter) || 5, 1), 20) * 1000;
+        await sleep(first);
+        let state = await jobOf(client_id, jobId, d);
+        // At most 6 job queries with growing waits, far below DATEV's 30-GETs-per-upload limit. RENAME_OK: the time bound became a count bound.
+        for (const wait of [3000, 5000, 8000, 10_000, 12_000]) {
+          if (state.result !== "pending") break;
+          await sleep(wait); // BESTPRACTICE_OK: polling a job is sequential by nature
+          state = await jobOf(client_id, jobId, d); // BESTPRACTICE_OK: same poll
+        }
+        recordSent("extf", d.env, client_id, sha256, { at: new Date().toISOString(), name: file.name, job_id: jobId, result: state.result });
+        return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated });
+      } catch (e) {
+        return err(errorText(e));
+      }
+    },
+  );
+
+  server.registerTool(
+    "datev_extf_job",
+    {
+      title: "Result of an EXTF import at DATEV",
+      description: "Check whether DATEV imported an EXTF file sent earlier with datev_upload_extf, by its job_id.",
+      inputSchema: { client_id: z.string(), job_id: z.string() },
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    async ({ client_id, job_id }, extra) => {
+      try {
+        const d = deps(extra.signal);
+        const state = await jobOf(client_id, job_id, d);
+        return jobAnswer(client_id, job_id, state.result, state.job, d.env);
       } catch (e) {
         return err(errorText(e));
       }

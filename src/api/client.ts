@@ -48,6 +48,8 @@ export function buildHeaders(op: Operation, input: CallInput): Record<string, st
 
 export interface CallResult {
   status: number;
+  /** DATEV's Retry-After for a job, in seconds as sent. */
+  retryAfter?: string;
   url: string;
   contentType?: string;
   location?: string;
@@ -451,6 +453,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     url: url.toString(),
     contentType: res.headers.get("content-type") ?? undefined,
     location: res.headers.get("location") ?? undefined,
+    retryAfter: res.headers.get("retry-after") ?? undefined,
     paging: pagingOf(res.headers),
     body,
     truncated,

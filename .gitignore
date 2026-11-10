@@ -20,3 +20,4 @@ session*.json
 session.key*
 logs/
 http-*.jsonl
+__pycache__/

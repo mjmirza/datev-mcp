@@ -65,13 +65,13 @@ A = {
         "docs/SETUP.md:111 and docs/qa/troubleshooting.md:30 tell users to 'Ask DATEV to enable the product'; rephrase so the vendor handles it",
     ),
     "GEN-16": (
-        P,
-        "HTTP log exists for every API, token, userinfo, JWKS call (src/api/http-log.ts, src/api/client.ts:376-405) but request bodies are only a SHA-256 fingerprint (client.ts:383) and some paths are open (ledger F31, F32)",
+        M,
+        "HTTP log covers every API, token, revoke, userinfo, JWKS, status and doctor call (src/api/http-log.ts, src/api/client.ts, src/auth/token-client.ts, src/setup/doctor.ts); calls are refused while the log cannot be written (ledger F31, F32, F33)",
     ),
     "GEN-17": (M, "Retention 30 days (src/api/http-log.ts:8, prune at :55-67)"),
     "GEN-18": (
-        P,
-        "Timestamp, method, full URL with query, redacted headers logged (src/api/client.ts:376-386); Authorization removed (http-log.ts:9). Request body kept only as hash, not retrievable on demand (http-log.ts:36-43; ledger F33)",
+        M,
+        "Timestamp, method, full URL with query and headers without Authorization are logged; text bodies up to 8000 characters inline, larger ones in logs/bodies/<sha>.txt for retrieval on demand (src/api/http-log.ts bodyFingerprint; ledger F33)",
     ),
     "GEN-19": (
         M,
@@ -100,7 +100,7 @@ A = {
     ),
     "GEN-26": (
         M,
-        'Login fails, saves nothing and revokes its tokens when userinfo gives no full name (src/setup/login.ts, test: a login without the full user name saves nothing; ledger F17)',
+        "Login fails, saves nothing and revokes its tokens when userinfo gives no full name (src/setup/login.ts, test: a login without the full user name saves nothing; ledger F17)",
     ),
     "GEN-27": (
         M,
@@ -112,7 +112,7 @@ A = {
     ),
     "GEN-29": (
         M,
-        'A new login revokes the previous refresh token and keeps unconfirmed ones encrypted and retried (src/auth/pending-revoke.ts); a failed login revokes the tokens it received (ledger F05, F30)',
+        "A new login revokes the previous refresh token and keeps unconfirmed ones encrypted and retried (src/auth/pending-revoke.ts); a failed login revokes the tokens it received (ledger F05, F30)",
     ),
     "GEN-30": (
         O,
@@ -128,7 +128,7 @@ A = {
     ),
     "GEN-36": (
         M,
-        'Tokens AES-256-GCM encrypted with the key in the OS credential store; the app never stores the client secret, and a Public client has none (src/config.ts, docs/SETUP.md; ledger F28, F43)',
+        "Tokens AES-256-GCM encrypted with the key in the OS credential store; the app never stores the client secret, and a Public client has none (src/config.ts, docs/SETUP.md; ledger F28, F43)",
     ),
     "GEN-37": (
         M,
@@ -204,11 +204,11 @@ A = {
     ),
     "AUTH-13": (
         NO,
-        'Code supports a Public client without a secret (ledger F43, commit 8a3374d). The owner must run the production app as a Public client: ask DATEV to switch it, then remove DATEV_CLIENT_SECRET',
+        "Code supports a Public client without a secret (ledger F43, commit 8a3374d). The owner must run the production app as a Public client: ask DATEV to switch it, then remove DATEV_CLIENT_SECRET",
     ),
     "AUTH-14": (
         M,
-        'Redirect is http://localhost, never an IP or https://localhost (src/auth/callback-server.ts); Public client supported (ledger F43)',
+        "Redirect is http://localhost, never an IP or https://localhost (src/auth/callback-server.ts); Public client supported (ledger F43)",
     ),
     "AUTH-15": (
         NO,
@@ -220,7 +220,7 @@ A = {
     ),
     "AUTH-17": (
         NO,
-        'Code supports Public clients (ledger F43). The owner picks Public and a recognisable app name in the developer portal',
+        "Code supports Public clients (ledger F43). The owner picks Public and a recognisable app name in the developer portal",
     ),
     "AUTH-18": (
         M,
@@ -229,7 +229,7 @@ A = {
     # 3 Redirect
     "REDIR-01": (
         NO,
-        'Code supports Public clients (ledger F43). The owner must make sure no invalid redirect URL stays registered on the production app',
+        "Code supports Public clients (ledger F43). The owner must make sure no invalid redirect URL stays registered on the production app",
     ),
     "REDIR-02": (
         NO,
@@ -295,16 +295,16 @@ A = {
     # 8 documents
     "DOCS-01": (
         M,
-        "Upload sends one POST and reads nothing afterwards (src/tools/documents.ts:102)",
+        "Upload is one PUT plus one permission GET; document types are read at most once a day (src/tools/documents.ts)",
     ),
     "DOCS-02": (
-        P,
-        "datev_list_clients pages through accounting-clients and shows name, consultant and client number (src/tools/accounting.ts:123-139), but the upload does not perform a permission check first (F37)",
+        M,
+        "Every upload first calls accounting-clients GET /clients/{client-id} and refuses with DATEV's setup link when Belegbilderservice is missing; the preview shows client name, consultant and client number (src/api/permission.ts, src/tools/documents.ts)",
     ),
     "DOCS-03": (NA, "Long-term-token note; " + NOOFF),
     "DOCS-04": (
-        O,
-        "document-types never fetched or shown; document_type is free text (src/tools/documents.ts:64)",
+        M,
+        "datev_document_types shows the client's types; uploads accept only those, re-checked once per transfer day (src/tools/documents.ts documentTypesToday)",
     ),
     "DOCS-05": (
         NO,
@@ -312,11 +312,11 @@ A = {
     ),
     "DOCS-06": (
         M,
-        "Document types are not re-checked per upload (src/tools/documents.ts:74-104)",
+        "Document types are cached per client for the day, not fetched before each document (src/tools/documents.ts)",
     ),
     "DOCS-07": (
-        P,
-        "document_type is optional, not required for every document (src/tools/documents.ts:64,81); demo of two types is owner's",
+        M,
+        "document_type is required for every Belegbilderservice document and checked against the client's types; the two-type demo is the owner's",
     ),
     "DOCS-08": (
         O,
@@ -328,8 +328,8 @@ A = {
         "No document type is hard-coded; caller supplies it (src/tools/documents.ts:64)",
     ),
     "DOCS-11": (
-        P,
-        "datev_upload_document accepts and sends category/folder/register (src/tools/documents.ts:66-68,83) with no check that the target is Belegbilderservice rather than Buchungsdatenservice",
+        M,
+        "Belegbilderservice uploads refuse category, folder and register (src/tools/documents.ts); test 'documents use only the client's document types'",
     ),
     "DOCS-12": (
         M,
@@ -338,15 +338,15 @@ A = {
     # 9 EXTF
     "EXTF-01": (
         M,
-        "EXTF import sends one POST and does not poll (src/tools/extf.ts:200)",
+        "One import POST, one permission GET and at most 6 job queries (src/tools/extf.ts)",
     ),
     "EXTF-02": (
-        P,
-        "Client list with paging and numbers exists (src/tools/accounting.ts:123-139); not used as a check before upload (F37)",
+        M,
+        "datev_upload_extf and Buchungsdatenservice documents call GET /clients/{client-id} first (src/api/permission.ts)",
     ),
     "EXTF-03": (
-        P,
-        "Client list shows data_services (src/tools/accounting.ts:137) but datev_upload_extf does not refuse clients without Buchungsdatenservice (src/tools/extf.ts:175-202; F37)",
+        M,
+        "Uploads are refused unless the client's services include Buchungsdatenservice, with DATEV's setup link (src/api/permission.ts); test 'an EXTF import counts only when DATEV's job succeeded'",
     ),
     "EXTF-04": (
         M,
@@ -357,13 +357,16 @@ A = {
         "Typed tools never use dxso-jobs/clients (src/tools/accounting.ts:124)",
     ),
     "EXTF-06": (
-        O,
-        "datev_upload_document uses POST /documents (src/tools/documents.ts:100); no app-generated GUID with PUT",
+        M,
+        "Documents use PUT /documents/{guid} with an RFC 4122 id derived from client and file hash (src/tools/documents.ts documentGuid)",
     ),
-    "EXTF-07": (M, "document_type is optional per upload (src/tools/documents.ts:64)"),
+    "EXTF-07": (
+        M,
+        "document_type is optional for Buchungsdatenservice documents; the tool tells the assistant to ask the user",
+    ),
     "EXTF-08": (
-        P,
-        "category/folder/register are optional and only enforced as all-or-none (src/tools/documents.ts:76-77), not required for Buchungsdatenservice documents",
+        M,
+        "Buchungsdatenservice documents require category, folder and register (src/tools/documents.ts)",
     ),
     "EXTF-09": (
         NO,
@@ -374,14 +377,17 @@ A = {
         "datev_write_extf_batch has no Beleglink (column 20) field (src/tools/extf.ts:83-95)",
     ),
     "EXTF-11": (
-        P,
-        "Confirm token is single-use (src/tools/confirm.ts:39), but a new preview lets the same file be imported again with no duplicate check",
+        M,
+        "A sent file is remembered per client by hash; a second send is refused unless resend: true is passed for a support case (src/tools/sent-ledger.ts, src/tools/extf.ts)",
     ),
     "EXTF-12": (
-        O,
-        "datev_upload_extf reports uploaded: true on 202 without polling the job (src/tools/extf.ts:200-202)",
+        M,
+        "After the 202 the job is polled; success only when result is succeeded, otherwise DATEV's validation messages are shown (src/tools/extf.ts jobAnswer); new tool datev_extf_job",
     ),
-    "EXTF-13": (O, "No job polling, so Retry-After from the POST is not used"),
+    "EXTF-13": (
+        M,
+        "The first job query waits the Retry-After seconds from the POST (1 to 20 s)",
+    ),
     "EXTF-14": (
         NO,
         "Owner transmits a booking file in sandbox (tools exist: src/tools/extf.ts)",
@@ -927,14 +933,20 @@ with open(OUT, "w", encoding="utf-8") as fh:
     fh.write("\n".join(out))
 # Machine-readable summary for "datev-mcp compliance": per section counts and the open MUST ids.
 import json
+
 JSON_OUT = sys.argv[3] if len(sys.argv) > 3 else None
 if JSON_OUT:
-    data = {"sections": [], "open_must": [{"id": rid, "status": st} for rid, st, _ in open_must]}
+    data = {
+        "sections": [],
+        "open_must": [{"id": rid, "status": st} for rid, st, _ in open_must],
+    }
     for sec, cnt, rows in summary:
         c = {M: 0, P: 0, O: 0, NA: 0, NO: 0}
         for rid, lvl, req, src in rows:
             c[A[rid][0]] += 1
-        data["sections"].append({"title": sec, "counts": c, "ids": [r[0] for r in rows]})
+        data["sections"].append(
+            {"title": sec, "counts": c, "ids": [r[0] for r in rows]}
+        )
     with open(JSON_OUT, "w", encoding="utf-8") as fh:
         json.dump(data, fh, ensure_ascii=False, indent=1)
 print(

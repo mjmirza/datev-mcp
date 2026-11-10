@@ -16,7 +16,7 @@
     "index": "tsx scripts/build-spec-index.ts",
     "index:check": "tsx scripts/build-spec-index.ts --check",
     "test": "npm run test:unit",
-    "test:unit": "tsx --test test/unit/*.test.ts",
+    "test:unit": "tsx --import ./test/setup.ts --test test/unit/*.test.ts",
     "test:live": "tsx test/live.ts",
     "specs": "bash scripts/fetch-specs.sh",
     "eval": "tsx test/evals/run.ts",
