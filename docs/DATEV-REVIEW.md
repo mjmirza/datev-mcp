@@ -44,6 +44,22 @@ There is no server in between and no shared backend. Every installation belongs 
 | Only the scopes that are needed | The person chooses data services, only their scopes are requested, an operation outside them is refused before sending | The scope selection test |
 | DATEV's service names shown as DATEV writes them | `src/auth/services.ts`, `datev-mcp services` | The scope selection test |
 | No DATEV documentation passed on | Tool answers carry field names, types and constraints only | The property test over all 209 operations |
+| Data service switched on before any transfer | `src/api/permission.ts` reads the client with accounting-clients first and refuses with DATEV's setup page, or for Datenservice Export Rechnungswesen ends the connection and links DATEV's order page | `accounting-rules.test.ts` |
+| Belegbilderservice and Buchungsdatenservice documents | One PUT with an id built from client and file hash, only the client's document types (read once a day), the field rules of each service | `accounting-rules.test.ts` |
+| Booking data sent once, import confirmed | A sent file is refused a second time unless resent on purpose; the import job is polled after Retry-After and counts only when DATEV imported it | `accounting-rules.test.ts` |
+| Datenservice Export reads fiscal years first | The year list, then the year's settings, before any accounting data | `accounting-rules.test.ts` |
+
+### Fiscal year settings used, and why
+
+| Field from GET fiscal-years/{id} | Use in datev-mcp |
+|---|---|
+| `yearBegin`, `yearEnd` | Shown with every balance and posting answer, so the period is never guessed |
+| `accountLength` | Account numbers are read and shown at the client's length |
+| `accountSystem` | Names the chart of accounts (SKR) the accounts belong to |
+| `currencyCode` | The currency of the amounts |
+| `nationalRight` | Whether German or Austrian bookkeeping law applies |
+
+The other fields are not used.
 
 ## Full requirement checklist
 

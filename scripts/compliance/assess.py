@@ -509,22 +509,25 @@ A = {
     "DXSOF-09": (NO, "Owner produces single-transaction sample"),
     # 13 dataexchange
     "DX-01": (
-        P,
-        "accounting-clients added and its services shown (src/auth/services.ts:46, src/tools/accounting.ts:137), but no tool checks for 'Datenservice Export Rechnungswesen' before calling dataexchange",
+        M,
+        "Every Datenservice Export call first reads the client with accounting-clients GET /clients/{client-id} and requires 'Datenservice Export Rechnungswesen' (src/api/dataexchange-guard.ts, also for datev_call)",
     ),
     "DX-02": (
-        O,
-        "Missing permission does not trigger token revocation or an error linking DATEV's order page",
+        M,
+        "Without the service the connection is ended (both tokens revoked through disconnect) and DATEV's order page is linked (src/api/permission.ts, src/server.ts); test 'a missing permission ends the connection'",
     ),
     "DX-03": (
         NO,
         "Owner explains implemented use cases (fiscal years, accounts, sums, postings)",
     ),
     "DX-04": (
-        P,
-        "datev_list_fiscal_years exists (src/tools/accounting.ts:148-163), but other dataexchange tools take a fiscal_year_id without checking it first",
+        M,
+        "The fiscal year list is read before any accounting data and an unknown year is refused (src/api/dataexchange-guard.ts)",
     ),
-    "DX-05": (O, "GET fiscal-years/{id} not used by any typed tool"),
+    "DX-05": (
+        M,
+        "GET fiscal-years/{id} is read before data; the fields used and why are listed in docs/DATEV-REVIEW.md and returned as fiscal_year with balances and postings",
+    ),
     "DX-06": (
         M,
         "datev_find_accounts calls general-ledger-accounts (src/tools/accounts.ts:68)",

@@ -221,11 +221,11 @@ Scope note: sections 8-27 bind only for the data services the owner submits for 
 
 | Id | Level | Requirement | Status | Evidence or gap | Source |
 |---|---|---|---|---|---|
-| DX-01 | MUST | Use at least one of accounting-clients GET /v2/clients or /v2/clients/{client-id} to verify the customer's activation (services array contains 'Datenservice... | partial | accounting-clients added and its services shown (src/auth/services.ts:46, src/tools/accounting.ts:137), but no tool checks for 'Datenservice Export Rechnungswesen' before calling dataexchange | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
-| DX-02 | MUST | If permissions are missing (4xx, or 200 without the service), immediately revoke both tokens at the identity provider and show an error with a link to... | open | Missing permission does not trigger token revocation or an error linking DATEV's order page | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
+| DX-01 | MUST | Use at least one of accounting-clients GET /v2/clients or /v2/clients/{client-id} to verify the customer's activation (services array contains 'Datenservice... | met | Every Datenservice Export call first reads the client with accounting-clients GET /clients/{client-id} and requires 'Datenservice Export Rechnungswesen' (src/api/dataexchange-guard.ts, also for datev_call) | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
+| DX-02 | MUST | If permissions are missing (4xx, or 200 without the service), immediately revoke both tokens at the identity provider and show an error with a link to... | met | Without the service the connection is ended (both tokens revoked through disconnect) and DATEV's order page is linked (src/api/permission.ts, src/server.ts); test 'a missing permission ends the connection' | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
 | DX-03 | MUST | Explain to the DATEV advisor which use cases were implemented. | needs-owner | Owner explains implemented use cases (fiscal years, accounts, sums, postings) | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
-| DX-04 | MUST | Always check available fiscal years first (GET fiscal-years). | partial | datev_list_fiscal_years exists (src/tools/accounting.ts:148-163), but other dataexchange tools take a fiscal_year_id without checking it first | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
-| DX-05 | MUST | Check the fiscal-year configuration (GET fiscal-years/{id}) and explain which response fields are used and why. | open | GET fiscal-years/{id} not used by any typed tool | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
+| DX-04 | MUST | Always check available fiscal years first (GET fiscal-years). | met | The fiscal year list is read before any accounting data and an unknown year is refused (src/api/dataexchange-guard.ts) | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
+| DX-05 | MUST | Check the fiscal-year configuration (GET fiscal-years/{id}) and explain which response fields are used and why. | met | GET fiscal-years/{id} is read before data; the fields used and why are listed in docs/DATEV-REVIEW.md and returned as fiscal_year with balances and postings | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
 | DX-06 | MUST | Demonstrate a technically correct call of general-ledger-accounts and explain whether/how it is used. | met | datev_find_accounts calls general-ledger-accounts (src/tools/accounts.ts:68) | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
 | DX-07 | MUST | If accounting-sequences or terms-of-payment are used, explain the purpose. | needs-owner | Owner explains purpose if sequences/terms-of-payment are used (only via datev_call) | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
 | DX-08 | unmarked | Account postings are asynchronous: POST a job, poll /jobs/{id}/state until 'completed', then fetch paged results. | met | POST job, poll state, read paged results (src/tools/accounting.ts:217-271) | https://developer.datev.de/de/product-detail/accounting-dataexchange/1/documentation/interface-requirements |
@@ -460,7 +460,7 @@ Scope note: sections 8-27 bind only for the data services the owner submits for 
 | 10. DATEV-Format file (Buchungsdatenservice file requirements) | 0 | 3 | 1 | 0 | 7 | 11 |
 | 11. Rechnungsdatenservice 1.0 (accounting:dxso-jobs) | 2 | 4 | 9 | 0 | 1 | 16 |
 | 12. DXSO / DATEV XML-Schnittstelle online (file requirements) | 0 | 0 | 4 | 0 | 5 | 9 |
-| 13. Datenservice Export Rechnungswesen (accounting:dataexchange) | 4 | 2 | 2 | 1 | 3 | 12 |
+| 13. Datenservice Export Rechnungswesen (accounting:dataexchange) | 8 | 0 | 0 | 1 | 3 | 12 |
 | 14. TRAFFIQX Invoice API for DATEV E-Rechnungsplattform (traffiqx:invoice) | 0 | 6 | 18 | 0 | 2 | 26 |
 | 15. Lohnimportdatenservice (hr:files / hr:imports) | 1 | 2 | 2 | 0 | 3 | 8 |
 | 16. ASCII format (Lohnimportdatenservice file requirements) | 0 | 0 | 0 | 0 | 6 | 6 |
@@ -475,7 +475,7 @@ Scope note: sections 8-27 bind only for the data services the owner submits for 
 | 25. Datenservice Kassenarchiv (cashregister:import) | 0 | 2 | 2 | 1 | 0 | 5 |
 | 26. SmartTransfer inbound / outbound (b4value-net-smarttransfer) | 0 | 1 | 0 | 0 | 2 | 3 |
 | 27. Login mit DATEV (extra, listed on the index page) | 1 | 0 | 0 | 8 | 0 | 9 |
-| **Total** | **78** | **39** | **87** | **28** | **71** | **303** |
+| **Total** | **82** | **37** | **85** | **28** | **71** | **303** |
 
 ## Open MUST items, ordered by impact
 
@@ -487,93 +487,89 @@ Rows marked MUST / MUST (MUSS), or DATEV prose 'must / required / mandatory', wh
 | 2 | EXTF-17 | open | No compression for documents in production |
 | 3 | EXTF-21 | open | Linked document cannot be shown in Rechnungswesen without Beleglink support |
 | 4 | GEN-09 | partial | Error rate only measured, not kept under 10 % |
-| 5 | DX-02 | open | Missing dataexchange permission does not revoke tokens or link to the order page |
-| 6 | DX-01 | partial | No check that the client has the dataexchange service before calls |
-| 7 | DX-04 | partial | Fiscal years not checked first by the dataexchange tools |
-| 8 | DX-05 | open | Fiscal-year configuration GET fiscal-years/{id} unused |
-| 9 | EXTFF-01 | partial | Debitoren/Kreditoren format not generated |
-| 10 | EXTFF-02 | partial | DATEV check program not run on samples (owner) |
-| 11 | EXTFF-05 | partial | Batch writer lacks Belegfeld 2, Beleglink, currency, discount, OSS and other base fields |
-| 12 | EXTFF-09 | open | No Debitoren/Kreditoren writer |
-| 13 | DOC-02 | open | No hint with http://go.datev.de/datenservices-einrichten anywhere in the code or docs |
-| 14 | DOC-03 | partial | Setup is bundled in docs/SETUP.md, but it covers the developer portal, not the customer's DATEV-side ordering and activation of the data service |
-| 15 | DOC-04 | partial | docs/SETUP.md lists vendor-side steps; missing DATEV-side activation steps and the ordering/setup link |
-| 16 | DXSO-01 | partial | Files are passed through datev_upload_file as supplied (src/tools/upload.ts); the app does not produce or check ledger XML |
-| 17 | DXSO-03 | partial | Client list shows name and numbers (src/tools/accounting.ts:133-139), but no check before a DXSO job; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 18 | DXSO-04 | open | No permission re-check before transfers; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 19 | DXSO-05 | partial | 403/401 answers shown with DATEV's help link (src/api/problem.ts), no dedicated permission-change message |
-| 20 | DXSO-08 | open | No configuration validation via GET /clients/{client-id} before transfer |
-| 21 | DXSO-09 | open | No reaction to configuration changes |
-| 22 | DXSO-10 | open | ledger_folder_names not read or applied |
-| 23 | DXSO-12 | partial | File names with control characters, quotes and Windows-reserved characters refused (src/tools/upload.ts:30-35), but non-ASCII names are allowed |
-| 24 | DXSO-14 | open | Job status and protocol-entries not fetched or shown automatically; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 25 | DXSO-15 | open | HTTP log keeps job bodies 30 days only (src/api/http-log.ts:8); no 1-year processing protocol store |
-| 26 | DXSOF-01 | open | App does not generate DXSO XML; it uploads whatever file it is given |
-| 27 | DXSOF-02 | open | No XSD validation of XML files before upload |
-| 28 | DXSOF-04 | open | No XML generation, so base data depends entirely on the supplied file |
-| 29 | DXSOF-07 | open | No XML generation (see DXSOF-04) |
-| 30 | TQ-01 | open | No place to enter TRAFFIQX provider/ID; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 31 | TQ-04 | open | No per-use-case connection check |
-| 32 | TQ-05 | open | Status 'connected' does not depend on a TRAFFIQX 200 (src/setup/status.ts:66-69) |
-| 33 | TQ-06 | open | No revoke on connection-check failure |
-| 34 | TQ-07 | partial | Required X-App-Display-Name header is enforced (src/api/client.ts:37-40) but its value comes from the caller, not pinned to the portal app name |
-| 35 | TQ-09 | open | No inbox sync; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 36 | TQ-10 | partial | document_id is returned in tool answers but not kept across the lifecycle |
-| 37 | TQ-11 | open | Validation status not highlighted |
-| 38 | TQ-12 | open | No notice for invalid e-invoices |
-| 39 | TQ-13 | open | ZIP not extracted or archived; binary only saved or base64-returned (src/tools/generic.ts:105-109) |
-| 40 | TQ-14 | open | No GoBD archiving statement |
-| 41 | TQ-15 | partial | Upload paths reachable via datev_upload_file (src/tools/upload.ts); 'sent' proof by owner |
-| 42 | TQ-16 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 43 | TQ-17 | open | document_id not stored |
-| 44 | TQ-18 | open | Status values not interpreted |
-| 45 | TQ-19 | partial | App never polls on its own; nothing limits an assistant polling via datev_call |
-| 46 | TQ-20 | open | No ordering of download after 'sent' |
-| 47 | TQ-21 | open | No GoBD archiving statement |
-| 48 | TQ-22 | open | No ordering of metadata fetch after 'sent' |
-| 49 | TQ-23 | open | Delivery channel not checked or shown |
-| 50 | HRIMP-02 | open | No single-client permission check flow for hr-files; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 51 | HRIMP-08 | partial | Job status only reachable via datev_call |
-| 52 | HRPAY-03 | open | No permission query before retrieval; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 53 | HRPAY-05 | partial | Invalid numbers produce a schema error (src/api/client.ts:132-154) or DATEV's error with help link, without the suggested hint text |
-| 54 | HRPAY-06 | open | No input flow plus GET /clients/{client-id} access display for payroll reports |
-| 55 | HRPAY-13 | open | No paged HR client list with numbers and company name |
-| 56 | HREXP-03 | open | No HR client selection/permission flow; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 57 | HREXP-05 | partial | Schema or DATEV error with help link, no hint text |
-| 58 | HREX-02 | open | No counter-booking logic; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 59 | HREX-03 | open | No permission check flow for hr-exchange |
-| 60 | HREX-04 | partial | Jobs can be created through datev_call with preview and approval (src/tools/generic.ts:81-101) |
-| 61 | HREX-05 | open | No forced full read before create/change |
-| 62 | HREX-06 | open | No 1-minute wait before status queries |
-| 63 | HREX-07 | open | No once-per-minute polling limit |
-| 64 | HREX-08 | open | No 15-minute stop rule |
-| 65 | HREX-09 | open | No initial sync |
-| 66 | HREX-10 | open | No local store to reconcile |
-| 67 | HREX-11 | partial | Calls and job bodies logged 30 days (src/api/http-log.ts); results not stored as a user-facing log |
-| 68 | HREX-12 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 69 | HREX-14 | open | No check that IDs come from a prior read |
-| 70 | HREX-16 | open | No read-before-write for employees |
-| 71 | HREX-18 | open | Request bodies are not validated against the schema's required fields (src/api/client.ts:215-238) |
-| 72 | HREX-19 | open | Duplicate personnel numbers not caught |
-| 73 | HREX-22 | open | No full read of absences before writing |
-| 74 | HREX-23 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 75 | HREX-24 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 76 | HREX-25 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 77 | HREX-26 | open | No existence check for month records |
-| 78 | HREX-28 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 79 | HREX-30 | open | No automatic GET job after changes |
-| 80 | HREX-31 | open | No duplicate handling |
-| 81 | HREX-32 | open | No validation GET after PUT |
-| 82 | HREX-33 | partial | Changes traceable only through the 30-day HTTP log (src/api/http-log.ts:8) |
-| 83 | EAU-02 | open | No permission check flow for eau-api |
-| 84 | EAU-04 | partial | Feedback data is returned in the tool answer; no dedicated display |
-| 85 | EAU-06 | open | No warning about § 5 (1) EntgFG or the 4th-day rule |
-| 86 | HRDOCS-01 | open | No /clients permission check for hr-documents; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 87 | MYTAX-02 | open | No client selection for my-tax; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 88 | MYTAX-04 | open | tax-years not checked per transfer day |
-| 89 | MYTAX-07 | open | Folders not checked per transfer day |
-| 90 | MYTAX-12 | open | No compression |
-| 91 | MD-04 | open | No ETag storage or conditional requests |
-| 92 | CR-01 | open | No device registration/init-file flow; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
-| 93 | CR-03 | partial | Metadata part capped at 10 kB and parts checked against the spec (src/tools/upload.ts:20-23,127-153); JSON pattern checks partial |
-| 94 | CR-04 | partial | Bearer sent on every request (src/api/client.ts:361); Request-Id header must come from the caller |
+| 5 | EXTFF-01 | partial | Debitoren/Kreditoren format not generated |
+| 6 | EXTFF-02 | partial | DATEV check program not run on samples (owner) |
+| 7 | EXTFF-05 | partial | Batch writer lacks Belegfeld 2, Beleglink, currency, discount, OSS and other base fields |
+| 8 | EXTFF-09 | open | No Debitoren/Kreditoren writer |
+| 9 | DOC-02 | open | No hint with http://go.datev.de/datenservices-einrichten anywhere in the code or docs |
+| 10 | DOC-03 | partial | Setup is bundled in docs/SETUP.md, but it covers the developer portal, not the customer's DATEV-side ordering and activation of the data service |
+| 11 | DOC-04 | partial | docs/SETUP.md lists vendor-side steps; missing DATEV-side activation steps and the ordering/setup link |
+| 12 | DXSO-01 | partial | Files are passed through datev_upload_file as supplied (src/tools/upload.ts); the app does not produce or check ledger XML |
+| 13 | DXSO-03 | partial | Client list shows name and numbers (src/tools/accounting.ts:133-139), but no check before a DXSO job; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 14 | DXSO-04 | open | No permission re-check before transfers; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 15 | DXSO-05 | partial | 403/401 answers shown with DATEV's help link (src/api/problem.ts), no dedicated permission-change message |
+| 16 | DXSO-08 | open | No configuration validation via GET /clients/{client-id} before transfer |
+| 17 | DXSO-09 | open | No reaction to configuration changes |
+| 18 | DXSO-10 | open | ledger_folder_names not read or applied |
+| 19 | DXSO-12 | partial | File names with control characters, quotes and Windows-reserved characters refused (src/tools/upload.ts:30-35), but non-ASCII names are allowed |
+| 20 | DXSO-14 | open | Job status and protocol-entries not fetched or shown automatically; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 21 | DXSO-15 | open | HTTP log keeps job bodies 30 days only (src/api/http-log.ts:8); no 1-year processing protocol store |
+| 22 | DXSOF-01 | open | App does not generate DXSO XML; it uploads whatever file it is given |
+| 23 | DXSOF-02 | open | No XSD validation of XML files before upload |
+| 24 | DXSOF-04 | open | No XML generation, so base data depends entirely on the supplied file |
+| 25 | DXSOF-07 | open | No XML generation (see DXSOF-04) |
+| 26 | TQ-01 | open | No place to enter TRAFFIQX provider/ID; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 27 | TQ-04 | open | No per-use-case connection check |
+| 28 | TQ-05 | open | Status 'connected' does not depend on a TRAFFIQX 200 (src/setup/status.ts:66-69) |
+| 29 | TQ-06 | open | No revoke on connection-check failure |
+| 30 | TQ-07 | partial | Required X-App-Display-Name header is enforced (src/api/client.ts:37-40) but its value comes from the caller, not pinned to the portal app name |
+| 31 | TQ-09 | open | No inbox sync; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 32 | TQ-10 | partial | document_id is returned in tool answers but not kept across the lifecycle |
+| 33 | TQ-11 | open | Validation status not highlighted |
+| 34 | TQ-12 | open | No notice for invalid e-invoices |
+| 35 | TQ-13 | open | ZIP not extracted or archived; binary only saved or base64-returned (src/tools/generic.ts:105-109) |
+| 36 | TQ-14 | open | No GoBD archiving statement |
+| 37 | TQ-15 | partial | Upload paths reachable via datev_upload_file (src/tools/upload.ts); 'sent' proof by owner |
+| 38 | TQ-16 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 39 | TQ-17 | open | document_id not stored |
+| 40 | TQ-18 | open | Status values not interpreted |
+| 41 | TQ-19 | partial | App never polls on its own; nothing limits an assistant polling via datev_call |
+| 42 | TQ-20 | open | No ordering of download after 'sent' |
+| 43 | TQ-21 | open | No GoBD archiving statement |
+| 44 | TQ-22 | open | No ordering of metadata fetch after 'sent' |
+| 45 | TQ-23 | open | Delivery channel not checked or shown |
+| 46 | HRIMP-02 | open | No single-client permission check flow for hr-files; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 47 | HRIMP-08 | partial | Job status only reachable via datev_call |
+| 48 | HRPAY-03 | open | No permission query before retrieval; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 49 | HRPAY-05 | partial | Invalid numbers produce a schema error (src/api/client.ts:132-154) or DATEV's error with help link, without the suggested hint text |
+| 50 | HRPAY-06 | open | No input flow plus GET /clients/{client-id} access display for payroll reports |
+| 51 | HRPAY-13 | open | No paged HR client list with numbers and company name |
+| 52 | HREXP-03 | open | No HR client selection/permission flow; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 53 | HREXP-05 | partial | Schema or DATEV error with help link, no hint text |
+| 54 | HREX-02 | open | No counter-booking logic; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 55 | HREX-03 | open | No permission check flow for hr-exchange |
+| 56 | HREX-04 | partial | Jobs can be created through datev_call with preview and approval (src/tools/generic.ts:81-101) |
+| 57 | HREX-05 | open | No forced full read before create/change |
+| 58 | HREX-06 | open | No 1-minute wait before status queries |
+| 59 | HREX-07 | open | No once-per-minute polling limit |
+| 60 | HREX-08 | open | No 15-minute stop rule |
+| 61 | HREX-09 | open | No initial sync |
+| 62 | HREX-10 | open | No local store to reconcile |
+| 63 | HREX-11 | partial | Calls and job bodies logged 30 days (src/api/http-log.ts); results not stored as a user-facing log |
+| 64 | HREX-12 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 65 | HREX-14 | open | No check that IDs come from a prior read |
+| 66 | HREX-16 | open | No read-before-write for employees |
+| 67 | HREX-18 | open | Request bodies are not validated against the schema's required fields (src/api/client.ts:215-238) |
+| 68 | HREX-19 | open | Duplicate personnel numbers not caught |
+| 69 | HREX-22 | open | No full read of absences before writing |
+| 70 | HREX-23 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 71 | HREX-24 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 72 | HREX-25 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 73 | HREX-26 | open | No existence check for month records |
+| 74 | HREX-28 | open | only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 75 | HREX-30 | open | No automatic GET job after changes |
+| 76 | HREX-31 | open | No duplicate handling |
+| 77 | HREX-32 | open | No validation GET after PUT |
+| 78 | HREX-33 | partial | Changes traceable only through the 30-day HTTP log (src/api/http-log.ts:8) |
+| 79 | EAU-02 | open | No permission check flow for eau-api |
+| 80 | EAU-04 | partial | Feedback data is returned in the tool answer; no dedicated display |
+| 81 | EAU-06 | open | No warning about § 5 (1) EntgFG or the 4th-day rule |
+| 82 | HRDOCS-01 | open | No /clients permission check for hr-documents; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 83 | MYTAX-02 | open | No client selection for my-tax; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 84 | MYTAX-04 | open | tax-years not checked per transfer day |
+| 85 | MYTAX-07 | open | Folders not checked per transfer day |
+| 86 | MYTAX-12 | open | No compression |
+| 87 | MD-04 | open | No ETag storage or conditional requests |
+| 88 | CR-01 | open | No device registration/init-file flow; only reachable through the generic datev_call/datev_upload_file; the app has no service-specific logic for this |
+| 89 | CR-03 | partial | Metadata part capped at 10 kB and parts checked against the spec (src/tools/upload.ts:20-23,127-153); JSON pattern checks partial |
+| 90 | CR-04 | partial | Bearer sent on every request (src/api/client.ts:361); Request-Id header must come from the caller |

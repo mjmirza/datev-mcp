@@ -1,3 +1,4 @@
+import { withDatevBasics } from "../helpers/datev-basics.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
@@ -13,7 +14,7 @@ const accounts: LedgerAccount[] = [
   { accountNumber: 8400, caption: "Erlöse Gebühren" },
 ];
 
-const deps = (f: FetchLike): CallDeps => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: f });
+const deps = (f: FetchLike): CallDeps => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: withDatevBasics(f) });
 
 test("matches by number prefix and by all name words, umlaut-tolerant", () => {
   assert.deepEqual(matchAccounts(accounts, "12").map((a) => a.accountNumber), [1200, 1210]);

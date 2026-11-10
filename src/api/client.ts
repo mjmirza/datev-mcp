@@ -92,6 +92,8 @@ export interface CallDeps {
   serviceKeys?: Record<string, string | undefined>;
   /** Per host: until when DATEV asked us to wait. Shared across calls, so a long Retry-After is honored by the next call too. */
   cooldowns?: Map<string, number>;
+  /** Ends the connection when DATEV says the client lacks Datenservice Export Rechnungswesen, as that service's rules require. */
+  onMissingPermission?: () => Promise<void>;
 }
 
 const defaultCooldowns = new Map<string, number>();

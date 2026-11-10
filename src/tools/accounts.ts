@@ -4,6 +4,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { bounded, callOperation, CallError, problemText, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
+import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { localize } from "../i18n.js";
 
 // Reads the client's own chart of accounts (SKR03, SKR04 or custom) live from DATEV,
@@ -57,6 +58,7 @@ export async function loadAccountChart(clientId: string, fiscalYearId: string, d
   const key = `${deps.env}|${who}|${clientId}|${fiscalYearId}`;
   const hit = cache.get(key);
   if (hit && now - hit.at < CACHE_MS) return hit.chart;
+  await dataexchangeGuard(clientId, fiscalYearId, deps, deadline);
   const op = getOperation("accounting-dataexchange.getgeneralledgeraccounts");
   if (!op) throw new CallError("The general ledger operation is missing from the index");
   // A full chart easily exceeds the generic response cap, so read it whole and filter here.

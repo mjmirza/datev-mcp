@@ -298,9 +298,9 @@
   {
    "title": "13. Datenservice Export Rechnungswesen (accounting:dataexchange)",
    "counts": {
-    "met": 4,
-    "partial": 2,
-    "open": 2,
+    "met": 8,
+    "partial": 0,
+    "open": 0,
     "n/a": 1,
     "needs-owner": 3
    },
@@ -644,22 +644,6 @@
   {
    "id": "GEN-09",
    "status": "partial"
-  },
-  {
-   "id": "DX-02",
-   "status": "open"
-  },
-  {
-   "id": "DX-01",
-   "status": "partial"
-  },
-  {
-   "id": "DX-04",
-   "status": "partial"
-  },
-  {
-   "id": "DX-05",
-   "status": "open"
   },
   {
    "id": "EXTFF-01",

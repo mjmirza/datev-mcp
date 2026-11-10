@@ -4,6 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
+import { withDatevBasics, type Basics } from "../helpers/datev-basics.js";
 import { fiscalYearIds, jobIdFrom, jobPhase, registerAccountingTools } from "../../src/tools/accounting.js";
 
 test("job phase reading covers finished, failed and running shapes", () => {
@@ -23,9 +24,9 @@ test("job id comes from the body or the Location header", () => {
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
   new Response(typeof body === "string" ? body : JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
 
-async function client(f: FetchLike) {
+async function client(f: FetchLike, basics: Basics = {}) {
   const server = new McpServer({ name: "t", version: "0" });
-  registerAccountingTools(server, () => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: f }), async () => undefined);
+  registerAccountingTools(server, () => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: withDatevBasics(f, basics) }), async () => undefined);
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
   const c = new Client({ name: "t", version: "0" });
@@ -81,7 +82,7 @@ test("fiscal years: bare NDJSON ids (as DATEV sends them) become id objects", as
   assert.deepEqual(fiscalYearIds([20230701, 20240701]), ["20230701", "20240701"]);
   assert.deepEqual(fiscalYearIds([{ id: "20230701" }]), ["20230701"]);
   assert.deepEqual(fiscalYearIds(undefined), []);
-  const c = await client(async () => new Response("20230701\n", { status: 200, headers: { "content-type": "application/x-ndjson" } }));
+  const c = await client(async () => new Response("20230701\n", { status: 200, headers: { "content-type": "application/x-ndjson" } }), { passFiscalYears: true });
   assert.deepEqual(JSON.parse(text(await c.callTool({ name: "datev_list_fiscal_years", arguments: { client_id: "455148-1" } }))), [{ id: "20230701" }]);
 });
 
@@ -157,7 +158,7 @@ test("clients are read page by page past DATEV's 100 per request", async () => {
 });
 
 test("an HTTP 200 that carries only an error is an error, never data", async () => {
-  const c = await client(async () => json(200, { error: "Backend broken" }));
+  const c = await client(async () => json(200, { error: "Backend broken" }), { passFiscalYears: true });
   for (const [name, args] of [["datev_list_clients", {}], ["datev_list_fiscal_years", { client_id: "455148-1" }], ["datev_sums_and_balances", { client_id: "455148-1", fiscal_year_id: "20230101" }]] as const) {
     const r = await c.callTool({ name, arguments: args });
     assert.equal((r as { isError?: boolean }).isError, true, name);
@@ -198,7 +199,7 @@ test("postings stop before reading pages when the shared budget is spent", async
 });
 
 test("fiscal years still accept bare ids, and rows need real field types", async () => {
-  const bare = await client(async () => new Response("20230701\n", { headers: { "content-type": "application/json" } }));
+  const bare = await client(async () => new Response("20230701\n", { headers: { "content-type": "application/json" } }), { passFiscalYears: true });
   assert.deepEqual(JSON.parse(text(await bare.callTool({ name: "datev_list_fiscal_years", arguments: { client_id: "455148-1" } }))), [{ id: "20230701" }]);
   const objNumber = await client(async () => json(200, [{ accountNumber: { bad: true } }]));
   assert.equal(((await objNumber.callTool({ name: "datev_sums_and_balances", arguments: { client_id: "455148-1", fiscal_year_id: "20230101" } })) as { isError?: boolean }).isError, true);
@@ -229,7 +230,7 @@ test("postings that run out of time on a later page keep the rows read and say w
 });
 
 test("text that is not a fiscal year id, and empty posting rows, are refused", async () => {
-  const text200 = await client(async () => new Response("Backend broken", { headers: { "content-type": "text/plain" } }));
+  const text200 = await client(async () => new Response("Backend broken", { headers: { "content-type": "text/plain" } }), { passFiscalYears: true });
   assert.equal(((await text200.callTool({ name: "datev_list_fiscal_years", arguments: { client_id: "455148-1" } })) as { isError?: boolean }).isError, true);
   const empty = await client(async (u, init) => {
     const p = new URL(String(u)).pathname;

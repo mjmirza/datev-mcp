@@ -23,7 +23,7 @@ class PermissionError extends CallError {}
 export async function requireClientService(
   clientId: string,
   anyOf: ClientService[],
-  deps: CallDeps & { onMissingPermission?: () => Promise<void> },
+  deps: CallDeps,
   deadline?: number,
 ): Promise<PermittedClient> {
   const op = getOperation("accounting-clients.getclient");

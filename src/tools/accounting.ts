@@ -3,6 +3,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { callOperation, CallError, problemText, type CallDeps, type CallInput } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
+import { dataexchangeGuard, fiscalYearIds } from "../api/dataexchange-guard.js";
+
+export { fiscalYearIds };
 import { localize } from "../i18n.js";
 
 const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
@@ -81,18 +84,7 @@ export function jobIdFrom(body: unknown, location?: string): string | undefined 
   return location?.split("/").filter(Boolean).pop();
 }
 
-// DATEV sends fiscal years as bare ids (one per NDJSON line); accept objects with an id as well.
-export function fiscalYearIds(body: unknown): string[] {
-  const items = Array.isArray(body) ? body : body === undefined || body === null || body === "" ? [] : [body];
-  return items.map((x, i) => {
-    const id = x && typeof x === "object" ? (x as Record<string, unknown>).id : x;
-    // DATEV fiscal year ids are dates as eight digits, e.g. 20230701.
-    if ((typeof id !== "string" && typeof id !== "number") || !/^(199[2-9]|20[0-9][0-9])[0-9]{4}$/.test(String(id)))
-      throw new CallError(`DATEV sent something that is not a fiscal year id (entry ${i + 1}: ${JSON.stringify(x).slice(0, 150)})`);
-    return String(id);
-  });
-}
-
+// CODE_DELETE_OK: fiscalYearIds moved unchanged to src/api/dataexchange-guard.ts and is re-exported above.
 const accountRaw = (row: Record<string, unknown>): unknown => row.accountNumber ?? row.account_number ?? row.account ?? row.generalLedgerAccount;
 const accountOf = (row: Record<string, unknown>): string => {
   const v = accountRaw(row);
@@ -155,8 +147,8 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     },
     async ({ client_id }, extra) => {
       try {
-        const body = (await call("accounting-dataexchange.getfiscalyears", { pathParams: { clientId: client_id } }, deps(extra.signal))).body;
-        return ok(fiscalYearIds(body).map((id) => ({ id })));
+        const g = await dataexchangeGuard(client_id, undefined, deps(extra.signal));
+        return ok(g.fiscal_years.map((id) => ({ id })));
       } catch (e) {
         return err(errorText(e));
       }
@@ -178,10 +170,13 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     },
     async ({ client_id, fiscal_year_id, account_prefix, limit }, extra) => {
       try {
-        const r = await call("accounting-dataexchange.getsumsandbalances", { pathParams: { clientId: client_id, fiscalYearId: fiscal_year_id } }, deps(extra.signal), UNCAPPED);
+        const d = deps(extra.signal);
+        const deadline = Date.now() + 50_000;
+        const g = await dataexchangeGuard(client_id, fiscal_year_id, d, deadline);
+        const r = await call("accounting-dataexchange.getsumsandbalances", { pathParams: { clientId: client_id, fiscalYearId: fiscal_year_id } }, d, UNCAPPED, deadline);
         const all = rowsOf(r.body, "accounting-dataexchange.getsumsandbalances", hasAccountNumber, "an account with a number");
         const rows = account_prefix ? all.filter((x) => accountOf(x).startsWith(account_prefix)) : all;
-        return ok({ total_accounts: all.length, matches: rows.length, rows: rows.slice(0, limit ?? 50) });
+        return ok({ fiscal_year: g.settings, total_accounts: all.length, matches: rows.length, rows: rows.slice(0, limit ?? 50) });
       } catch (e) {
         return err(errorText(e));
       }
@@ -213,6 +208,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         const ids = { clientId: client_id, fiscalYearId: fiscal_year_id };
         // One budget for the whole call, polling and page reads included, so the tool answers before the MCP client gives up.
         const deadline = Date.now() + (max_wait_seconds ?? 45) * 1000;
+        const g = await dataexchangeGuard(client_id, fiscal_year_id, d, deadline);
         let jobId = job_id;
         if (!jobId) {
           const started = await call("accounting-dataexchange.postaccountpostingsjob", { pathParams: ids }, d, undefined, deadline);
@@ -274,6 +270,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         return ok({
           ready: true,
           job_id: job,
+          fiscal_year: g.settings,
           complete: done,
           pages_read: pageNo > first ? `${first}-${pageNo - 1} of ${pages ?? "unknown"}` : "none",
           postings_read: read,
