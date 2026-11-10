@@ -22,7 +22,8 @@
     "eval": "tsx test/evals/run.ts",
     "sweep": "tsx test/live-sweep.ts",
     "audit:endpoints": "tsx scripts/endpoint-audit.ts",
-    "qa": "tsx scripts/build-qa.ts"
+    "qa": "tsx scripts/build-qa.ts",
+    "compliance": "python3 scripts/compliance/assess.py scripts/compliance/requirements.md docs/COMPLIANCE-CHECKLIST.md src/compliance.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",

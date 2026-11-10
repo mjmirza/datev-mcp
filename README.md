@@ -207,6 +207,8 @@ docs/                setup, security, validation, compliance and more
 
 The sandbox may only hold test data. Using this with real clients needs DATEV's paid technical review (Technische Prüfung) for production access. Read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) before that step.
 
+`datev-mcp compliance` shows, for your own installation, whether the app type, the technical log, the error rate and the refresh tokens are as DATEV requires, and how every DATEV interface requirement stands. Your AI client can show the same through the `datev_compliance` tool. Every requirement with its status and evidence is in [docs/COMPLIANCE-CHECKLIST.md](docs/COMPLIANCE-CHECKLIST.md), and every review finding with its fix and guarding test in [docs/REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md).
+
 ## More documentation
 
 - [Setup](docs/SETUP.md)
@@ -214,6 +216,9 @@ The sandbox may only hold test data. Using this with real clients needs DATEV's 
 - [Validation](docs/VALIDATION.md)
 - [Endpoint audit](docs/ENDPOINT-AUDIT.md)
 - [Compliance](docs/COMPLIANCE.md)
+- [DATEV requirements checklist](docs/COMPLIANCE-CHECKLIST.md)
+- [DATEV review readiness](docs/DATEV-REVIEW.md)
+- [Review ledger](docs/REVIEW-LEDGER.md)
 - [Accessibility](docs/ACCESSIBILITY.md)
 - [Questions and answers, short FAQ](docs/FAQ.md)
 - [Over 2,000 answered questions](docs/qa/README.md)

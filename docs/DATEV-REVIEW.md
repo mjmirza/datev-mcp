@@ -45,6 +45,10 @@ There is no server in between and no shared backend. Every installation belongs 
 | DATEV's service names shown as DATEV writes them | `src/auth/services.ts`, `datev-mcp services` | The scope selection test |
 | No DATEV documentation passed on | Tool answers carry field names, types and constraints only | The property test over all 209 operations |
 
+## Full requirement checklist
+
+Every DATEV interface requirement, general and per data service, with its status in datev-mcp and the evidence, is in [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). `datev-mcp compliance` shows the same for a running installation.
+
 ## Still open, needs DATEV or a live run
 
 | Item | Why it cannot be closed here |

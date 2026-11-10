@@ -4,6 +4,7 @@ import { serviceList } from "./auth/services.js";
 import { loadConfig } from "./config.js";
 import { localize, messageLang } from "./i18n.js";
 import { disconnect } from "./setup/disconnect.js";
+import { complianceView, renderCompliance } from "./setup/compliance.js";
 import { doctor } from "./setup/doctor.js";
 import { login } from "./setup/login.js";
 import { connectionStatus, renderStatus } from "./setup/status.js";
@@ -15,6 +16,7 @@ const USAGE = `Usage: datev-mcp <command>
   disconnect             Revoke the connection at DATEV and delete it here ("Verbindung trennen")
   services               List the data services you can choose
   doctor                 Check credentials, session and API access
+  compliance             Show DATEV compliance of this installation and of every DATEV requirement
   serve                  Run the MCP server (default)`;
 
 function flag(argv: string[], name: string): string | undefined {
@@ -42,6 +44,10 @@ async function main(argv: string[]): Promise<number> {
   }
   if (cmd === "services") {
     process.stdout.write(`${serviceList()}\n`);
+    return 0;
+  }
+  if (cmd === "compliance") {
+    process.stdout.write(`${renderCompliance(complianceView(loadConfig(), { lang }), lang)}\n`);
     return 0;
   }
   if (cmd === "doctor") {
