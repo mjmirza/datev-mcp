@@ -144,6 +144,12 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F125 | MEDIUM | A client id whose first digits read as a percent escape, or that followed an escaped slash in the host, was shown unhidden | Grok R14 | fixed | 9becfae | an id whose first two digits read as a percent escape is still hidden |
 | F126 | MEDIUM | An answer that filled the read limit and then broke off lost the bytes already read, and a write became an uncertain-send error | Grok R14 | fixed | ad3d346 | a 5xx write that fills the cap and then breaks off returns its status instead of throwing |
 | F127 | MEDIUM | The may-already-be-applied warning was overwritten on binary answers and missing on file uploads, EXTF uploads and broken-off writes, so F118 still held there | Grok R14 | fixed | ad3d346 | datev_upload_file warns on a 5xx or 408 that the files may already be stored |
+| F128 | HIGH | A client id that is literally client made the id hiding loop forever, because the {client} it inserted matched again, blocking the whole server | Codex R15 | fixed | ba24d5c | hideClientValues returns for an id inside the placeholder |
+| F129 | MEDIUM | A large JSON error that was a list, or carried a nested errors list, lost its title and help link | Codex R15 | fixed | 713bba8 | a large JSON error that is a list keeps the first member's title and help link |
+| F130 | MEDIUM | Whether late title and help fields of a large error were kept depended on where the answer was split into chunks | Codex R15 | fixed | 713bba8 | an exact-cap JSON error head followed by a pause past 2 s keeps the later fields |
+| F131 | MEDIUM | A write that timed out before DATEV answered said try again, with no warning that it may already be applied | Codex R15 | fixed | 713bba8 | a write that times out before DATEV answers warns it may be applied and does not invite a retry |
+| F132 | LOW | The architecture doc claimed unconditional approval, a key never next to the session, no stored client data and no calls without a tool, which the code contradicts | Codex R15 | fixed | 2976e1d | the architecture doc names the start-up revoke retry and the HTTP log the code keeps |
+| F133 | LOW | The ledger check matched two-digit ids only, so no row from F100 on was checked against its guarding test | self-check | fixed | 03ec479 | the ledger check reads finding ids of three or more digits |
 
 ## Evidence for rejected and disputed findings
 

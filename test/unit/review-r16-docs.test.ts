@@ -27,3 +27,10 @@ test("the architecture doc names the start-up revoke retry and the HTTP log the 
   assert.match(arch, /answer body of failed requests/);
   assert.doesNotMatch(arch, /DATEV is called only when a tool is used/);
 });
+
+test("the ledger check reads finding ids of three or more digits", () => {
+  const re = /\/\^\\\| F(\\d[^ ]*) \\\|\//.exec(read("test/unit/review-ledger.test.ts"));
+  assert.ok(re, "ledger row pattern not found");
+  const rowRe = new RegExp(`^\\| F${re[1]} \\|`);
+  assert.ok(rowRe.test("| F133 | LOW |") && rowRe.test("| F07 | LOW |"), `pattern F${re[1]} misses an id`);
+});
