@@ -329,6 +329,7 @@ class FieldScanner {
   // The object whose keys are read (its depth, 0 for none) and where they go.
   private level = 0;
   private into: Record<string, unknown> = this.found;
+  // Depth of the object whose own keys win: 1 for an object body, 2 for a list body's first member.
   private outer = 0;
   private listFirst = false;
   private errorsAt = 0;
@@ -404,16 +405,17 @@ class FieldScanner {
             this.collect(1, this.found);
           } else this.listFirst = true;
         } else if (own) {
-          if (c === 91 && this.phase === "value" && this.key === "errors" && this.level === 1 && this.found.errors === undefined) this.errorsAt = 2;
+          if (c === 91 && this.phase === "value" && this.key === "errors" && this.level === this.outer && this.found.errors === undefined) this.errorsAt = this.outer + 1;
           this.phase = "after";
         } else if (c === 123 && this.listFirst && this.depth === 1) {
           this.listFirst = false;
+          this.outer = 2;
           this.collect(2, this.found);
         } else if (c === 123 && this.errorsAt > 0 && this.depth === this.errorsAt) {
           this.errorsAt = 0;
           const first: Record<string, unknown> = {};
           this.found.errors = [first];
-          this.collect(3, first);
+          this.collect(this.outer + 2, first);
         }
         this.depth++;
       } else if (c === 125 || c === 93) {
@@ -421,8 +423,8 @@ class FieldScanner {
         if (this.errorsAt > this.depth) this.errorsAt = 0;
         if (this.level > this.depth) {
           // Leaving errors[0] returns to the outer object; leaving the read object ends reading.
-          if (this.level === 3 && this.outer === 1) {
-            this.level = 1;
+          if (this.outer > 0 && this.level === this.outer + 2) {
+            this.level = this.outer;
             this.into = this.found;
             this.phase = "after";
           } else this.level = 0;
