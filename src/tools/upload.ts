@@ -3,7 +3,7 @@ import { humanApproval } from "./approval.js";
 import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemOf, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { localize } from "../i18n.js";
 import type { Operation } from "../spec/types.js";
@@ -258,7 +258,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const denied = await humanApproval(server, d.env, summary);
         if (denied) return err(denied);
         const r = await callOperation(op, { ...target, rawBody: buildForm(order, read, f) }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? { problem: problemOf(r.body) } : {}) };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

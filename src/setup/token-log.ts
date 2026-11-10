@@ -6,10 +6,11 @@ export const tokenLog =
   (write: (e: HttpLogEntry) => void) =>
   (e: TokenCallLog): void =>
     write({
-      ts_request: iso(),
+      ts_request: iso(e.sentAt ?? Date.now()),
       ts_response: iso(),
       method: "POST",
       url: e.url,
+      ...(e.requestHeaders ? { request_headers: redactHeaders(e.requestHeaders) } : {}),
       ...(e.status !== undefined ? { status: e.status, status_text: e.statusText, response_headers: redactHeaders(e.headers) } : {}),
       ...(e.error ? { error: e.error } : {}),
     });

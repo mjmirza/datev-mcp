@@ -202,6 +202,32 @@ test("data services carry DATEV's own names, spelled as DATEV writes them, never
   assert.doesNotMatch(list, /Online-API|Einkommenssteuer/);
 });
 
+test("token calls are logged with the real request time and redacted request headers, also when DATEV times out", async () => {
+  const { postToken } = await import("../../src/auth/token-client.js");
+  const { tokenLog } = await import("../../src/setup/token-log.js");
+  const logged: HttpLogEntry[] = [];
+  const log = tokenLog((e) => logged.push(e));
+  const slow: FetchLike = async () => (await new Promise((r) => setTimeout(r, 30)), new Response(JSON.stringify({ access_token: "AT", expires_in: 900 }), { headers: { "x-global-transaction-id": "g-2" } }));
+  await postToken(ep.token, { grant_type: "refresh_token", refresh_token: "RT" }, creds, { fetch: slow, log });
+  const e = logged[0]!;
+  assert.ok(Date.parse(e.ts_response!) - Date.parse(e.ts_request) >= 25, "request and answer time differ");
+  assert.equal(e.request_headers?.["content-type"], "application/x-www-form-urlencoded");
+  assert.equal(e.request_headers?.authorization, undefined, "Basic credentials never logged");
+  assert.equal(e.response_headers?.["x-global-transaction-id"], "g-2");
+  const timeout: FetchLike = async () => Promise.reject(Object.assign(new Error("timed out"), { name: "TimeoutError" }));
+  await assert.rejects(postToken(ep.token, { grant_type: "refresh_token", refresh_token: "RT" }, creds, { fetch: timeout, log }));
+  assert.equal(logged[1]?.error, "timed out", "a timeout is a line in the log too");
+});
+
+test("DATEV's help link survives list-shaped errors and error_uri, and the tool message ends with it", async () => {
+  const { problemOf, problemFields } = await import("../../src/api/client.js");
+  assert.equal(problemOf([{ title: "Invalid", type: "https://help.datev.de/x1" }]).help_url, "https://help.datev.de/x1");
+  assert.equal(problemOf({ error: "invalid_request", error_uri: "https://developer.datev.de/err/2" }).help_url, "https://developer.datev.de/err/2");
+  const f = problemFields(400, { title: "Bad", type: "https://help.datev.de/x3" }, "accounting-dxso-jobs.x");
+  assert.ok(f.message.startsWith("DATEV returned HTTP 400 for accounting-dxso-jobs.x: "), f.message);
+  assert.ok(f.message.endsWith("Help: https://help.datev.de/x3"), f.message);
+});
+
 test("the HTTP log keeps method, full URL, transaction ids and timestamps, never tokens or secrets, and yields the 14-day error rate", () => {
   const dir = tmp();
   const env = { DATEV_MCP_LOG_DIR: dir };

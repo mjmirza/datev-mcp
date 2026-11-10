@@ -15,7 +15,7 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { buildHeaders, callOperation, CallError, problemOf, type CallDeps } from "../api/client.js";
+import { buildHeaders, callOperation, CallError, problemFields, type CallDeps } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -198,7 +198,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into client ${client_id}`);
         if (denied) return err(denied);
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? { problem: problemOf(r.body) } : {}) };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, job_location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

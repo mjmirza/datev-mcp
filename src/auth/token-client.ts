@@ -46,6 +46,10 @@ const str = (v: unknown): string | undefined => (typeof v === "string" && v !== 
 /** One line for the technical HTTP log. Never contains a token, a code or the client secret. */
 export interface TokenCallLog {
   url: string;
+  /** When the request left, so the log shows request and answer time separately. */
+  sentAt?: number;
+  /** Request headers. The Basic authorization header is removed before it is written. */
+  requestHeaders?: Record<string, string>;
   status?: number;
   statusText?: string;
   headers?: Headers;
@@ -63,11 +67,13 @@ export async function postToken(url: string, form: Record<string, string>, creds
   const doFetch = opts.fetch ?? fetch;
   const now = opts.now ?? Date.now;
   const basic = Buffer.from(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.clientSecret)}`).toString("base64");
+  const headers = { authorization: `Basic ${basic}`, "content-type": "application/x-www-form-urlencoded", accept: "application/json" };
+  const call = { url, sentAt: Date.now(), requestHeaders: headers };
   let res: Response;
   try {
     res = await doFetch(url, {
       method: "POST",
-      headers: { authorization: `Basic ${basic}`, "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+      headers,
       body: new URLSearchParams(form).toString(),
       // A redirect would carry the client secret and the code or refresh token to another host.
       redirect: "error",
@@ -75,17 +81,18 @@ export async function postToken(url: string, form: Record<string, string>, creds
     });
   } catch (e) {
     const name = e instanceof Error ? e.name : "";
+    opts.log?.({ ...call, error: e instanceof Error ? e.message : String(e) });
     if (name === "TimeoutError" || name === "AbortError") throw new TokenError("timeout", "DATEV token endpoint did not answer in time");
-    opts.log?.({ url, status: undefined, error: e instanceof Error ? e.message : String(e) });
     throw new TokenError("network", `Could not reach the DATEV token endpoint: ${e instanceof Error ? e.message : String(e)}`);
   }
   let body: RawToken;
   try {
     body = (await res.json()) as RawToken;
-    opts.log?.({ url, status: res.status, statusText: res.statusText, headers: res.headers, error: str(body.error) });
   } catch {
+    opts.log?.({ ...call, status: res.status, statusText: res.statusText, headers: res.headers, error: "non-JSON answer" });
     throw new TokenError("bad_response", `DATEV token endpoint returned HTTP ${res.status} with a non-JSON body`, res.status);
   }
+  opts.log?.({ ...call, status: res.status, statusText: res.statusText, headers: res.headers, error: str(body.error) });
   if (!res.ok || str(body.error)) {
     const code = str(body.error) ?? `http_${res.status}`;
     const detail = str(body.error_description);
@@ -129,20 +136,22 @@ export async function revokeToken(
   opts: TokenCallOptions = {},
 ): Promise<void> {
   const basic = Buffer.from(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.clientSecret)}`).toString("base64");
+  const headers = { authorization: `Basic ${basic}`, "content-type": "application/x-www-form-urlencoded" };
+  const call = { url: revokeUrl, sentAt: Date.now(), requestHeaders: headers };
   let res: Response;
   try {
     res = await (opts.fetch ?? fetch)(revokeUrl, {
       method: "POST",
-      headers: { authorization: `Basic ${basic}`, "content-type": "application/x-www-form-urlencoded" },
+      headers,
       body: new URLSearchParams({ token, token_type_hint: hint }).toString(),
       redirect: "error",
       signal: AbortSignal.timeout(opts.timeoutMs ?? 20_000),
     });
   } catch (e) {
-    opts.log?.({ url: revokeUrl, error: e instanceof Error ? e.message : String(e) });
+    opts.log?.({ ...call, error: e instanceof Error ? e.message : String(e) });
     throw new TokenError("network", `Could not reach DATEV to revoke the ${hint === "refresh_token" ? "refresh" : "access"} token: ${e instanceof Error ? e.message : String(e)}`);
   }
   await res.body?.cancel();
-  opts.log?.({ url: revokeUrl, status: res.status, statusText: res.statusText, headers: res.headers });
+  opts.log?.({ ...call, status: res.status, statusText: res.statusText, headers: res.headers });
   if (!res.ok) throw new TokenError(`http_${res.status}`, `DATEV refused to revoke the ${hint === "refresh_token" ? "refresh" : "access"} token (HTTP ${res.status})`, res.status);
 }

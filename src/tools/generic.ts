@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemOf, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -100,7 +100,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
           if (denied) return fail(denied);
         }
         const { bytes, ...r } = await callOperation(op, input, d);
-        const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? { problem: problemOf(r.body) } : {}) };
+        const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
         if (bytes) {
           if (save_to && r.status < 400 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
