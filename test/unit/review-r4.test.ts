@@ -956,7 +956,8 @@ test("an error answer that goes quiet past the read limit is not waited for", as
   const res = new Response(new ReadableStream<Uint8Array>({ start(c) { c.enqueue(head); } }), { status: 403, headers: { "content-type": "application/json" } });
   const started = Date.now();
   const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, readDeps(async () => res));
-  assert.ok(Date.now() - started < 6000, `took ${Date.now() - started} ms`);
+  // The scan past the cap stops after 5 s, far below the request deadline it would otherwise wait for.
+  assert.ok(Date.now() - started < 8000, `took ${Date.now() - started} ms`);
   assert.equal((r.body as Record<string, unknown>).title, "Quiet");
 });
 

@@ -119,3 +119,25 @@ test("an error answer that breaks off past the read limit still logs the break",
   assert.equal(r.status, 403);
   assert.ok(entries.some((e) => /answer broke off: socket hang up/.test(e.error ?? "")), JSON.stringify(entries));
 });
+
+test("a title and help link that arrive after a pause past the read limit are still kept, inside the scan limit", { timeout: 15_000 }, async () => {
+  const late = enc.encode(`,"title":"LATE","help_url":"https://help.datev.de/late"}`);
+  let step = 0;
+  const pausing = () =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        async pull(c) {
+          if (step++ === 0) return c.enqueue(enc.encode(`{"detail":"${"x".repeat(5000)}"`));
+          await new Promise((r) => setTimeout(r, 2500));
+          c.enqueue(late);
+          c.close();
+        },
+      }),
+      { status: 403, headers: { "content-type": "application/json" } },
+    );
+  const started = Date.now();
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, deps(async () => pausing()));
+  assert.ok(Date.now() - started < 6000, `took ${Date.now() - started} ms`);
+  assert.equal((r.body as Record<string, unknown>).title, "LATE");
+  assert.equal((r.body as Record<string, unknown>).help_url, "https://help.datev.de/late");
+});

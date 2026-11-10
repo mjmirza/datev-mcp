@@ -486,7 +486,8 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       const left = scanEnd - Date.now();
       if (left <= 0) break;
       try {
-        next = await idleRead(reader, Math.min(SCAN_IDLE_MS, left)); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+        // Only the total scan limit applies here, so a field after a short pause is still kept.
+        next = await idleRead(reader, left); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
       } catch (e) {
         broke = e instanceof Error ? e.message : String(e);
         break; // a break past the cap keeps the head and the fields found so far
