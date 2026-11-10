@@ -28,24 +28,44 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
   return `${c.name ?? "unnamed client"}${nums.length ? ` (${nums.join(", ")})` : ""}`;
 }
 
-/** A URL for a person: DATEV's technical client id becomes {client} wherever it stands. Every other byte stays as sent. */
+/** A URL for a person: DATEV's technical client id becomes {client} in path, query and fragment. Every other byte stays as sent. */
 export function hideClientId(url: string, ids: (string | undefined)[]): string {
   const plainIds = [...new Set(ids.filter((x): x is string => !!x))];
   if (!plainIds.length) return url;
-  // One unit per raw piece, a %XX escape or one character, so each match maps back to the exact bytes it replaces.
-  // A %25XX escape is a character encoded twice, so it is read as that one character.
-  const units = url.match(/%25[0-9A-Fa-f]{2}|%[0-9A-Fa-f]{2}|[\s\S]/gu) ?? [];
-  const char = (u: string) => (u[0] === "%" && u.length >= 3 ? String.fromCharCode(parseInt(u.slice(-2), 16)) : u.length === 1 ? u : "\ufffd");
+  // Scheme, userinfo, host and port are never rewritten.
+  const authority = /^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/[^/?#]*/.exec(url)?.[0] ?? "";
+  // One unit per raw piece, a %XX escape or one character; a decoded %XX run is read once more, so twice-escaped text is seen.
+  const units = url.slice(authority.length).match(/%[0-9A-Fa-f]{2}|[\s\S]/gu) ?? [];
+  const char = (u: string) => (u.length === 3 && u[0] === "%" ? String.fromCharCode(parseInt(u.slice(1), 16)) : u.length === 1 ? u : "\ufffd");
+  const once = units.map(char);
+  const spans: { char: string; from: number; to: number }[] = [];
+  for (let i = 0; i < once.length; ) {
+    const hex = once[i] === "%" && /^[0-9A-Fa-f]{2}$/.test((once[i + 1] ?? "") + (once[i + 2] ?? ""));
+    spans.push(hex ? { char: String.fromCharCode(parseInt(once[i + 1]! + once[i + 2]!, 16)), from: i, to: i + 3 } : { char: once[i]!, from: i, to: i + 1 });
+    i += hex ? 3 : 1;
+  }
   const alts = plainIds.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
-  // An id stands on its own: no letter, digit or underscore beside it, and no digit joined to it by a dash.
-  const ownWord = new RegExp(`(?<![A-Za-z0-9_])(?<![0-9]-)(?:${alts})(?![A-Za-z0-9_])(?!-[0-9])`, "gi");
-  let out = "";
+  // An id stands on its own: no letter, digit, underscore or digit-dash before it, nothing of a longer token after it.
+  const ownWord = new RegExp(`(?<![A-Za-z0-9_])(?<![0-9]-)(?:${alts})(?![A-Za-z0-9_-])`, "gi");
+  let out = authority;
   let at = 0;
-  for (const m of units.map(char).join("").matchAll(ownWord)) {
-    out += units.slice(at, m.index).join("") + "{client}";
-    at = m.index + m[0].length;
+  for (const m of spans.map((s) => s.char).join("").matchAll(ownWord)) {
+    out += units.slice(at, spans[m.index]!.from).join("") + "{client}";
+    at = spans[m.index + m[0].length - 1]!.to;
   }
   return out + units.slice(at).join("");
+}
+
+/** Query or header values for a person: each string or number, also in a list, has the client id hidden like a URL. */
+export function hideClientValues<T extends Record<string, unknown> | undefined>(values: T, ids: (string | undefined)[]): T {
+  if (!values) return values;
+  const one = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(one);
+    if (typeof v !== "string" && typeof v !== "number") return v;
+    const shown = hideClientId(String(v), ids);
+    return shown === String(v) ? v : shown;
+  };
+  return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, one(v)])) as T;
 }
 
 /** Path ids for a person: the client's technical id is replaced, every other id is shown as sent. */
