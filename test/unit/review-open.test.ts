@@ -15,7 +15,7 @@ import { TokenStore } from "../../src/auth/token-store.js";
 import { doctor } from "../../src/setup/doctor.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
 
-// Guards for ledger rows that were open before R6 (F16, F22, F23, F39, F41, F42).
+// Guards for ledger rows that were open before R6 (F16, F22, F23, F24, F39, F41, F42).
 process.env.DATEV_MCP_SESSION_KEY ??= "33".repeat(32);
 
 test("a corrupt plain text session is kept only as an encrypted copy", () => {
@@ -120,4 +120,12 @@ test("a write's approval dialog names the client by name and numbers, not only t
   const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
   await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
   assert.match(asked, /Client: Muster GmbH, consultant 455148, client 1/);
+});
+
+test("DATEV's API descriptions never ship: the package is private and the built index stays out of git", () => {
+  const root = join(import.meta.dirname, "..", "..");
+  const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { private?: boolean };
+  assert.equal(pkg.private, true, "no registry release can carry the built index");
+  const ignored = readFileSync(join(root, ".gitignore"), "utf8").split("\n").map((l) => l.trim());
+  for (const p of ["dist/", "src/data/operations.json"]) assert.ok(ignored.includes(p), `${p} is git-ignored`);
 });
