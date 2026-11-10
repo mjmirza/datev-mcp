@@ -32,28 +32,44 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
 export function hideClientId(url: string, ids: (string | undefined)[]): string {
   const plainIds = [...new Set(ids.filter((x): x is string => !!x))];
   if (!plainIds.length) return url;
-  // Scheme, userinfo, host and port are never rewritten.
-  const authority = /^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/[^/?#]*/.exec(url)?.[0] ?? "";
-  // One unit per raw piece, a %XX escape or one character; a decoded %XX run is read once more, so twice-escaped text is seen.
-  const units = url.slice(authority.length).match(/%[0-9A-Fa-f]{2}|[\s\S]/gu) ?? [];
-  const char = (u: string) => (u.length === 3 && u[0] === "%" ? String.fromCharCode(parseInt(u.slice(1), 16)) : u.length === 1 ? u : "\ufffd");
-  const once = units.map(char);
-  const spans: { char: string; from: number; to: number }[] = [];
-  for (let i = 0; i < once.length; ) {
-    const hex = once[i] === "%" && /^[0-9A-Fa-f]{2}$/.test((once[i + 1] ?? "") + (once[i + 2] ?? ""));
-    spans.push(hex ? { char: String.fromCharCode(parseInt(once[i + 1]! + once[i + 2]!, 16)), from: i, to: i + 3 } : { char: once[i]!, from: i, to: i + 1 });
-    i += hex ? 3 : 1;
-  }
+  // Scheme, userinfo, host and port are never rewritten; a host never holds "%", so an escaped slash starts the path.
+  const authority = /^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/(?:[^/?#]*@)?[^/?#@%]*/.exec(url)?.[0] ?? "";
+  type Ch = { ch: string; from: number; to: number };
+  const chars = (text: string): Ch[] => [...text.matchAll(/[\s\S]/gu)].map((m) => ({ ch: m[0].length === 1 ? m[0] : "�", from: m.index, to: m.index + m[0].length }));
+  const hex = (c?: Ch) => !!c && /^[0-9A-Fa-f]$/.test(c.ch);
+  const decode = (r: Ch[]): Ch[] => {
+    const out: Ch[] = [];
+    for (let i = 0; i < r.length; ) {
+      const esc = r[i]!.ch === "%" && hex(r[i + 1]) && hex(r[i + 2]);
+      out.push(esc ? { ch: String.fromCharCode(parseInt(r[i + 1]!.ch + r[i + 2]!.ch, 16)), from: r[i]!.from, to: r[i + 2]!.to } : r[i]!);
+      i += esc ? 3 : 1;
+    }
+    return out;
+  };
   const alts = plainIds.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
   // An id stands on its own: no letter, digit, underscore or digit-dash before it, nothing of a longer token after it.
   const ownWord = new RegExp(`(?<![A-Za-z0-9_])(?<![0-9]-)(?:${alts})(?![A-Za-z0-9_-])`, "gi");
-  let out = authority;
-  let at = 0;
-  for (const m of spans.map((s) => s.char).join("").matchAll(ownWord)) {
-    out += units.slice(at, spans[m.index]!.from).join("") + "{client}";
-    at = spans[m.index + m[0].length - 1]!.to;
-  }
-  return out + units.slice(at).join("");
+  // Hidden when it shows raw, decoded once or decoded twice; each match maps back to the raw bytes it came from.
+  const hideOnce = (rest: string): string => {
+    const raw = chars(rest);
+    const once = decode(raw);
+    const hits: [number, number][] = [];
+    for (const reading of [raw, once, decode(once)])
+      for (const m of reading.map((c) => c.ch).join("").matchAll(ownWord)) hits.push([reading[m.index]!.from, reading[m.index + m[0].length - 1]!.to]);
+    hits.sort((a, b) => a[0] - b[0]);
+    let out = "";
+    let at = 0;
+    for (const [from, to] of hits) {
+      if (to <= at) continue;
+      if (from >= at) out += rest.slice(at, from) + "{client}";
+      at = to;
+    }
+    return out + rest.slice(at);
+  };
+  // Hiding one id can change how a neighbouring escape decodes, so repeat until nothing changes.
+  let rest = url.slice(authority.length);
+  for (let next = hideOnce(rest); next !== rest; next = hideOnce(rest)) rest = next;
+  return authority + rest;
 }
 
 /** Query or header values for a person: each string or number, also in a list, has the client id hidden like a URL. */
