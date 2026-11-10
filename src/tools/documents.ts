@@ -100,7 +100,8 @@ export async function documentTypesToday(clientId: string, d: CallDeps): Promise
   if (!read) {
     // The shared read belongs to no single caller: one caller's cancel must not fail the others.
     read = fetchDocumentTypes(clientId, { ...d, signal: undefined })
-      .then((types) => (typeCache.set(key, { day: today(), types }), types))
+      // An empty list is never kept: one empty answer must not refuse every document type for the rest of the day.
+      .then((types) => (types.length && typeCache.set(key, { day: today(), types }), types))
       .finally(() => inFlight.delete(key));
     inFlight.set(key, read);
   }
@@ -171,7 +172,9 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         const op = getOperation("accounting-documents.put_clients_client_id_documents_document_id");
         if (!op) return err("Document upload operation missing from the index");
         const sha256 = createHash("sha256").update(file.bytes).digest("hex");
-        const documentId = documentGuid(client_id, sha256, { service: svc, ...metadata });
+        // The note is not part of the id: the same filing with a changed note updates the one DATEV document.
+        const { note: _note, ...filing } = metadata;
+        const documentId = documentGuid(client_id, sha256, { service: svc, ...filing });
         const destination = buildUrl(op, d.env, { pathParams: { "client-id": client_id, "document-id": documentId } }).toString();
         const who = describeClient(client);
         const fingerprint = { tool: "datev_upload_document", env: d.env, client_id, service: svc, document_id: documentId, file: file.path, name: file.name, content_type: contentType, sha256, metadata };

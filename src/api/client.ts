@@ -448,7 +448,8 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     await bounded(sleep(delay), p.deadline, deps.signal, "while waiting to retry");
     return attempt(p, n + 1);
   }
-  if (deps.signal?.aborted) throw new UncertainSendError("The call was cancelled");
+  // An answer DATEV already gave is kept even if the call was cancelled meanwhile: dropping it loses a job id.
+  if (deps.signal?.aborted && !res) throw new UncertainSendError("The call was cancelled");
   if (!res) {
     // A request cut off by the call budget is a timeout, so callers can keep partial work and resume.
     if ((netErr as Error | undefined)?.name === "TimeoutError" || Date.now() >= p.deadline - 100)

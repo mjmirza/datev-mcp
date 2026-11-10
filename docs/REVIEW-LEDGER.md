@@ -66,7 +66,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F47 | HIGH | Two concurrent EXTF sends both pass the duplicate check, and parallel ledger writes lose entries | R4-4, R5 | fixed | 2f0afb4 | two deliberate resends at once reach DATEV only once |
 | F48 | HIGH | An unreadable send ledger counts as never sent, and a failed ledger write forgets an accepted file | R4-5, R5 | fixed | 2f0afb4 | a refused resend keeps the record of the earlier accepted send |
 | F49 | HIGH | An EXTF POST whose answer is lost is not recorded, so a fresh confirmation sends it again | R4-6, R5 | fixed | 2f0afb4 | a gateway error after the POST keeps the file counted as sent |
-| F50 | HIGH | A missing Export permission says the connection ended even when a token revocation failed | R4-7 | fixed | e9b7706 | a missing Export permission revokes both tokens, and a failed revocation keeps the connection |
+| F50 | HIGH | A missing Export permission says the connection ended even when a token revocation failed | R4-7 | fixed | e9b7706 | a missing Export permission revokes both tokens, and an unconfirmed revocation is retried with no token left in use |
 | F51 | HIGH | A DATEV 5xx during the Export permission check logs the person out | R4-8 | fixed | e9b7706 | a DATEV server error during the permission check never ends the connection |
 | F52 | MEDIUM | `datev_call` of getfiscalyears skips the Export guard | R4-9 | fixed | e9b7706 | datev_call of the fiscal year list runs the Export permission check |
 | F53 | MEDIUM | Payroll report types are requested when DATEV's answer lacks access_granted | R4-10 | fixed | e9b7706 | payroll report types are refused when DATEV lists no granted types |

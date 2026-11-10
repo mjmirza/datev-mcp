@@ -78,11 +78,10 @@ export async function endForMissingPermission(
     ]);
     const left = refresh.filter((_, i) => refreshResults[i]!.status === "rejected");
     if (left.length) {
-      // A refresh token DATEV did not confirm is never forgotten: the session stays, and the next call retries.
-      // An access token DATEV did revoke is never handed out again: marked expired, the session must refresh first.
-      const accessGone = accessLive && !accessResult;
-      store.write({ ...s, pendingRevoke: left, tokens: accessGone ? { ...s.tokens, expiresAt: 0 } : s.tokens });
-      return ` DATEV did not confirm revoking the connection, so it was kept and is revoked again on the next call. It can also be removed at ${REVOKE_UI}.`;
+      // No token is used again after this, whatever DATEV answered: a lost answer may hide a revoke that worked.
+      // Tokens DATEV did not confirm stay in pendingRevoke and are revoked again on the next call.
+      store.write({ ...s, pendingRevoke: left, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: 0 } });
+      return ` The connection was ended here, but DATEV did not confirm revoking it, so it is revoked again on the next call. It can also be removed at ${REVOKE_UI}.`;
     }
     store.clear();
     if (accessResult) return ` The connection was ended, but DATEV did not confirm revoking the access token (${accessResult.message}); it can no longer be renewed and expires at ${new Date(s.tokens.expiresAt).toISOString().slice(11, 16)} UTC.`;

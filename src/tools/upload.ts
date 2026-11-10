@@ -3,7 +3,7 @@ import { humanApproval } from "./approval.js";
 import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, UncertainSendError, type CallDeps } from "../api/client.js";
 import { describeClient, gateCall } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -13,6 +13,7 @@ import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
 import { documentTypesToday, mimeFor } from "./documents.js";
 import { FileError, readLocalFile } from "./files.js";
+import { finishSend, reserveSend, sentBefore } from "./sent-ledger.js";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -238,12 +239,13 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         headers: z.record(z.string(), z.string()).optional().describe("Header parameters the operation declares, e.g. X-API-Key"),
         files: z.record(z.string(), z.union([z.string(), z.array(z.string()).min(1).max(50)])).describe("Part name to absolute file path, or a list of paths"),
         fields: z.record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())])).optional().describe("Other parts, as text or a JSON object"),
+        resend: z.boolean().optional().describe("Stapled documents only: send files to this client again on purpose although they were sent before"),
         confirm: z.boolean().optional(),
         confirm_token: z.string().optional().describe("The token returned by the preview"),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
     },
-    async ({ operation_id, path_params, query, headers, files, fields, confirm, confirm_token }, extra) => {
+    async ({ operation_id, path_params, query, headers, files, fields, resend, confirm, confirm_token }, extra) => {
       try {
         const f = fields ?? {};
         const { op, order } = plan(operation_id, files, f);
@@ -258,7 +260,12 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         // Local checks first, then DATEV's permission reads.
         const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
         // Stapled documents follow the same rules as datev_upload_document: service, document type, filing fields.
-        if (op.product === "accounting-documents") await checkStapled(String(path_params?.["client-id"] ?? ""), f.metadata, d);
+        const stapledClient = op.product === "accounting-documents" ? String(path_params?.["client-id"] ?? "") : undefined;
+        if (stapledClient !== undefined) await checkStapled(stapledClient, f.metadata, d);
+        // DATEV's stapled upload takes no document id, so it cannot recognise a repeat: the send record does.
+        const stapledKey = stapledClient !== undefined ? createHash("sha256").update(JSON.stringify([read.map((x) => x.sha256).sort(), f.metadata ?? null])).digest("hex") : undefined;
+        const earlier = stapledKey ? sentBefore("stapled", d.env, stapledClient!, stapledKey) : undefined;
+        if (earlier && resend !== true) return err(`These files were already sent to this client on ${earlier.at} (${earlier.name}, ${earlier.status}). DATEV cannot tell a repeat of a stapled upload apart, so it would keep two copies. To send them again on purpose, call with resend: true.`);
         const listed = read.map((x) => ({ part: x.part, file: x.path, sent_as: x.name, bytes: x.bytes.length, content_type: x.type }));
         const fingerprint = {
           tool: TOOL,
@@ -269,6 +276,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
           headers: headers ?? {},
           files: read.map((x) => ({ part: x.part, path: x.path, name: x.name, sha256: x.sha256, type: x.type })),
           fields: f,
+          ...(earlier ? { resend: true, earlier_at: earlier.at } : {}),
         };
         if (confirm !== true) {
           return ok({
@@ -287,7 +295,18 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const summary = [client ? `Client: ${describeClient(client)}` : "", `${op.method.toUpperCase()} ${op.id}`, String(url), ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].filter(Boolean).join("\n");
         const denied = await humanApproval(server, d.env, summary);
         if (denied) return err(denied);
-        const r = await callOperation(op, { ...target, rawBody: buildForm(order, read, f) }, d);
+        const held = stapledKey ? await reserveSend("stapled", d.env, stapledClient!, stapledKey, read.map((x) => x.name).join(", "), earlier ? { seen: earlier.at } : false) : undefined;
+        if (held && "blocked" in held) return err(`These files are being sent or were just sent to this client (${held.blocked.at}, ${held.blocked.status}). Nothing was sent again.`);
+        const finish = (status: "refused" | "uncertain" | "sent") => (held ? finishSend("stapled", d.env, stapledClient!, stapledKey!, held.reservation, { status }).catch(() => undefined) : Promise.resolve());
+        let r;
+        try {
+          r = await callOperation(op, { ...target, rawBody: buildForm(order, read, f) }, d);
+        } catch (e) {
+          await finish(e instanceof UncertainSendError ? "uncertain" : "refused");
+          throw e;
+        }
+        // Only a clear 4xx means DATEV did not take the files; a 5xx, 408 or redirect may hide a stored upload.
+        await finish(r.status >= 200 && r.status < 300 ? "sent" : r.status >= 400 && r.status < 500 && r.status !== 408 ? "refused" : "uncertain");
         const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {

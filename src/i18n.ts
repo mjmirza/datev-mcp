@@ -219,6 +219,75 @@ const CHECK_NAMES: Record<string, string> = {
 
 const who = (s: string) => s.replace(/\bconsultant (\d+)/g, "Berater $1").replace(/\bclient (\d+)/g, "Mandant $1");
 
+// Single sentences the safety refusals are built from. A message no whole-message pattern matches is
+// translated sentence by sentence, so a new combination of known sentences still reaches the person in German.
+const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^Nothing was sent\.$/, () => "Es wurde nichts gesendet."],
+  [/^Nothing was sent again\.$/, () => "Es wurde nichts erneut gesendet."],
+  [/^Nothing was requested\.$/, () => "Es wurde nichts angefordert."],
+  [/^Try again later\.$/, () => "Versuchen Sie es später erneut."],
+  [/^DATEV could not confirm the client's data services right now \(HTTP (\d{3})\)\.$/, (m) => `DATEV konnte die Datenservices des Mandanten gerade nicht bestätigen (HTTP ${m[1]}).`],
+  [/^DATEV answered HTTP (\d{3}) for this client\.$/, (m) => `DATEV hat für diesen Mandanten mit HTTP ${m[1]} geantwortet.`],
+  [/^(.+) has not switched on (.+)\.$/, (m) => `${m[1] === "This client" ? "Dieser Mandant" : m[1]} hat ${m[2]!.replace(/ or /g, " oder ")} nicht freigeschaltet.`],
+  [/^The client or their tax advisor switches the data service on at DATEV, see (\S+?)\.$/, (m) => `Der Mandant oder die Kanzlei schaltet den Datenservice bei DATEV frei, siehe ${m[1]}.`],
+  [/^As DATEV requires, the connection was ended and both tokens revoked; sign in again after the service is switched on\.$/, () => "Wie von DATEV verlangt, wurde die Verbindung beendet und beide Tokens widerrufen. Melden Sie sich erneut an, sobald der Datenservice freigeschaltet ist."],
+  [/^The connection was ended here, but DATEV did not confirm revoking it, so it is revoked again on the next call\.$/, () => "Die Verbindung wurde hier beendet, aber DATEV hat den Widerruf nicht bestätigt. Er wird beim nächsten Aufruf wiederholt."],
+  [/^It can also be removed at (\S+?)\.$/, (m) => `Sie kann auch unter ${m[1]} entfernt werden.`],
+  [/^The connection was ended, but DATEV did not confirm revoking the access token \(([\s\S]*)\); it can no longer be renewed and expires at (\d{2}:\d{2}) UTC\.$/, (m) => `Die Verbindung wurde beendet, aber DATEV hat den Widerruf des Zugriffstokens nicht bestätigt (${m[1]}). Es kann nicht mehr erneuert werden und läuft um ${m[2]} UTC ab.`],
+  [/^There was no saved connection to end\.$/, () => "Es gab keine gespeicherte Verbindung zu beenden."],
+  [/^Ending the connection failed \(([\s\S]*)\)\.$/, (m) => `Das Beenden der Verbindung ist fehlgeschlagen (${m[1]}).`],
+  [/^(\S+) names its client by GUID, which this server cannot check\.$/, (m) => `${m[1]} nennt den Mandanten per GUID, die dieser Server nicht prüfen kann.`],
+  [/^DATEV's client list could not be read \(HTTP (\d{3})\), so the client was not checked\.$/, (m) => `Die Mandantenliste von DATEV konnte nicht gelesen werden (HTTP ${m[1]}), daher wurde der Mandant nicht geprüft.`],
+  [/^The client (\S+) is not in this login's DATEV client list\.$/, (m) => `Der Mandant ${m[1]} ist nicht in der DATEV-Mandantenliste dieser Anmeldung.`],
+  [/^Please check it, or ask your administrator whether the data service is switched on, see (\S+?)\.$/, (m) => `Bitte prüfen Sie ihn oder fragen Sie Ihre Administration, ob der Datenservice freigeschaltet ist, siehe ${m[1]}.`],
+  [/^(\S+) names its client as (.+), which this server cannot check against DATEV's permission\.$/, (m) => `${m[1]} nennt den Mandanten als ${m[2]}, was dieser Server nicht gegen die Freigabe bei DATEV prüfen kann.`],
+  [/^"(.+)" is not a consultant-client number such as 455148-1\.$/, (m) => `"${m[1]}" ist keine Berater-Mandanten-Nummer wie 455148-1.`],
+  [/^DATEV names a different GUID for client (\S+) than (\S+)\.$/, (m) => `DATEV nennt für den Mandanten ${m[1]} eine andere GUID als ${m[2]}.`],
+  [/^This client does not grant the report types (.+)\.$/, (m) => `Dieser Mandant gibt die Auswertungsarten ${m[1]} nicht frei.`],
+  [/^Granted: (.+)\.$/, (m) => `Freigegeben: ${m[1] === "none" ? "keine" : m[1]}.`],
+  [/^Belegbilderservice does not take category, folder or register\.$/, () => "Der Belegbilderservice nimmt keine Kategorie, keinen Ordner und kein Register an."],
+  [/^Leave them out, or use service buchungsdatenservice\.$/, () => "Lassen Sie sie weg oder nutzen Sie service buchungsdatenservice."],
+  [/^Buchungsdatenservice needs category, folder and register for every document\.$/, () => "Der Buchungsdatenservice braucht für jedes Dokument Kategorie, Ordner und Register."],
+  [/^Buchungsdatenservice needs category, folder and register together\.$/, () => "Der Buchungsdatenservice braucht Kategorie, Ordner und Register zusammen."],
+  [/^Belegbilderservice needs a document_type for every document\.$/, () => "Der Belegbilderservice braucht für jedes Dokument einen document_type."],
+  [/^Belegbilderservice needs a document_type in metadata\.$/, () => "Der Belegbilderservice braucht einen document_type in metadata."],
+  [/^List them with datev_document_types\.$/, () => "Sie stehen in datev_document_types."],
+  [/^"(.+)" is not a document type of this client\.$/, (m) => `"${m[1]}" ist kein Belegtyp dieses Mandanten.`],
+  [/^Available: (.+)\.$/, (m) => `Verfügbar: ${m[1] === "none" ? "keine" : m[1]}.`],
+  [/^The record of earlier sends cannot be read \(([\s\S]*)\)\.$/, (m) => `Der Nachweis früherer Sendungen kann nicht gelesen werden (${m[1]}).`],
+  [/^Nothing was sent, so booking data cannot go out twice by accident\.$/, () => "Es wurde nichts gesendet, damit Buchungsdaten nicht versehentlich doppelt übertragen werden."],
+  [/^The record of earlier sends at (.+) is damaged\.$/, (m) => `Der Nachweis früherer Sendungen unter ${m[1]} ist beschädigt.`],
+  [/^Check or move the file, then try again\.$/, () => "Prüfen oder verschieben Sie die Datei und versuchen Sie es dann erneut."],
+  [/^This file is being sent to this client right now \(started (\S+)\)\.$/, (m) => `Diese Datei wird gerade an diesen Mandanten gesendet (begonnen ${m[1]}).`],
+  [/^Wait for that send to finish\.$/, () => "Warten Sie, bis diese Sendung abgeschlossen ist."],
+  [/^DATEV already accepted it on (\S+)(?: \(job (\S+)\))?\.$/, (m) => `DATEV hat sie bereits am ${m[1]} angenommen${m[2] ? ` (Job ${m[2]})` : ""}.`],
+  [/^This file was being sent to this client on (\S+) \((.+)\) and DATEV's answer was lost or was a server error, so it may already be imported\.$/, (m) => `Diese Datei wurde am ${m[1]} (${m[2]}) an diesen Mandanten gesendet, und die Antwort von DATEV ging verloren oder war ein Serverfehler. Sie ist daher möglicherweise schon übernommen.`],
+  [/^Check the batch in DATEV Rechnungswesen; to send it again on purpose, call with resend: true\.$/, () => "Prüfen Sie den Stapel in DATEV Rechnungswesen. Um sie bewusst erneut zu senden, rufen Sie mit resend: true auf."],
+  [/^This file was already sent to this client on (\S+) \((.+)\)\.$/, (m) => `Diese Datei wurde bereits am ${m[1]} (${m[2]!.replace(/\bjob /, "Job ")}) an diesen Mandanten gesendet.`],
+  [/^DATEV requires booking data to be sent only once\.$/, () => "DATEV verlangt, dass Buchungsdaten nur einmal gesendet werden."],
+  [/^To send it again on purpose, call with resend: true\.$/, () => "Um sie bewusst erneut zu senden, rufen Sie mit resend: true auf."],
+  [/^These files were already sent to this client on (\S+) \((.+)\)\.$/, (m) => `Diese Dateien wurden bereits am ${m[1]} (${m[2]}) an diesen Mandanten gesendet.`],
+  [/^DATEV cannot tell a repeat of a stapled upload apart, so it would keep two copies\.$/, () => "DATEV kann eine Wiederholung eines gehefteten Uploads nicht erkennen und würde zwei Kopien behalten."],
+  [/^To send them again on purpose, call with resend: true\.$/, () => "Um sie bewusst erneut zu senden, rufen Sie mit resend: true auf."],
+  [/^These files are being sent or were just sent to this client \((.+)\)\.$/, (m) => `Diese Dateien werden gerade an diesen Mandanten gesendet oder wurden eben gesendet (${m[1]}).`],
+];
+
+/** Splits after a period followed by whitespace, so never inside a URL or a version number. */
+const sentencesOf = (s: string) => s.split(/(?<=\.)\s+/);
+
+function bySentence(message: string): string {
+  const parts = sentencesOf(message.trim());
+  if (parts.length < 2 && !SENTENCES.some(([re]) => re.test(message.trim()))) return message;
+  const out = parts.map((p) => {
+    for (const [re, to] of SENTENCES) {
+      const m = p.match(re);
+      if (m) return to(m);
+    }
+    return p;
+  });
+  return (message.startsWith(" ") ? " " : "") + out.join(" ");
+}
+
 // The summary lines of an approval dialog. Methods, operation ids and URLs stay as they are.
 const APPROVAL: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Client: (.*)$/, (m) => `Mandant: ${who(m[1]!)}`],
@@ -261,5 +330,5 @@ export function localize(message: string, lang: MessageLang = messageLang()): st
     const m = message.match(re);
     if (m) return to(m);
   }
-  return message;
+  return bySentence(message);
 }

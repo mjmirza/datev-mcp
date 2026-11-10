@@ -7,7 +7,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
-import type { CallDeps } from "../../src/api/client.js";
+import { callOperation, type CallDeps } from "../../src/api/client.js";
 import { clearClientGate } from "../../src/api/client-gate.js";
 import { clearDataexchangeCache } from "../../src/api/dataexchange-guard.js";
 import { requireClientService } from "../../src/api/permission.js";
@@ -19,6 +19,7 @@ import { documentGuid, registerDocumentTools } from "../../src/tools/documents.j
 import { registerExtfTools } from "../../src/tools/extf.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
 import { registerUploadTools } from "../../src/tools/upload.js";
+import { getOperation } from "../../src/tools/catalog.js";
 
 // Guards for the Codex attack of 2026-11-10 (ledger R4, F44 to F58).
 process.env.DATEV_MCP_SESSION_KEY ??= "33".repeat(32);
@@ -134,7 +135,7 @@ test("an EXTF send whose answer is lost still counts as sent", async () => {
   assert.ok(!again.seen.some((s) => s.method === "POST"));
 });
 
-test("a missing Export permission revokes both tokens, and a failed revocation keeps the connection", async () => {
+test("a missing Export permission revokes both tokens, and an unconfirmed revocation is retried with no token left in use", async () => {
   const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
   const session = { env: "sandbox" as const, clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } };
   const revoked: string[] = [];
@@ -150,8 +151,11 @@ test("a missing Export permission revokes both tokens, and a failed revocation k
   failStore.write(session);
   const failFetch: FetchLike = async (_u, init) => (String(init?.body).includes("refresh_token") ? new Response("{}", { status: 500 }) : new Response("", { status: 200 }));
   const kept = await endForMissingPermission(cfg, { store: failStore, fetch: failFetch, httpLog: () => {} });
-  assert.match(kept, /did not confirm revoking the connection, so it was kept/);
-  assert.deepEqual(failStore.read()?.pendingRevoke, ["RT"]);
+  assert.match(kept, /DATEV did not confirm revoking it, so it is revoked again on the next call/);
+  const left = failStore.read()!;
+  assert.deepEqual(left.pendingRevoke, ["RT"]);
+  assert.equal(left.tokens.refreshToken, undefined, "an unconfirmed refresh token is never used to refresh again");
+  assert.equal(left.tokens.expiresAt, 0, "the access token is never handed out again");
 });
 
 test("a DATEV server error during the permission check never ends the connection", async () => {
@@ -380,4 +384,130 @@ test("a cancelled document type read does not wait for a token that never comes"
   const r = (await c.callTool({ name: "datev_document_types", arguments: { client_id: "455148-8" } })) as { isError?: boolean };
   assert.equal(r.isError, true);
   assert.ok(Date.now() - started < 2000, "the cancel ended the wait");
+});
+
+// Guards for the Grok attack of 2026-11-10 (ledger R6, F66 to F73).
+
+test("an EXTF send answered with a timeout or a redirect still counts as sent", async () => {
+  for (const [i, status] of [408, 302].entries()) {
+    const file = await extfFile(`EXTF_R6A${i}.csv`, 6100 + i);
+    const first = await harness(extfDatev({ post: () => json(status, {}, status === 302 ? { location: "https://elsewhere.example/" } : {}) }));
+    assert.equal((await first.confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file })).error, true);
+    const again = await harness(extfDatev());
+    const r = await again.call("datev_upload_extf", { client_id: "455148-1", file_path: file });
+    assert.match(r.text, /may already be imported/, `HTTP ${status}`);
+    assert.ok(!again.seen.some((s) => s.method === "POST"));
+  }
+});
+
+test("only a 403 or a missing service ends the connection, never a timeout, a bad token or an unknown client", async () => {
+  for (const status of [400, 401, 404, 408]) {
+    let ended = 0;
+    const deps: CallDeps = { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => json(status, { title: "x" }), sleep: async () => undefined, onMissingPermission: async () => (ended++, " ended") };
+    await assert.rejects(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps), /could not confirm/, `HTTP ${status}`);
+    assert.equal(ended, 0, `HTTP ${status} must not end the connection`);
+  }
+  let ended = 0;
+  const deps: CallDeps = { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => json(403, { title: "forbidden" }), sleep: async () => undefined, onMissingPermission: async () => (ended++, " ended") };
+  await assert.rejects(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps));
+  assert.equal(ended, 1);
+});
+
+test("an answer DATEV gave before the call was cancelled is kept, with its job id", async () => {
+  const op = getOperation("accounting-extf-files.importextffile");
+  assert.ok(op, "EXTF import operation");
+  const ac = new AbortController();
+  const r = await callOperation(op!, { pathParams: { "client-id": "455148-1" }, headers: { Filename: "EXTF_R6C.csv" }, rawBody: new Uint8Array([1]) }, {
+    env: "sandbox",
+    creds: { clientId: "c" },
+    token: async () => "T",
+    signal: ac.signal,
+    sleep: async () => undefined,
+    fetch: async () => (ac.abort(), json(202, {}, { location: "/clients/455148-1/extf-files/jobs/J7" })),
+  });
+  assert.equal(r.status, 202);
+  assert.match(String(r.location), /J7/);
+});
+
+test("a resend that is lost after an accepted import still names the accepted job", async () => {
+  const file = await extfFile("EXTF_R6B.csv", 6200);
+  assert.equal((await (await harness(extfDatev())).confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file })).error, false);
+  for (let n = 0; n < 2; n++) {
+    const h = await harness(extfDatev({ post: () => json(503, {}) }));
+    await h.confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file, resend: true });
+    const look = await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file });
+    assert.match(look.text, /DATEV already accepted it on .* \(job J9\)/, `after lost resend ${n + 1}`);
+  }
+});
+
+test("a changed note reaches the same DATEV document, and a stapled upload is never repeated by accident", async () => {
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? json(201, {}) : json(200, client(["Belegbilderservice"]))));
+  await h.confirmed("datev_upload_document", { client_id: "455148-6", file_path: pdf, document_type: "Rechnungseingang", note: "first" });
+  await h.confirmed("datev_upload_document", { client_id: "455148-6", file_path: pdf, document_type: "Rechnungseingang", note: "second" });
+  const puts = h.seen.filter((s) => s.method === "PUT").map((s) => s.path);
+  assert.equal(puts[0], puts[1]);
+
+  const stapledPdf = join(dir, "stapled-r6.pdf");
+  writeFileSync(stapledPdf, "%PDF-1.4 r6 stapled");
+  const base = { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-6" }, files: { files: [stapledPdf] }, fields: { metadata: { document_type: "Rechnungseingang" } } };
+  assert.equal((await h.confirmed("datev_upload_file", base)).error, false);
+  const again = await h.call("datev_upload_file", base);
+  assert.match(again.text, /already sent to this client/);
+  const before = h.seen.filter((s) => s.method === "PUT").length;
+  assert.equal((await h.confirmed("datev_upload_file", { ...base, resend: true })).error, false);
+  assert.equal(h.seen.filter((s) => s.method === "PUT").length, before + 1, "resend: true sends again on purpose");
+});
+
+test("an empty document type answer is not kept for the rest of the day", async () => {
+  let answer: { name: string }[] = [];
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, answer) : json(200, client(["Belegbilderservice"]))));
+  const args = { client_id: "455148-7", file_path: pdf, document_type: "Rechnungseingang" };
+  assert.match((await h.call("datev_upload_document", args)).text, /not a document type/);
+  answer = [{ name: "Rechnungseingang" }];
+  const r = await h.call("datev_upload_document", args);
+  assert.equal(r.error, false, r.text);
+});
+
+test("the safety refusals for sends, permissions, the client gate and documents read fully in German", async () => {
+  const { localize } = await import("../../src/i18n.js");
+  const ENGLISH = /Nothing was|was sent|Try again|this client|connection was|switched on|Check the batch|DATEV requires|Available:|Granted:|not a document type|needs a document_type|does not take|is damaged|being sent|already accepted|not in this login|is not a consultant|could not confirm|answered HTTP/;
+  const messages: string[] = [];
+  const grab = async (p: Promise<unknown>) => {
+    try {
+      await p;
+    } catch (e) {
+      messages.push((e as Error).message);
+    }
+  };
+  const deps = (status: number, body: unknown, ended = " As DATEV requires, the connection was ended and both tokens revoked; sign in again after the service is switched on."): CallDeps => ({ env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => json(status, body), sleep: async () => undefined, onMissingPermission: async () => ended });
+  await grab(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps(500, { title: "down" })));
+  await grab(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps(200, client([]))));
+  await grab(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps(403, { title: "no" }, " The connection was ended here, but DATEV did not confirm revoking it, so it is revoked again on the next call. It can also be removed at https://apps.datev.de/tokrevui.")));
+
+  const docs = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? json(201, {}) : json(200, client(["Belegbilderservice", "Buchungsdatenservice"]))));
+  for (const args of [
+    { client_id: "455148-8", file_path: pdf, document_type: "Rechnungseingang", category: "a", folder: "b", register: "c" },
+    { client_id: "455148-8", file_path: pdf, service: "buchungsdatenservice", category: "a" },
+    { client_id: "455148-8", file_path: pdf },
+    { client_id: "455148-8", file_path: pdf, document_type: "INVENTED" },
+  ])
+    messages.push((await docs.call("datev_upload_document", args)).text);
+  messages.push((await docs.call("datev_call", { operation_id: "accounting-dxso-jobs.get_clients_client_id", path_params: { "client-id": "abc" } })).text);
+  const stapledPdf = join(dir, "stapled-r6-de.pdf");
+  writeFileSync(stapledPdf, "%PDF-1.4 r6 de");
+  const stapled = { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-8" }, files: { files: [stapledPdf] }, fields: { metadata: { document_type: "Rechnungseingang" } } };
+  await docs.confirmed("datev_upload_file", stapled);
+  messages.push((await docs.call("datev_upload_file", stapled)).text);
+
+  for (const [i, post] of [() => json(202, {}, { location: "/clients/455148-1/extf-files/jobs/J9", "retry-after": "1" }), () => json(503, {})].entries()) {
+    const file = await extfFile(`EXTF_R6D${i}.csv`, 6300 + i);
+    await (await harness(extfDatev({ post }))).confirmed("datev_upload_extf", { client_id: "455148-1", file_path: file });
+    messages.push((await (await harness(extfDatev())).call("datev_upload_extf", { client_id: "455148-1", file_path: file })).text);
+  }
+
+  assert.ok(messages.length >= 11);
+  for (const m of messages) {
+    const de = localize(m, "de");
+    assert.doesNotMatch(de, ENGLISH, `still English: ${de.slice(0, 200)}`);
+  }
 });

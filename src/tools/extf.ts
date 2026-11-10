@@ -18,7 +18,7 @@ import {
 import { buildHeaders, buildUrl, callOperation, CallError, UncertainSendError, problemFields, problemText, type CallDeps } from "../api/client.js";
 import { describeClient } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
-import { finishSend, reserveSend, sentBefore } from "./sent-ledger.js";
+import { acceptedBefore, finishSend, reserveSend, sentBefore, type SentEntry } from "./sent-ledger.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -170,12 +170,15 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
     const job = r.body as Record<string, unknown>;
     return { result: typeof job.result === "string" ? job.result : "pending", job };
   };
-  const alreadySent = (e: { at: string; name: string; status: string; job_id?: string }) =>
-    e.status === "sending"
-      ? `This file is being sent to this client right now (started ${e.at}). Wait for that send to finish.`
+  const alreadySent = (e: SentEntry) => {
+    const accepted = e.status === "sent" ? undefined : acceptedBefore(e.previous);
+    const earlierImport = accepted ? ` DATEV already accepted it on ${accepted.at}${accepted.job_id ? ` (job ${accepted.job_id})` : ""}.` : "";
+    return e.status === "sending"
+      ? `This file is being sent to this client right now (started ${e.at}). Wait for that send to finish.${earlierImport}`
       : e.status === "uncertain"
-      ? `This file was being sent to this client on ${e.at} (${e.name}) and DATEV's answer was lost or was a server error, so it may already be imported. Check the batch in DATEV Rechnungswesen; to send it again on purpose, call with resend: true.`
-      : `This file was already sent to this client on ${e.at} (${e.name}${e.job_id ? `, job ${e.job_id}` : ""}). DATEV requires booking data to be sent only once. To send it again on purpose, call with resend: true.`;
+        ? `This file was being sent to this client on ${e.at} (${e.name}) and DATEV's answer was lost or was a server error, so it may already be imported.${earlierImport} Check the batch in DATEV Rechnungswesen; to send it again on purpose, call with resend: true.`
+        : `This file was already sent to this client on ${e.at} (${e.name}${e.job_id ? `, job ${e.job_id}` : ""}). DATEV requires booking data to be sent only once. To send it again on purpose, call with resend: true.`;
+  };
 
   const jobAnswer = (clientId: string, jobId: string, result: string, job: Record<string, unknown>, env: string, extraFields: Record<string, unknown> = {}) => {
     const base = { job_id: jobId, result, records: job.number_of_accounting_records, file: job.filename, env, ...extraFields };
@@ -247,8 +250,9 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
           throw e;
         }
         if (r.status < 200 || r.status >= 300) {
-          // A 4xx is DATEV refusing the file. A 5xx may come from a gateway after DATEV took it, so it stays uncertain.
-          await finish(r.status >= 500 ? { status: "uncertain" } : { status: "refused" });
+          // Only a clear 4xx is DATEV refusing the file. A 5xx, a 408 timeout or a redirect says nothing about
+          // whether DATEV took it, so the send stays uncertain and the file is never sent again by accident.
+          await finish(r.status >= 400 && r.status < 500 && r.status !== 408 ? { status: "refused" } : { status: "uncertain" });
           const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
           return { ...ok(out), isError: true };
         }
