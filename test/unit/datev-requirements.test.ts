@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { ENDPOINTS } from "../../src/auth/endpoints.js";
 import { verifyIdToken } from "../../src/auth/id-token.js";
 import { envKeyStore } from "../../src/auth/session-key.js";
-import { selectServices } from "../../src/auth/services.js";
+import { selectServices, serviceList } from "../../src/auth/services.js";
 import { revokeToken, type FetchLike } from "../../src/auth/token-client.js";
 import { TokenStore } from "../../src/auth/token-store.js";
 import { errorRate, redactHeaders, writeHttpLog, type HttpLogEntry } from "../../src/api/http-log.js";
@@ -17,6 +17,7 @@ import { loadConfig } from "../../src/config.js";
 import { storeDir } from "../../src/paths.js";
 import { disconnect } from "../../src/setup/disconnect.js";
 import { chooseScopes, login } from "../../src/setup/login.js";
+import { doctor } from "../../src/setup/doctor.js";
 import { connectionStatus, formatDe, renderStatus, REVOKE_UI } from "../../src/setup/status.js";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "datev-req-"));
@@ -153,6 +154,52 @@ test("the status shows active or inactive, the full name, validity as TT.MM.JJJJ
   const expired = await connectionStatus(cfg, { store, fetch: userinfo, httpLog: () => {}, now: () => until + 1 });
   assert.equal(expired.connected, false);
   assert.equal(formatDe(Date.UTC(2026, 0, 2, 3, 4)), "02.01.2026 04:04");
+});
+
+test("status and doctor put every DATEV call they make into the HTTP log, with DATEV's tracing headers and no token", async () => {
+  const dir = tmp();
+  const store = new TokenStore("sandbox", dir, envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT-SECRET", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  const trace = { "x-global-transaction-id": "g-1", "v-cap-request-id": "v-1", "content-type": "application/json" };
+  const fake: FetchLike = async (u) =>
+    new Response(String(u).endsWith("/clients") ? "[]" : JSON.stringify({ sub: "u1", name: "Erika Mustermann" }), { headers: trace });
+  const statusLog: HttpLogEntry[] = [];
+  await connectionStatus(cfg, { store, fetch: fake, httpLog: (e) => statusLog.push(e) });
+  assert.ok(statusLog.some((e) => e.url === ep.userinfo && e.status === 200), "status logs its userinfo call");
+  const doctorLog: HttpLogEntry[] = [];
+  const checks = await doctor(cfg, { store, fetch: fake, httpLog: (e) => doctorLog.push(e) });
+  assert.ok(checks.some((c) => c.name === "userinfo"), JSON.stringify(checks));
+  const urls = doctorLog.map((e) => e.url);
+  assert.ok(urls.includes(ep.userinfo), "doctor logs userinfo");
+  assert.ok(urls.some((u) => u.endsWith("/clients")), "doctor logs the clients call");
+  for (const e of [...statusLog, ...doctorLog]) {
+    assert.ok(e.ts_request && e.ts_response, "both timestamps");
+    if (e.status) assert.equal(e.response_headers?.["x-global-transaction-id"], "g-1");
+  }
+  assert.ok(!JSON.stringify([statusLog, doctorLog]).includes("AT-SECRET"), "no token in the log");
+});
+
+test("data services carry DATEV's own names, spelled as DATEV writes them, never an invented label", () => {
+  const list = serviceList();
+  for (const name of [
+    "Belegbilderservice Rechnungswesen",
+    "Buchungsdatenservice und DATEV-Format",
+    "Rechnungsdatenservice 1.0 und DXSO-Format",
+    "Datenservice Export Rechnungswesen",
+    "TRAFFIQX® Invoice API für DATEV E-Rechnungsplattform",
+    "Lohnimportdatenservice und ASCII-Format",
+    "Lohnauswertungsdatenservice",
+    "Lohnergebnisdatenservice",
+    "Lohnaustauschdatenservice (hr:exchange)",
+    "Lohnaustauschdatenservice (hr:eau)",
+    "Datenservice Dokumente Personalwirtschaft",
+    "Belegbilderservice Einkommensteuer",
+    "accounting:clients (DATEV Rechnungswesen)",
+    "master-data:master-clients (DATEV Basisdaten online)",
+    "property tax file upload API (DATEV DMS)",
+  ])
+    assert.ok(list.includes(name), name);
+  assert.doesNotMatch(list, /Online-API|Einkommenssteuer/);
 });
 
 test("the HTTP log keeps method, full URL, transaction ids and timestamps, never tokens or secrets, and yields the 14-day error rate", () => {

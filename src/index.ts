@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { writeHttpLog } from "./api/http-log.js";
 import { serviceList } from "./auth/services.js";
 import { loadConfig } from "./config.js";
 import { localize, messageLang } from "./i18n.js";
@@ -30,7 +31,7 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
   if (cmd === "status") {
-    const st = await connectionStatus(loadConfig());
+    const st = await connectionStatus(loadConfig(), { httpLog: (e) => writeHttpLog(e) });
     process.stdout.write(`${renderStatus(st, lang, process.stdout.isTTY)}\n`);
     return st.connected ? 0 : 1;
   }

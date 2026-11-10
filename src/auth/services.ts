@@ -2,9 +2,10 @@ import index from "../data/operations.json" with { type: "json" };
 import type { OperationIndex } from "../spec/types.js";
 
 // DATEV asks apps to name its data services the way DATEV does and to request only the scopes of the
-// services the customer chose. Labels are DATEV's published service names; APIs without one show their API name.
+// services the customer chose. Labels are the DATEV-Datenservice names from the Schnittstellenvorgaben page.
+// Online-APIs without a data-service name show the API name and DATEV application as the product list writes them.
 const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Personalwirtschaft" | "Steuern" | "Sonstiges" }> = {
-  "accounting-clients": { label: "Online-API accounting-clients", group: "Rechnungswesen" },
+  "accounting-clients": { label: "accounting:clients (DATEV Rechnungswesen)", group: "Rechnungswesen" },
   "accounting-documents": { label: "Belegbilderservice Rechnungswesen", group: "Rechnungswesen" },
   "accounting-extf-files": { label: "Buchungsdatenservice und DATEV-Format", group: "Rechnungswesen" },
   "accounting-dxso-jobs": { label: "Rechnungsdatenservice 1.0 und DXSO-Format", group: "Rechnungswesen" },
@@ -16,9 +17,9 @@ const SERVICES: Record<string, { label: string; group: "Rechnungswesen" | "Perso
   "hr-exchange": { label: "Lohnaustauschdatenservice (hr:exchange)", group: "Personalwirtschaft" },
   "eau-api": { label: "Lohnaustauschdatenservice (hr:eau)", group: "Personalwirtschaft" },
   "hr-documents": { label: "Datenservice Dokumente Personalwirtschaft", group: "Personalwirtschaft" },
-  "my-tax-income-tax-documents": { label: "Belegbilderservice Einkommenssteuer", group: "Steuern" },
-  "property-tax-file-upload-api": { label: "Online-API property-tax-file-upload", group: "Steuern" },
-  "master-data-master-clients": { label: "Online-API master-data-master-clients", group: "Sonstiges" },
+  "my-tax-income-tax-documents": { label: "Belegbilderservice Einkommensteuer", group: "Steuern" },
+  "property-tax-file-upload-api": { label: "property tax file upload API (DATEV DMS)", group: "Steuern" },
+  "master-data-master-clients": { label: "master-data:master-clients (DATEV Basisdaten online)", group: "Sonstiges" },
 };
 
 // Every accounting service works on a client the user must have access to, which DATEV says to check in the client list.
