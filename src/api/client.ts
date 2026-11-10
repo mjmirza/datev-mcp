@@ -322,8 +322,14 @@ const PROBLEM_KEYS = ["title", "type", "detail", "help_url", "error", "error_des
 function scanFields(text: string, found: Record<string, unknown>): void {
   for (const k of PROBLEM_KEYS) {
     if (found[k] !== undefined) continue;
-    const m = text.match(new RegExp(`"${k}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,2000})"`));
+    const num = k === "request_id" || k === "requestId" ? `|(-?\\d{1,40})(?=\\s*[,}\\]])` : "";
+    const m = text.match(new RegExp(`"${k}"\\s*:\\s*(?:"((?:[^"\\\\]|\\\\.){0,2000})"${num})`));
     if (!m) continue;
+    // A numeric id only counts once a delimiter follows it, so a number cut at a window edge is read whole later.
+    if (m[1] === undefined) {
+      found[k] = m[2];
+      continue;
+    }
     try {
       found[k] = JSON.parse(`"${m[1]}"`) as string;
     } catch {
@@ -333,11 +339,13 @@ function scanFields(text: string, found: Record<string, unknown>): void {
 }
 
 const SCAN_IDLE_MS = 2000;
+// The whole scan past the cap ends here too, so an answer that keeps dribbling cannot hold the call open.
+const SCAN_TOTAL_MS = 5000;
 
-async function idleRead(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>["read"]>> | "idle"> {
+async function idleRead(reader: ReadableStreamDefaultReader<Uint8Array>, ms: number): Promise<Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>["read"]>> | "idle"> {
   let timer: NodeJS.Timeout | undefined;
   const idle = new Promise<"idle">((r) => {
-    timer = setTimeout(() => r("idle"), SCAN_IDLE_MS);
+    timer = setTimeout(() => r("idle"), ms);
   });
   try {
     return await Promise.race([reader.read(), idle]);
@@ -374,9 +382,19 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
     pendingSize += take.length;
     if (pendingSize >= SCAN_BATCH) flush(false);
   };
+  let scanEnd = 0;
   for (;;) {
-    // Past the cap only the error fields are wanted, so an answer that goes quiet is not waited for.
-    const next = overflow ? await idleRead(reader) : await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+    // Past the cap only the error fields are wanted, so an answer that goes quiet or keeps dribbling is not waited for.
+    let next: Awaited<ReturnType<typeof idleRead>>;
+    if (overflow) {
+      const left = scanEnd - Date.now();
+      if (left <= 0) break;
+      try {
+        next = await idleRead(reader, Math.min(SCAN_IDLE_MS, left)); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+      } catch {
+        break; // a break past the cap keeps the head and the fields found so far
+      }
+    } else next = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
     if (next === "idle" || next.done) break;
     const { value } = next;
     if (overflow) {
@@ -388,6 +406,7 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       parts.push(value.subarray(0, cap - size));
       overflow = true;
       if (!scan) break;
+      scanEnd = Date.now() + SCAN_TOTAL_MS;
       // The decoder starts just before the cap, so a character or field cut there is read whole.
       const head = join(parts);
       read = cap;
