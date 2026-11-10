@@ -314,29 +314,127 @@ const join = (parts: Uint8Array[]): Uint8Array => {
 };
 
 // A cut JSON error answer still carries DATEV's title and help link further on, so the rest is scanned for them.
-// It is scanned in batches up to the hard limit, through one decoder, so no field is skipped and the cost stays linear.
+// A streaming tokenizer reads it in batches up to the hard limit, so state carries over and the cost stays linear.
 const SCAN_BATCH = 64 * 1024;
-const SCAN_OVERLAP = 4096;
-const PROBLEM_KEYS = ["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"];
+const PROBLEM_KEYS = new Set(["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"]);
+// A value longer than this is kept cut at this length, so one huge field cannot grow memory.
+const SCAN_VALUE_MAX = 2000;
+const ESCAPES: Record<string, string> = { b: "\b", f: "\f", n: "\n", r: "\r", t: "\t" };
 
-function scanFields(text: string, found: Record<string, unknown>): void {
-  for (const k of PROBLEM_KEYS) {
-    if (found[k] !== undefined) continue;
-    const num = k === "request_id" || k === "requestId" ? `|(-?\\d{1,40})(?=\\s*[,}\\]])` : "";
-    const m = text.match(new RegExp(`"${k}"\\s*:\\s*(?:"((?:[^"\\\\]|\\\\.){0,2000})"${num})`));
-    if (!m) continue;
-    // A numeric id only counts once a delimiter follows it, so a number cut at a window edge is read whole later.
-    if (m[1] === undefined) {
-      found[k] = m[2];
-      continue;
-    }
-    try {
-      found[k] = JSON.parse(`"${m[1]}"`) as string;
-    } catch {
-      found[k] = m[1];
+// Only keys of the outermost object count, so a nested error list cannot hide the answer's own fields.
+class FieldScanner {
+  readonly found: Record<string, unknown> = {};
+  private depth = 0;
+  private top = false;
+  private phase: "key" | "colon" | "value" | "after" = "after";
+  private key: string | undefined;
+  private inString = false;
+  private escape = false;
+  private hex = -1;
+  private code = 0;
+  private sink: "key" | "value" | undefined;
+  private buf = "";
+  private num: string | undefined;
+
+  feed(text: string): void {
+    for (let i = 0; i < text.length; i++) {
+      const c = text.charCodeAt(i);
+      if (this.inString) {
+        if (this.sink === undefined) {
+          // A string nobody keeps only has to be skipped to its closing quote.
+          if (this.escape) this.escape = false;
+          else if (c === 92) this.escape = true;
+          else if (c === 34) this.endString();
+          continue;
+        }
+        if (this.hex >= 0) {
+          const d = parseInt(text[i]!, 16);
+          this.code = this.code * 16 + (Number.isNaN(d) ? 0 : d);
+          if (++this.hex === 4) {
+            this.hex = -1;
+            this.add(String.fromCharCode(this.code));
+          }
+        } else if (this.escape) {
+          this.escape = false;
+          const ch = text[i]!;
+          if (ch === "u") {
+            this.hex = 0;
+            this.code = 0;
+          } else this.add(ESCAPES[ch] ?? ch);
+        } else if (c === 92) this.escape = true;
+        else if (c === 34) this.endString();
+        else this.add(text[i]!);
+        continue;
+      }
+      if (this.num !== undefined) {
+        if ((c >= 48 && c <= 57) || c === 45 || c === 43 || c === 46 || c === 101 || c === 69) {
+          if (this.num.length < 64) this.num += text[i];
+          continue;
+        }
+        // A number counts only once a delimiter follows it, so one cut by the end of the stream is not kept.
+        this.store(this.num);
+        this.num = undefined;
+        this.phase = "after";
+      }
+      if (c === 34) {
+        this.inString = true;
+        this.buf = "";
+        this.sink = this.depth === 1 && this.top ? (this.phase === "key" ? "key" : this.phase === "value" && this.wanted() ? "value" : undefined) : undefined;
+        if (this.depth === 1 && this.top && this.phase === "value" && this.sink === undefined) this.phase = "after";
+      } else if (c === 123 || c === 91) {
+        if (this.depth === 0) {
+          this.top = c === 123;
+          this.phase = "key";
+        } else if (this.depth === 1) this.phase = "after";
+        this.depth++;
+      } else if (c === 125 || c === 93) {
+        if (this.depth > 0) this.depth--;
+      } else if (this.depth === 1 && this.top) {
+        if (c === 58 && this.phase === "colon") this.phase = "value";
+        else if (c === 44) {
+          this.phase = "key";
+          this.key = undefined;
+        } else if (this.phase === "value" && ((c >= 48 && c <= 57) || c === 45)) {
+          if (this.wanted()) this.num = text[i]!;
+          else this.phase = "after";
+        } else if (this.phase === "value" && c > 32) this.phase = "after";
+      }
     }
   }
+
+  private wanted(): boolean {
+    return this.key !== undefined && PROBLEM_KEYS.has(this.key) && this.found[this.key] === undefined;
+  }
+
+  private add(ch: string): void {
+    if (this.buf.length < SCAN_VALUE_MAX) this.buf += ch;
+  }
+
+  private store(value: string): void {
+    if (this.key !== undefined && this.found[this.key] === undefined) this.found[this.key] = value;
+  }
+
+  private endString(): void {
+    this.inString = false;
+    this.escape = false;
+    this.hex = -1;
+    if (this.sink === "key") {
+      this.key = this.buf;
+      this.phase = "colon";
+    } else if (this.sink === "value") {
+      this.store(this.buf);
+      this.phase = "after";
+    }
+    this.sink = undefined;
+    this.buf = "";
+  }
 }
+
+const scanText = (text: string): Record<string, unknown> => {
+  const s = new FieldScanner();
+  s.feed(text);
+  return s.found;
+};
 
 const SCAN_IDLE_MS = 2000;
 // The whole scan past the cap ends here too, so an answer that keeps dribbling cannot hold the call open.
@@ -360,16 +458,13 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
   const parts: Uint8Array[] = [];
   let size = 0;
   let overflow = false;
-  const fields: Record<string, unknown> = {};
+  const scanner = new FieldScanner();
   const decoder = new TextDecoder("utf-8");
-  let carry = "";
   let pending: Uint8Array[] = [];
   let pendingSize = 0;
   let read = 0;
   const flush = (last: boolean) => {
-    const window = carry + decoder.decode(join(pending), { stream: !last });
-    scanFields(window, fields);
-    carry = window.slice(-SCAN_OVERLAP);
+    scanner.feed(decoder.decode(join(pending), { stream: !last }));
     pending = [];
     pendingSize = 0;
   };
@@ -399,7 +494,10 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
     } else if (scan && size >= cap) {
       // A head exactly at the cap that then goes quiet counts as cut off, not as a stall.
       next = await idleRead(reader, SCAN_IDLE_MS); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
-      if (next === "idle") overflow = true;
+      if (next === "idle") {
+        overflow = true;
+        queue(join(parts));
+      }
     } else next = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
     if (next === "idle" || next.done) break;
     const { value } = next;
@@ -413,11 +511,9 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       overflow = true;
       if (!scan) break;
       scanEnd = Date.now() + SCAN_TOTAL_MS;
-      // The decoder starts just before the cap, so a character or field cut there is read whole.
-      const head = join(parts);
-      read = cap;
-      queue(head.subarray(Math.max(0, cap - SCAN_OVERLAP)));
-      read = cap;
+      // The tokenizer reads from the first byte, so it knows which keys belong to the outermost object.
+      read = 0;
+      queue(join(parts));
       queue(value.subarray(cap - size));
       size = cap;
       if (read >= HARD_MAX_BYTES) break;
@@ -428,7 +524,7 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
   }
   if (overflow && scan) flush(true);
   if (overflow) await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once done
-  return { bytes: join(parts), overflow, ...(overflow && scan ? { fields } : {}), ...(broke !== undefined ? { broke } : {}) };
+  return { bytes: join(parts), overflow, ...(overflow && scan ? { fields: scanner.found } : {}), ...(broke !== undefined ? { broke } : {}) };
 }
 
 async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array; broke?: string }> {
@@ -451,9 +547,8 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
   // A cut error answer keeps DATEV's title, help link and request id from wherever they appeared.
   if (truncated && scan) {
-    const found: Record<string, unknown> = {};
-    scanFields(text, found);
-    return { body: { cut_off: true, ...found, ...Object.fromEntries(Object.entries(fields ?? {}).filter(([k]) => found[k] === undefined)), text: slice }, truncated, ...(broke !== undefined ? { broke } : {}) };
+    // Past the byte cap the stream scan saw the whole answer; otherwise the decoded text is all there is.
+    return { body: { cut_off: true, ...(fields ?? scanText(text)), text: slice }, truncated, ...(broke !== undefined ? { broke } : {}) };
   }
   if (!truncated && /json/i.test(media)) {
     try {
