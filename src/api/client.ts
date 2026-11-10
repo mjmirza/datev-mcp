@@ -93,7 +93,7 @@ export interface CallDeps {
   /** Per host: until when DATEV asked us to wait. Shared across calls, so a long Retry-After is honored by the next call too. */
   cooldowns?: Map<string, number>;
   /** Ends the connection when DATEV says the client lacks Datenservice Export Rechnungswesen, as that service's rules require. */
-  onMissingPermission?: () => Promise<void>;
+  onMissingPermission?: () => Promise<string>;
 }
 
 const defaultCooldowns = new Map<string, number>();
@@ -128,6 +128,9 @@ export class CallError extends Error {
     this.name = "CallError";
   }
 }
+
+/** The request may have reached DATEV before this failed, so a write's outcome is unknown. */
+export class UncertainSendError extends CallError {}
 
 const RETRYABLE = new Set([429, 502, 503, 504]);
 export const MAX_ATTEMPTS = 3;
@@ -413,7 +416,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
       if (op.method !== "get" || deps.signal?.aborted) {
         // A write may have reached DATEV: its headers and the break are logged before giving up.
         logLine({ error: `answer broke off: ${e instanceof Error ? e.message : String(e)}` });
-        throw new CallError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
+        throw new UncertainSendError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }
@@ -435,17 +438,17 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     await bounded(sleep(delay), p.deadline, deps.signal, "while waiting to retry");
     return attempt(p, n + 1);
   }
-  if (deps.signal?.aborted) throw new CallError("The call was cancelled");
+  if (deps.signal?.aborted) throw new UncertainSendError("The call was cancelled");
   if (!res) {
     // A request cut off by the call budget is a timeout, so callers can keep partial work and resume.
     if ((netErr as Error | undefined)?.name === "TimeoutError" || Date.now() >= p.deadline - 100)
-      throw new CallError("Ran out of time while waiting for DATEV to answer. Try again, or narrow the request.");
-    throw new CallError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+      throw new UncertainSendError("Ran out of time while waiting for DATEV to answer. Try again, or narrow the request.");
+    throw new UncertainSendError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
   }
   if (!read) {
     if (netErr !== undefined) {
-      if ((netErr as Error).name === "TimeoutError" || Date.now() >= p.deadline - 100) throw new CallError("Ran out of time while reading DATEV's answer. Try again, or narrow the request.");
-      throw new CallError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
+      if ((netErr as Error).name === "TimeoutError" || Date.now() >= p.deadline - 100) throw new UncertainSendError("Ran out of time while reading DATEV's answer. Try again, or narrow the request.");
+      throw new UncertainSendError(`DATEV's answer broke off: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
     }
     read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
   }

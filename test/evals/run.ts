@@ -62,6 +62,9 @@ const sharesSegment = (op: Operation, name: string) => (op.path.split("/").find(
 
 // A value that satisfies the parameter's spec schema, so a valid call is actually valid.
 function sampleFor(op: Operation, name: string): string {
+  // eAU names the client by its numbers; the permission gate accepts only real ones.
+  if (name === "consultantNumber") return "1000";
+  if (name === "clientNumber") return "1";
   const s = paramSchema(op, name);
   if (s?.type === "integer") return String(s.minimum ?? 1);
   const pick = SAMPLE_CANDIDATES.find((c) => {
@@ -317,7 +320,9 @@ function perOperation(op: Operation) {
 const permissionRead = (url: string) =>
   /\/fiscal-years$/.test(new URL(url).pathname)
     ? json(200, [19920101])
-    : json(200, { name: "Eval GmbH", consultant_number: 1000, client_number: 1, services: ["Belegbilderservice", "Buchungsdatenservice", "Rechnungsdatenservice 1.0", "Datenservice Export Rechnungswesen"].map((name) => ({ name })) });
+    : /\/clients$/.test(new URL(url).pathname)
+      ? json(200, { clients: [{ client_guid: "3f2504e0-4f89-41d3-9a0c-0305e82c3301", consultant_number: 1000, client_number: 1, name: "Eval GmbH" }] })
+      : json(200, { name: "Eval GmbH", consultant_number: 1000, client_number: 1, services: ["Belegbilderservice", "Buchungsdatenservice", "Rechnungsdatenservice 1.0", "Datenservice Export Rechnungswesen"].map((name) => ({ name })) });
 
 async function writeConfirmGate() {
   const server = new McpServer({ name: "eval", version: "0" });
@@ -358,7 +363,9 @@ async function uploadShapes() {
     writeFileSync(p, `eval file ${n} ${ext}`);
     return p;
   };
-  const ops = OPERATIONS.filter((o) => o.body?.contentTypes.some((t) => /^multipart\/form-data/i.test(t)));
+  // Single accounting documents go through datev_upload_document, which follows DATEV's document rules; the generic tool refuses them.
+  const routed = new Set(["accounting-documents.post_clients_client_id_documents", "accounting-documents.put_clients_client_id_documents_document_id"]);
+  const ops = OPERATIONS.filter((o) => o.body?.contentTypes.some((t) => /^multipart\/form-data/i.test(t)) && !routed.has(o.id));
   for (const op of ops) {
     const env = op.servers.sandbox ? "sandbox" : "production";
     const calls: { body: unknown }[] = [];

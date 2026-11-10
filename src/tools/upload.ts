@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, type CallDeps } from "../api/client.js";
 import { gateCall } from "../api/client-gate.js";
+import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { localize } from "../i18n.js";
 import type { Operation } from "../spec/types.js";
@@ -129,6 +130,9 @@ function plan(operationId: string, files: Record<string, string | string[]>, fie
   const op = getOperation(operationId);
   if (!op) throw new UploadError(`Unknown operation "${operationId}". Use datev_search_operations first.`);
   if (op.id === "accounting-extf-files.importextffile") throw new UploadError("Use datev_upload_extf for EXTF files. It checks the file before sending it.");
+  // Single documents follow DATEV's document rules (service, document type, filing fields) only in datev_upload_document.
+  if (op.id === "accounting-documents.post_clients_client_id_documents" || op.id === "accounting-documents.put_clients_client_id_documents_document_id")
+    throw new UploadError("Use datev_upload_document for a single document. It checks the client's data service and document types first.");
   if (!op.body?.contentTypes.some((c) => c.split(";")[0].trim().toLowerCase() === "multipart/form-data"))
     throw new UploadError(`${op.id} does not take a file upload. Use datev_call for it.`);
   const { parts, required } = partsOf(op);
@@ -230,8 +234,11 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const target = { pathParams: path_params, query, headers };
         const url = buildUrl(op, d.env, target);
         buildHeaders(op, target);
-        const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
         const read = readAll(op, order, files, fieldBytes);
+        // Local checks first, then DATEV's permission reads.
+        const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
+        // Stapled documents land in Belegbilderservice or Buchungsdatenservice, so that service must be switched on too.
+        if (op.product === "accounting-documents") await requireClientService(String(path_params?.["client-id"] ?? ""), ["Belegbilderservice", "Buchungsdatenservice"], d);
         const listed = read.map((x) => ({ part: x.part, file: x.path, sent_as: x.name, bytes: x.bytes.length, content_type: x.type }));
         const fingerprint = {
           tool: TOOL,

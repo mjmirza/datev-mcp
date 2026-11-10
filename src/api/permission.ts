@@ -1,4 +1,4 @@
-import { callOperation, CallError, type CallDeps } from "./client.js";
+import { callOperation, CallError, problemText, type CallDeps } from "./client.js";
 import { getOperation } from "../tools/catalog.js";
 
 /** DATEV's page where a customer orders and switches on a data service. DATEV asks apps to show it. */
@@ -34,14 +34,18 @@ export async function requireClientService(
   if (r.truncated) throw new CallError("DATEV's client answer was cut off, so the data service permission could not be checked. Nothing was sent.");
   const body = r.body && typeof r.body === "object" && !Array.isArray(r.body) ? (r.body as Record<string, unknown>) : undefined;
   const services = Array.isArray(body?.services) ? (body.services as { name?: unknown }[]).map((s) => (typeof s.name === "string" ? s.name : "")).filter(Boolean) : [];
+  // A server error or rate limit says nothing about the permission: report it, never end the connection for it.
+  if (r.status >= 500 || r.status === 429 || (r.status >= 300 && r.status < 400))
+    throw new CallError(`DATEV could not confirm the client's data services right now (HTTP ${r.status}). Nothing was sent. Try again later.${r.status >= 400 ? ` ${problemText(r.status, r.body)}` : ""}`);
   const ok = r.status >= 200 && r.status < 300 && anyOf.some((s) => services.includes(s));
   if (!ok) {
     const dx = anyOf.includes("Datenservice Export Rechnungswesen");
-    if (dx && deps.onMissingPermission) await deps.onMissingPermission().catch(() => undefined);
+    // DX-02: a 4xx or a 200 without the service is a missing permission, and both tokens are revoked at once.
+    const ended = dx && deps.onMissingPermission ? await deps.onMissingPermission().catch((e: Error) => ` Ending the connection failed (${e.message}).`) : "";
     const who = body?.name ? `"${String(body.name)}"` : "This client";
     const why = r.status >= 400 ? `DATEV answered HTTP ${r.status} for this client` : `${who} has not switched on ${anyOf.join(" or ")}`;
     throw new PermissionError(
-      `${why}. Nothing was sent. The client or their tax advisor switches the data service on at DATEV, see ${dx ? DX_ORDER_LINK : DATEV_SETUP_LINK}.${dx ? " As DATEV requires, the connection was ended; sign in again after the service is switched on." : ""}`,
+      `${why}. Nothing was sent. The client or their tax advisor switches the data service on at DATEV, see ${dx ? DX_ORDER_LINK : DATEV_SETUP_LINK}.${ended}`,
     );
   }
   return {

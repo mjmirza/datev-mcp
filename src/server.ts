@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { revokePending } from "./auth/pending-revoke.js";
 import { clearDataexchangeCache } from "./api/dataexchange-guard.js";
 import { clearClientGate } from "./api/client-gate.js";
-import { disconnect } from "./setup/disconnect.js";
+import { endForMissingPermission } from "./setup/disconnect.js";
 import { tokenLog } from "./setup/token-log.js";
 import { writeHttpLog, type HttpLogEntry } from "./api/http-log.js";
 import { Session } from "./auth/session.js";
@@ -40,7 +40,7 @@ function createServer(cfg: Config): McpServer {
   const onMissingPermission = async () => {
     clearDataexchangeCache();
     clearClientGate();
-    await disconnect(cfg, { store, httpLog });
+    return endForMissingPermission(cfg, { store, httpLog });
   };
   const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), onMissingPermission });
   // A refresh token an earlier login could not revoke is retried in the background: DATEV allows only one.

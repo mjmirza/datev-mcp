@@ -15,9 +15,9 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { buildHeaders, buildUrl, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, UncertainSendError, problemFields, problemText, type CallDeps } from "../api/client.js";
 import { requireClientService } from "../api/permission.js";
-import { recordSent, sentBefore } from "./sent-ledger.js";
+import { finishSend, reserveSend, sentBefore } from "./sent-ledger.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -169,6 +169,11 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
     const job = r.body as Record<string, unknown>;
     return { result: typeof job.result === "string" ? job.result : "pending", job };
   };
+  const alreadySent = (e: { at: string; name: string; status: string; job_id?: string }) =>
+    e.status === "sending"
+      ? `This file was being sent to this client on ${e.at} (${e.name}) and DATEV's answer never arrived, so it may already be imported. Check the batch in DATEV Rechnungswesen; to send it again on purpose, call with resend: true.`
+      : `This file was already sent to this client on ${e.at} (${e.name}${e.job_id ? `, job ${e.job_id}` : ""}). DATEV requires booking data to be sent only once. To send it again on purpose, call with resend: true.`;
+
   const jobAnswer = (clientId: string, jobId: string, result: string, job: Record<string, unknown>, env: string, extraFields: Record<string, unknown> = {}) => {
     const base = { job_id: jobId, result, records: job.number_of_accounting_records, file: job.filename, env, ...extraFields };
     if (result === "succeeded") return ok({ imported: true, ...base });
@@ -202,10 +207,10 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         buildHeaders(op, { headers: { Filename: file.name } });
         const d = deps(extra.signal);
         const sha256 = createHash("sha256").update(file.bytes).digest("hex");
-        const earlier = sentBefore("extf", d.env, client_id, sha256);
-        if (earlier && resend !== true)
-          return err(`This file was already sent to this client on ${earlier.at} (${earlier.name}${earlier.job_id ? `, job ${earlier.job_id}` : ""}). DATEV requires booking data to be sent only once. To send it again on purpose, call with resend: true.`);
+        // The permission comes first: an earlier send is only shown to a login that may see this client.
         const client = await requireClientService(client_id, ["Buchungsdatenservice"], d);
+        const earlier = sentBefore("extf", d.env, client_id, sha256);
+        if (earlier && resend !== true) return err(alreadySent(earlier));
         const who = [client.name, client.consultant_number !== undefined && `consultant ${client.consultant_number}`, client.client_number !== undefined && `client ${client.client_number}`].filter(Boolean).join(", ");
         const fingerprint = { tool: "datev_upload_extf", env: d.env, client_id, file: file.path, name: file.name, sha256, resend: resend === true };
         if (confirm !== true) {
@@ -224,18 +229,35 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         if (refused) return err(refused);
         const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}\n${buildUrl(op, d.env, { pathParams: { "client-id": client_id } })}`);
         if (denied) return err(denied);
-        const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
+        // Reserved under the lock before the POST: two confirmations racing cannot both send the file.
+        const raced = await reserveSend("extf", d.env, client_id, sha256, file.name, resend === true);
+        if (raced) return err(alreadySent(raced));
+        // A lost answer leaves the reservation in place, so the file counts as sent until DATEV shows otherwise.
+        let r;
+        try {
+          r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
+        } catch (e) {
+          // Refused before DATEV was asked: release. Unknown outcome: the reservation stays.
+          if (!(e instanceof UncertainSendError)) await finishSend("extf", d.env, client_id, sha256, { accepted: false }).catch(() => undefined);
+          throw e;
+        }
         if (r.status < 200 || r.status >= 300) {
+          await finishSend("extf", d.env, client_id, sha256, { accepted: false });
           const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
           return { ...ok(out), isError: true };
         }
         const jobId = r.location?.split("?")[0]?.split("/").filter(Boolean).pop();
-        recordSent("extf", d.env, client_id, sha256, { at: new Date().toISOString(), name: file.name, job_id: jobId });
-        if (!jobId) return { ...ok({ uploaded: true, imported: false, note: "DATEV accepted the file but named no job, so the import cannot be confirmed. Check the batch in DATEV Rechnungswesen.", env: d.env }), isError: true };
-        // DATEV: wait the Retry-After seconds before the first job query.
+        const recorded = await finishSend("extf", d.env, client_id, sha256, { accepted: true, job_id: jobId }).then(
+          () => undefined,
+          (e: Error) => `The file was accepted, but the send record could not be updated (${e.message}); it still counts as sent.`,
+        );
+        if (!jobId) return { ...ok({ uploaded: true, imported: false, note: "DATEV accepted the file but named no job, so the import cannot be confirmed. Check the batch in DATEV Rechnungswesen.", env: d.env, ...(recorded ? { record: recorded } : {}) }), isError: true };
+        // DATEV: wait at least the Retry-After seconds. A longer wait than this call allows is left to datev_extf_job.
         const sleep = d.sleep ?? ((ms: number) => new Promise<void>((res) => setTimeout(res, ms)));
-        const first = Math.min(Math.max(Number(r.retryAfter) || 5, 1), 20) * 1000;
-        await sleep(first);
+        const retryAfter = Math.max(Number(r.retryAfter) || 5, 1);
+        if (retryAfter > 20)
+          return ok({ uploaded: true, imported: false, job_id: jobId, env: d.env, note: `DATEV asked to wait ${retryAfter} seconds before asking for the result. Check then with datev_extf_job (client_id ${client_id}, job_id ${jobId}). Do not send the file again.` });
+        await sleep(retryAfter * 1000);
         let state = await jobOf(client_id, jobId, d);
         // At most 6 job queries with growing waits, far below DATEV's 30-GETs-per-upload limit. RENAME_OK: the time bound became a count bound.
         for (const wait of [3000, 5000, 8000, 10_000, 12_000]) {
@@ -243,8 +265,8 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
           await sleep(wait); // BESTPRACTICE_OK: polling a job is sequential by nature
           state = await jobOf(client_id, jobId, d); // BESTPRACTICE_OK: same poll
         }
-        recordSent("extf", d.env, client_id, sha256, { at: new Date().toISOString(), name: file.name, job_id: jobId, result: state.result });
-        return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated });
+        await finishSend("extf", d.env, client_id, sha256, { accepted: true, job_id: jobId, result: state.result }).catch(() => undefined);
+        return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated, ...(recorded ? { record: recorded } : {}) });
       } catch (e) {
         return err(errorText(e));
       }

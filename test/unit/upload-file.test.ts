@@ -20,8 +20,11 @@ async function client(env: "sandbox" | "production" = "sandbox", approve?: boole
   const sent: Sent[] = [];
   const f: FetchLike = async (u, init) => {
     // DATEV's permission read before a transfer is not a transfer; only sends are counted.
-    if ((init?.method ?? "GET").toUpperCase() === "GET")
-      return new Response(JSON.stringify({ name: "Muster GmbH", consultant_number: 455148, client_number: 1 }), { headers: { "content-type": "application/json" } });
+    if ((init?.method ?? "GET").toUpperCase() === "GET") {
+      const client = { name: "Muster GmbH", consultant_number: 455148, client_number: 1, client_guid: GUID };
+      const body = new URL(String(u)).pathname.endsWith("/clients") ? { clients: [client] } : client;
+      return new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+    }
     sent.push({ url: String(u), form: init?.body instanceof FormData ? init.body : undefined, headers: new Headers(init?.headers) });
     return new Response(JSON.stringify({ id: "ok" }), { status: 201, headers: { "content-type": "application/json" } });
   };
@@ -168,7 +171,8 @@ test("wrong parts, wrong types, bad fields and bad headers are refused before an
     [{ operation_id: "my-tax-income-tax-documents.saveincometaxdocument", files: { file: pdf }, fields: { document: { note: "x" } } }, /source/],
     [{ operation_id: "hr-files.post_v1_clients_client_id_files", path_params: { "client-id": "455148-1" }, files: { file: big }, fields: { import_file_type: "bwd", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" } }, /limit is 3000000/],
     [{ operation_id: "hr-files.post_v1_clients_client_id_files", path_params: { "client-id": "455148-1" }, files: { file: xml }, fields: { import_file_type: "zip", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" } }, /one of/],
-    [{ operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: file("a.zip", "PK") } }, /ZIP/],
+    [{ operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-1" }, files: { files: [file("a.zip", "PK")] } }, /ZIP/],
+    [{ operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: pdf } }, /Use datev_upload_document/],
     [{ operation_id: "my-tax-income-tax-documents.saveincometaxdocument", files: { file: pdf }, fields: { document: { source: "fixture", note: "x".repeat(1001) } } }, /document\.note/],
     [{ ...hrFields(), files: { file: file("x".repeat(51) + ".txt", "x") } }, /at most 50/],
     [{ ...hrFields(), files: { file: xml }, fields: { ...hrFields().fields, file_provider: "p".repeat(51) } }, /at most 50/],
@@ -196,7 +200,7 @@ test("fields count against the 50 MB budget", async () => {
   const { c, sent } = await client();
   const r = await c.callTool({
     name: "datev_upload_file",
-    arguments: { operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: pdf }, fields: { metadata: "x".repeat(51 * 1024 * 1024) } },
+    arguments: { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-1" }, files: { files: [pdf] }, fields: { metadata: "x".repeat(51 * 1024 * 1024) } },
   });
   assert.ok(isError(r));
   assert.match(text(r), /50 MB/);

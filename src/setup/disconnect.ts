@@ -58,3 +58,32 @@ export async function disconnect(
     };
   });
 }
+
+/** DATEV's Export rules: without the data service, revoke both tokens at once and say exactly what happened. */
+export async function endForMissingPermission(
+  cfg: Config,
+  opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void } = {},
+): Promise<string> {
+  const store = opts.store ?? new TokenStore(cfg.env);
+  const log = tokenLog(opts.httpLog ?? ((e: HttpLogEntry) => writeHttpLog(e)));
+  return store.withLock(async () => {
+    const s = store.read();
+    if (!s || s.clientId !== cfg.creds.clientId) return "There was no saved connection to end.";
+    const callOpts = { fetch: opts.fetch, log };
+    const refresh = [...new Set([...(s.pendingRevoke ?? []), ...(s.tokens.refreshToken ? [s.tokens.refreshToken] : [])])];
+    const accessLive = s.tokens.expiresAt > Date.now();
+    const [refreshResults, accessResult] = await Promise.all([
+      Promise.allSettled(refresh.map((t) => revokeToken(cfg.endpoints.revoke, t, "refresh_token", cfg.creds, callOpts))),
+      accessLive ? revokeToken(cfg.endpoints.revoke, s.tokens.accessToken, "access_token", cfg.creds, callOpts).then(() => undefined, (e: Error) => e) : Promise.resolve(undefined),
+    ]);
+    const left = refresh.filter((_, i) => refreshResults[i]!.status === "rejected");
+    if (left.length) {
+      // A refresh token DATEV did not confirm is never forgotten: the session stays, and the next call retries.
+      store.write({ ...s, pendingRevoke: left });
+      return ` DATEV did not confirm revoking the connection, so it was kept and is revoked again on the next call. It can also be removed at ${REVOKE_UI}.`;
+    }
+    store.clear();
+    if (accessResult) return ` The connection was ended, but DATEV did not confirm revoking the access token (${accessResult.message}); it can no longer be renewed and expires at ${new Date(s.tokens.expiresAt).toISOString().slice(11, 16)} UTC.`;
+    return " As DATEV requires, the connection was ended and both tokens revoked; sign in again after the service is switched on.";
+  });
+}

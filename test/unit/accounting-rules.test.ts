@@ -18,6 +18,10 @@ interface Fake {
   services?: string[];
   types?: string[];
   job?: "succeeded" | "failed" | "pending";
+  clientStatus?: number;
+  postThrows?: boolean;
+  retryAfter?: string;
+  token?: string;
 }
 type Sent = { method: string; url: string };
 
@@ -32,23 +36,14 @@ async function harness(fake: Fake) {
     const url = String(u);
     const method = (init?.method ?? "GET").toUpperCase();
     sent.push({ method, url });
-    if (method === "GET" && /\/clients\/455148-1$/.test(url))
-      return json({
-        name: "Muster GmbH",
-        consultant_number: 455148,
-        client_number: 1,
-        services: (fake.services ?? []).map((name) => ({ name })),
-      });
-    if (url.endsWith("/document-types"))
-      return json((fake.types ?? []).map((name) => ({ name })));
-    if (url.endsWith("/extf-files/import"))
-      return new Response(null, {
-        status: 202,
-        headers: {
-          location: "/clients/455148-1/extf-files/jobs/J7",
-          "retry-after": "1",
-        },
-      });
+    if (method === "GET" && /\/clients\/\d+-\d+$/.test(url))
+      return json({ name: "Muster GmbH", consultant_number: 455148, client_number: 1, services: (fake.services ?? []).map((name) => ({ name })) }, {}, fake.clientStatus ?? 200);
+    if (url.endsWith("/document-types")) return json((fake.types ?? []).map((name) => ({ name })));
+    if (url.endsWith("/extf-files/import")) {
+      if (fake.postThrows) throw new TypeError("socket hang up");
+      await new Promise((r) => setTimeout(r, 5));
+      return new Response(null, { status: 202, headers: { location: "/clients/455148-1/extf-files/jobs/J7", "retry-after": fake.retryAfter ?? "1" } });
+    }
     if (url.includes("/extf-files/jobs/J7"))
       return json({
         id: "J7",
@@ -65,7 +60,7 @@ async function harness(fake: Fake) {
   const deps = () => ({
     env: "sandbox" as const,
     creds: { clientId: "c", clientSecret: "s" },
-    token: async () => "T",
+    token: async () => fake.token ?? "T",
     fetch: f,
     sleep: async () => undefined,
   });
@@ -186,21 +181,18 @@ test("document types are read once per day per client, never before every single
   const pdf2 = join(dir, "beleg2.pdf");
   writeFileSync(pdf2, "%PDF-1.4 second");
   await h.call("datev_upload_document", {
-    client_id: "455148-1",
+    client_id: "455148-7",
     file_path: pdf,
     document_type: "Rechnungseingang",
   });
   await h.call("datev_upload_document", {
-    client_id: "455148-1",
+    client_id: "455148-7",
     file_path: pdf2,
     document_type: "Rechnungseingang",
   });
-  assert.ok(
-    h.sent.filter((s) => s.url.endsWith("/document-types")).length <= 1,
-    "the type list is not fetched again for the second document",
-  );
+  assert.equal(h.sent.filter((s) => s.url.endsWith("/document-types")).length, 1, "read exactly once for the two documents");
   const bbs = await h.call("datev_upload_document", {
-    client_id: "455148-1",
+    client_id: "455148-7",
     file_path: pdf,
   });
   assert.match(bbs.text, /Belegbilderservice needs a document_type/);
@@ -391,7 +383,7 @@ test("Datenservice Export: a missing permission ends the connection and links DA
       creds: { clientId: "c" },
       token: async () => "T",
       fetch: f,
-      onMissingPermission: async () => void ended++,
+      onMissingPermission: async () => (ended++, " As DATEV requires, the connection was ended and both tokens revoked."),
     }),
     async () => undefined,
   );

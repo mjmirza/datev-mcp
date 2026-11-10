@@ -11,7 +11,7 @@ never fixed twice, never silently reopened, and a fix that breaks an earlier one
 4. **Rejected needs evidence.** A finding we do not adopt carries the reason and the source. Reviewers who disagree are settled by DATEV's own pages, never by the louder reviewer.
 5. **Conflicting fixes are decided once.** When two findings pull in opposite directions (log more against log less), the decision is written here and both findings point at it.
 
-R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which read commit 33c2205. R3 is the reading of DATEV's published Schnittstellenvorgaben on 2026-11-10, see [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). Finding numbers are the reviewer's own.
+R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which read commit 33c2205. R3 is the reading of DATEV's published Schnittstellenvorgaben on 2026-11-10, see [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). R4 is the Codex attack on commits e3ad92a..bc6085f, 2026-11-10. Finding numbers are the reviewer's own.
 
 ## Findings
 
@@ -60,6 +60,22 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | open | | |
 | F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | open | | |
 | F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
+| F44 | HIGH | The client gate checks the first client alias it finds, not the client the URL actually targets | R4-1 | open | | |
+| F45 | HIGH | hr-documents uploads by `client_guid` skip the client check | R4-2 | open | | |
+| F46 | HIGH | `datev_upload_file` reaches accounting-documents without the service check and the document rules | R4-3 | open | | |
+| F47 | HIGH | Two concurrent EXTF sends both pass the duplicate check, and parallel ledger writes lose entries | R4-4 | open | | |
+| F48 | HIGH | An unreadable send ledger counts as never sent, and a failed ledger write forgets an accepted file | R4-5 | open | | |
+| F49 | HIGH | An EXTF POST whose answer is lost is not recorded, so a fresh confirmation sends it again | R4-6 | open | | |
+| F50 | HIGH | A missing Export permission says the connection ended even when a token revocation failed | R4-7 | open | | |
+| F51 | HIGH | A DATEV 5xx during the Export permission check logs the person out | R4-8 | open | | |
+| F52 | MEDIUM | `datev_call` of getfiscalyears skips the Export guard | R4-9 | open | | |
+| F53 | MEDIUM | Payroll report types are requested when DATEV's answer lacks access_granted | R4-10 | open | | |
+| F54 | MEDIUM | The document id ignores service and filing, so the same bytes cannot be filed differently | R4-11 | open | | |
+| F55 | MEDIUM | Retry-After above 20 seconds is shortened | R4-12 | open | | |
+| F56 | MEDIUM | The document type cache is shared across logins | R4-13 | open | | |
+| F57 | MEDIUM | Document types can be read more than once per day (explicit tool, parallel uploads) | R4-14 | open | | |
+| F58 | MEDIUM | An earlier transfer's name, time and job id are shown before the current permission is checked | R4-15 | open | | |
+| F59 | LOW | Some accounting-rules tests pass without proving their claim (revocation, daily cache, repeated PUT) | R4-16 | open | | |
 
 ## Evidence for rejected and disputed findings
 

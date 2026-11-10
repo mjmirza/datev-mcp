@@ -82,7 +82,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (save_to) assertShareable(expandPath(save_to)); // never into ~/.ssh, a dotfile or a key file
         // DATEV's permission checks run before any data moves, also through this generic tool.
         const pp = (path_params ?? {}) as Record<string, string | number>;
-        if (op.product === "accounting-dataexchange" && pp.clientId !== undefined && op.id !== "accounting-dataexchange.getfiscalyears")
+        if (op.product === "accounting-dataexchange" && pp.clientId !== undefined)
           await dataexchangeGuard(String(pp.clientId), pp.fiscalYearId === undefined ? undefined : String(pp.fiscalYearId), d);
         const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
         if (op.write && confirm !== true) {

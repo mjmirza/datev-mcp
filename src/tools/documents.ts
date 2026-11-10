@@ -52,9 +52,10 @@ export function buildDocumentForm(file: { name: string; bytes: Uint8Array }, met
 
 const level = z.string().min(1).max(30);
 
-/** RFC 4122 id from client and file hash: the same file sent to the same client again reaches the same DATEV document. */
-export function documentGuid(clientId: string, sha256: string): string {
-  const h = createHash("sha256").update(`${clientId}:${sha256}`).digest().subarray(0, 16);
+/** RFC 4122 id from client, file hash and filing: the same filing sent again reaches the same DATEV document. */
+export function documentGuid(clientId: string, sha256: string, filing: Record<string, string> = {}): string {
+  const where = Object.keys(filing).sort().map((k) => `${k}=${filing[k]}`).join("&");
+  const h = createHash("sha256").update(`${clientId}:${sha256}:${where}`).digest().subarray(0, 16);
   h[6] = (h[6]! & 0x0f) | 0x50;
   h[8] = (h[8]! & 0x3f) | 0x80;
   const x = h.toString("hex");
@@ -68,7 +69,7 @@ interface DocumentType {
 }
 
 /** DATEV asks apps to read a client's document types and send only those (accounting-documents rules). */
-async function documentTypes(clientId: string, d: CallDeps): Promise<DocumentType[]> {
+async function fetchDocumentTypes(clientId: string, d: CallDeps): Promise<DocumentType[]> {
   const op = getOperation("accounting-documents.get_clients_client_id_document_types");
   if (!op) throw new CallError("Document type operation missing from the index");
   const r = await callOperation(op, { pathParams: { "client-id": clientId } }, { ...d, maxBodyChars: Math.max(d.maxBodyChars ?? 0, 100_000) });
@@ -77,7 +78,6 @@ async function documentTypes(clientId: string, d: CallDeps): Promise<DocumentTyp
   const types = (r.body as Record<string, unknown>[])
     .filter((t) => t && typeof t.name === "string")
     .map((t) => ({ name: t.name as string, category: typeof t.category === "string" ? t.category : undefined, debit_credit_identifier: typeof t.debit_credit_identifier === "string" ? t.debit_credit_identifier : undefined }));
-  typeCache.set(`${d.env}:${clientId}`, { day: today(), types });
   return types;
 }
 
@@ -85,9 +85,22 @@ async function documentTypes(clientId: string, d: CallDeps): Promise<DocumentTyp
 const typeCache = new Map<string, { day: string; types: DocumentType[] }>();
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Berlin" });
 
+const inFlight = new Map<string, Promise<DocumentType[]>>();
+
+/** One read per login, client and Berlin day; parallel callers share the read in flight. RENAME_OK: one cached path for both tools. */
 async function documentTypesToday(clientId: string, d: CallDeps): Promise<DocumentType[]> {
-  const hit = typeCache.get(`${d.env}:${clientId}`);
-  return hit && hit.day === today() ? hit.types : documentTypes(clientId, d);
+  const token = await d.token();
+  const who = createHash("sha256").update(`${d.creds.clientId}|${token}`).digest("hex").slice(0, 16);
+  const key = `${d.env}|${who}|${clientId}`;
+  const hit = typeCache.get(key);
+  if (hit && hit.day === today()) return hit.types;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const read = fetchDocumentTypes(clientId, d)
+    .then((types) => (typeCache.set(key, { day: today(), types }), types))
+    .finally(() => inFlight.delete(key));
+  inFlight.set(key, read);
+  return read;
 }
 
 const SERVICE = { belegbilderservice: "Belegbilderservice", buchungsdatenservice: "Buchungsdatenservice" } as const;
@@ -103,7 +116,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
     },
     async ({ client_id }, extra) => {
       try {
-        return ok({ client_id, document_types: await documentTypes(client_id, deps(extra.signal)) });
+        return ok({ client_id, document_types: await documentTypesToday(client_id, deps(extra.signal)) });
       } catch (e) {
         return err(errorText(e));
       }
@@ -154,7 +167,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         const op = getOperation("accounting-documents.put_clients_client_id_documents_document_id");
         if (!op) return err("Document upload operation missing from the index");
         const sha256 = createHash("sha256").update(file.bytes).digest("hex");
-        const documentId = documentGuid(client_id, sha256);
+        const documentId = documentGuid(client_id, sha256, { service: svc, ...metadata });
         const destination = buildUrl(op, d.env, { pathParams: { "client-id": client_id, "document-id": documentId } }).toString();
         const who = [client.name, client.consultant_number !== undefined && `consultant ${client.consultant_number}`, client.client_number !== undefined && `client ${client.client_number}`].filter(Boolean).join(", ");
         const fingerprint = { tool: "datev_upload_document", env: d.env, client_id, service: svc, document_id: documentId, file: file.path, name: file.name, content_type: contentType, sha256, metadata };

@@ -31,13 +31,18 @@ export interface CheckedClient {
 }
 
 const ID_NAMES = ["client-id", "clientId", "consultantnumber-clientnumber"];
+const placeholders = (op: Operation) => [...op.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]!);
 
-/** The consultant-client id a call is about, from whichever path parameter names it. */
-function clientIdOf(pathParams: Record<string, unknown> | undefined): string | undefined {
-  if (!pathParams) return undefined;
-  for (const n of ID_NAMES) if (pathParams[n] !== undefined && pathParams[n] !== "") return String(pathParams[n]);
-  if (pathParams.consultantNumber !== undefined && pathParams.clientNumber !== undefined) return `${pathParams.consultantNumber}-${pathParams.clientNumber}`;
-  return undefined;
+/** Who the URL actually targets: only the operation's own path placeholders count, never surplus parameters. */
+function targetOf(op: Operation, pathParams: Record<string, unknown> | undefined): { clientId?: string; guid?: string; unknown?: string } {
+  const names = placeholders(op);
+  const v = (n: string) => (pathParams?.[n] === undefined ? "" : String(pathParams[n]));
+  if (names.includes("consultantNumber") && names.includes("clientNumber")) return { clientId: `${v("consultantNumber")}-${v("clientNumber")}` };
+  const id = names.find((n) => ID_NAMES.includes(n));
+  if (id) return { clientId: v(id) };
+  if (names.includes("client_guid")) return { guid: v("client_guid") };
+  // A client-bound path we cannot map is refused rather than sent unchecked.
+  return op.path.startsWith("/clients/{") || op.path.startsWith("/v1/clients/{") ? { unknown: names[0] } : {};
 }
 
 function checkParams(op: Operation, clientId: string): Record<string, string> {
@@ -54,6 +59,7 @@ const checked = new Map<string, { day: string; client: CheckedClient }>();
 
 export function clearClientGate(): void {
   checked.clear();
+  guids.clear();
 }
 
 const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" && /^\d+$/.test(v) ? Number(v) : undefined);
@@ -90,19 +96,45 @@ export async function checkClient(product: string, clientId: string, deps: CallD
   return client;
 }
 
+const guids = new Map<string, { day: string; clientId: string }>();
+
+/** hr-documents names a client by GUID; DATEV's client list maps it to consultant and client number. */
+async function clientIdForGuid(product: string, guid: string, deps: CallDeps): Promise<string> {
+  const listId = product === "hr-documents" ? "hr-documents.getclients" : undefined;
+  const op = listId ? getOperation(listId) : undefined;
+  if (!op) throw new CallError(`${product} names its client by GUID, which this server cannot check. Nothing was sent.`);
+  const key = `${deps.env}|${deps.creds.clientId}|${guid}`;
+  const hit = guids.get(key);
+  if (hit && hit.day === day()) return hit.clientId;
+  const r = await callOperation(op, {}, { ...deps, maxBodyChars: Math.max(deps.maxBodyChars ?? 0, 5_000_000) });
+  if (r.status < 200 || r.status >= 300 || r.truncated) throw new CallError(`DATEV's client list could not be read (HTTP ${r.status}), so the client was not checked. Nothing was sent.`);
+  const body = r.body as { clients?: unknown } | unknown[];
+  const list = (Array.isArray(body) ? body : Array.isArray((body as { clients?: unknown })?.clients) ? ((body as { clients: unknown[] }).clients) : []) as Record<string, unknown>[];
+  const c = list.find((x) => x && x.client_guid === guid);
+  if (!c || num(c.consultant_number) === undefined || num(c.client_number) === undefined)
+    throw new CallError(`The client ${guid} is not in this login's DATEV client list. Please check it, or ask your administrator whether the data service is switched on, see ${SETUP_LINK}. Nothing was sent.`);
+  const clientId = `${num(c.consultant_number)}-${num(c.client_number)}`;
+  guids.set(key, { day: day(), clientId });
+  return clientId;
+}
+
 /** The gate datev_call and datev_upload_file run before a client-bound call of a gated product. */
 export async function gateCall(op: Operation, pathParams: Record<string, unknown> | undefined, query: Record<string, unknown> | undefined, deps: CallDeps): Promise<CheckedClient | undefined> {
   const checkId = CLIENT_CHECK[op.product];
   if (!checkId || op.id === checkId) return undefined;
-  const clientId = clientIdOf(pathParams);
-  if (!clientId) return undefined;
+  const target = targetOf(op, pathParams);
+  if (target.unknown !== undefined) throw new CallError(`${op.id} names its client as ${target.unknown}, which this server cannot check against DATEV's permission. Nothing was sent.`);
+  const clientId = target.guid !== undefined ? await clientIdForGuid(op.product, target.guid, deps) : target.clientId;
+  if (clientId === undefined) return undefined;
+  if (!/^\d{4,7}-\d{1,5}$/.test(clientId)) throw new CallError(`"${clientId}" is not a consultant-client number such as 455148-1. Nothing was sent.`);
   const client = await checkClient(op.product, clientId, deps);
-  // Payroll reports: DATEV lists per client which report types are granted; ask only for those.
+  // Payroll reports: DATEV lists per client which report types are granted; ask only for those, and fail closed.
   const wanted = query?.document_types;
-  if (client.access_granted && wanted !== undefined) {
+  if (op.product === "hr-payrollreports" && wanted !== undefined) {
+    const granted = client.access_granted ?? [];
     const asked = (Array.isArray(wanted) ? wanted : String(wanted).split(",")).map((x) => String(x).trim()).filter(Boolean);
-    const denied = asked.filter((t) => !client.access_granted!.includes(t));
-    if (denied.length) throw new CallError(`This client does not grant the report types ${denied.join(", ")}. Granted: ${client.access_granted.join(", ") || "none"}. Nothing was requested.`);
+    const denied = asked.filter((t) => !granted.includes(t));
+    if (denied.length) throw new CallError(`This client does not grant the report types ${denied.join(", ")}. Granted: ${granted.join(", ") || "none"}. Nothing was requested.`);
   }
   return client;
 }
