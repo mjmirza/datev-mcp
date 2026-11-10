@@ -28,7 +28,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F09 | HIGH | Q&A tells users to delete the config folder instead of running `disconnect` | R1-6, R2-12 | fixed | 2472968 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F10 | BLOCKER | `DATEV_MCP_CONFIRM=token` lets production writes through without a human | R1-7, R2-4 | fixed | 134c625 | a production write is never sent on a confirm code alone |
 | F11 | HIGH | Postings export job (a POST) created without approval | R1-7, R2-19 | rejected | - | The postings export job is a read export that changes no bookings, so it is outside the write approval by decision. datev_call still asks for a confirm code for the same operation |
-| F12 | HIGH | cashregister and SmartTransfer have no scopes, so the chosen-service boundary does not apply | R1-8, R2-15, R7, R8 | fixed | 6ce813c | a saved expert login without a service list is bounded by the services its scopes cover |
+| F12 | HIGH | cashregister and SmartTransfer have no scopes, so the chosen-service boundary does not apply | R1-8, R2-15, R7, R8, R9 | fixed | 958645b | a saved login known only by DATEV's granted scopes is bounded by them, and an unknown one fails closed |
 | F13 | LOW | `DATEV_SCOPES` precedence and "all scopes by default" documented wrongly | R1-8, R2-31, R2-32 | fixed | 4e66d5f | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F14 | HIGH | Docs claim write retries, redirects followed, nothing saved on a failed check | R1-9, R2-30 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F15 | HIGH | German mode leaves login, services, doctor, previews and approvals in English | R1-10, R2-21, R7 | fixed | 6f29796 | the services command reads in German |
@@ -39,9 +39,9 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | rejected | - | DATEV minimum log scope (GEN-18, GEN-19) requires the full URL with query and the bodies of status answers, so they stay. Request bodies are added, see F33 |
 | F21 | HIGH | A failed log write is reported once, then DATEV traffic continues unlogged | R1-16, R2-8 | fixed | 6a099df | no call goes out while the technical HTTP log cannot be written |
 | F22 | MEDIUM | `datev_call` treats 3xx as success | R1-17 | fixed | b3996d8 | datev_call reports a DATEV redirect as an error and never saves its body |
-| F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28, R7, R8 | fixed | 6ce813c | previews and approvals hide the technical client id but never other values that look like it |
+| F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28, R7, R8, R9 | fixed | 958645b | a successful datev_call answer names the client, never its technical id in DATEV's addresses |
 | F24 | MEDIUM | Shipped `dist/data/operations.json` carries DATEV description text | R1-19 | rejected | | Nothing ships: the package is private and dist plus the built index are git-ignored, so each developer builds the index from their own downloaded specs. The guard pins those facts, which already held. |
-| F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20, R7, R8 | fixed | 6ce813c | a permission refusal keeps DATEV's title as well as its link, also for a very long answer |
+| F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20, R7, R8, R9 | fixed | 958645b | a permission refusal keeps DATEV's title and link even when the detail before them is larger than the read limit |
 | F26 | LOW | Connection tool says true or false instead of AKTIV or INAKTIV, disconnect without a session lacks the tokrevui link | R1-21 | fixed | 0324e85 | the connection status tool answers with AKTIV or INAKTIV text the person can read |
 | F27 | BLOCKER | JWKS (signing key) requests not in the HTTP log | R2-2 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F28 | BLOCKER | Quick start keeps the client secret in a plaintext file while docs claim it is stored encrypted | R2-3 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
@@ -57,7 +57,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F38 | MEDIUM | A `null` token answer crashes before it is logged | R2-22 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
 | F39 | MEDIUM | Session key creation not serialised across environments | R2-24, R7, R8 | fixed | 6ce813c | the session key of a per-user credential store is created under one lock for every home folder |
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
-| F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27, R7, R8 | fixed | 6ce813c | a saved expert login without a service list is bounded by the services its scopes cover |
+| F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27, R7, R8, R9 | fixed | 958645b | a saved login known only by DATEV's granted scopes is bounded by them, and an unknown one fails closed |
 | F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | fixed | 4e66d5f | the setup and README login examples grant the service their first questions need |
 | F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
 | F44 | HIGH | The client gate checks the first client alias it finds, not the client the URL actually targets | R4-1 | fixed | e9b7706 | the permission check reads the client the URL targets, never a surplus parameter |
@@ -87,18 +87,20 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F68 | HIGH | A cancel after DATEV answered threw the answer away and lost the job id | R6-3, R7 | fixed | 6f29796 | an EXTF file DATEV accepted returns its job id even when asking for the result fails |
 | F69 | HIGH | A lost revoke answer left the revoked access or refresh token in use | R6-4, R7, R8 | fixed | 6ce813c | a disconnect whose revoke answer is lost never uses the refresh token again |
 | F70 | HIGH | An uncertain resend hid an accepted import, and the next resend dropped its job id | R6-5 | fixed | c575391 | a resend that is lost after an accepted import still names the accepted job |
-| F71 | HIGH | The send, permission, client gate and document refusals stayed English in German mode | R6-6, R7, R8 | fixed | 6ce813c | lost answers and the EXTF result note read in German |
+| F71 | HIGH | The send, permission, client gate and document refusals stayed English in German mode | R6-6, R7, R8, R9 | fixed | 958645b | an EXTF note whose bracket holds several sentences reads fully in German |
 | F72 | MEDIUM | A changed note minted a new document id, and stapled uploads could repeat unnoticed | R6-7, R7, R8 | fixed | 6ce813c | a stapled upload answered 429 counts as possibly stored, not as refused |
 | F73 | MEDIUM | An empty document type answer was cached for the rest of the Berlin day | R6-8 | fixed | c575391 | an empty document type answer is not kept for the rest of the day |
-| F74 | HIGH | After a partly failed end, a later disconnect skipped the unrevoked access token | R7-1, R8 | fixed | 6ce813c | an access token still open after the refresh token was revoked keeps being retried by the status |
+| F74 | HIGH | After a partly failed end, a later disconnect skipped the unrevoked access token | R7-1, R8, R9 | fixed | 958645b | an access token DATEV did not confirm as revoked stays on record, after a disconnect and after ending for a missing permission |
 | F75 | HIGH | A redirect answer to a write claimed that nothing changed | R7-2 | fixed | 6f29796 | a write answered with a redirect never claims that nothing changed |
 | F76 | LOW | The income tax health check was refused although its service was chosen | R7-3 | fixed | 6f29796 | the income tax health check stays reachable when its service was chosen |
-| F77 | LOW | German approvals rewrote client and consultant inside company names | R7-4, R8 | fixed | 6ce813c | German approvals translate the client labels, never the client's name |
+| F77 | LOW | German approvals rewrote client and consultant inside company names | R7-4, R8, R9 | fixed | 958645b | a client whose name starts with the words unnamed client keeps its name in German |
 | F78 | LOW | The send record grew with every resend | R7-5 | fixed | 6f29796 | a send record keeps the accepted import but does not grow with every resend |
 | F79 | HIGH | The eval run wrote stapled send records into the person's real config folder | own check, R7 | fixed | 6f29796 | tests and evals always keep their records in temporary folders, never the person's own |
-| F80 | MEDIUM | The approval redaction replaced any body value equal to the client id, hiding real payroll data | R8-1 | fixed | 6ce813c | previews and approvals hide the technical client id but never other values that look like it |
+| F80 | MEDIUM | The approval redaction replaced any body value equal to the client id, hiding real payroll data | R8-1, R9 | fixed | 958645b | a write's approval dialog shows the body exactly as it is sent, even a value equal to the client id |
 | F81 | LOW | A partial expert scope set lost the health check of the service it touched | R8-2 | fixed | 6ce813c | a partial expert scope set keeps the health check of the service it touches |
-| F82 | LOW | A damaged earlier entry in the send record was accepted as an accepted send | R8-3 | fixed | 6ce813c | a send record with a damaged earlier entry counts as damaged |
+| F82 | LOW | A damaged earlier entry in the send record was accepted as an accepted send | R8-3, R9 | fixed | 958645b | a send record whose status is not a plain text counts as damaged, and a long history from an older version is still read |
+| F83 | MEDIUM | The send-record check rejected a valid long history written by an earlier version, blocking every send | R9-1 | fixed | 958645b | a send record whose status is not a plain text counts as damaged, and a long history from an older version is still read |
+| F84 | LOW | openid, shared by every service, connected unrelated services when deriving them from scopes | R9-2 | fixed | 958645b | a scope every service shares, like openid, never connects a service on its own |
 
 ## Evidence for rejected and disputed findings
 
