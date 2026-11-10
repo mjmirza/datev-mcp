@@ -34,7 +34,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F15 | HIGH | German mode leaves login, services, doctor, previews and approvals in English | R1-10, R2-21 | open | | |
 | F16 | HIGH | A quarantined corrupt session file stays in plaintext | R1-11 | open | | |
 | F17 | HIGH | Login completes without the full user name DATEV requires | R1-12, R2-13 | open | | |
-| F18 | MEDIUM | `azp` checked only for multiple audiences, `at_hash` never | R1-13, R2-23 | open | | |
+| F18 | MEDIUM | `azp` checked only for multiple audiences, `at_hash` never | R1-13, R2-23 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F19 | MEDIUM | Client secret not trimmed | R1-14 | open | | |
 | F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | open | | decision pending, see rule 5 |
 | F21 | HIGH | A failed log write is reported once, then DATEV traffic continues unlogged | R1-16, R2-8 | open | | |
@@ -43,9 +43,9 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F24 | MEDIUM | Shipped `dist/data/operations.json` carries DATEV description text | R1-19 | open | | |
 | F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20 | open | | covered row by row as fixes land |
 | F26 | LOW | Connection tool says true or false instead of AKTIV or INAKTIV, disconnect without a session lacks the tokrevui link | R1-21 | open | | |
-| F27 | BLOCKER | JWKS (signing key) requests not in the HTTP log | R2-2 | open | | |
+| F27 | BLOCKER | JWKS (signing key) requests not in the HTTP log | R2-2 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F28 | BLOCKER | Quick start keeps the client secret in a plaintext file while docs claim it is stored encrypted | R2-3 | open | | |
-| F29 | BLOCKER | Token, userinfo and revoke errors drop DATEV's help link | R2-5 | open | | |
+| F29 | BLOCKER | Token, userinfo and revoke errors drop DATEV's help link | R2-5 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
 | F30 | HIGH | Tokens issued before the identity check are abandoned, not revoked, when a later login step fails | R2-6 | open | | |
 | F31 | HIGH | A body that breaks off is thrown before the call is logged | R2-7 | open | | |
 | F32 | HIGH | A retried GET error answer is logged without its body | R2-9 | open | | |
@@ -54,7 +54,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F35 | HIGH | Choosing accounting services silently adds the accounting-clients scope | R2-16 | open | | |
 | F36 | HIGH | Upload approval does not show the destination client, query and resolved URL | R2-18 | open | | |
 | F37 | HIGH | Uploads do not check the client list and the service before sending | R2-20 | open | | |
-| F38 | MEDIUM | A `null` token answer crashes before it is logged | R2-22 | open | | |
+| F38 | MEDIUM | A `null` token answer crashes before it is logged | R2-22 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
 | F39 | MEDIUM | Session key creation not serialised across environments | R2-24 | open | | |
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | open | | |
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | open | | |
