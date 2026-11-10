@@ -31,7 +31,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F12 | HIGH | cashregister and SmartTransfer have no scopes, so the chosen-service boundary does not apply | R1-8, R2-15 | fixed | cd434fd | an operation with no scope of its own is refused unless its service was chosen at login |
 | F13 | LOW | `DATEV_SCOPES` precedence and "all scopes by default" documented wrongly | R1-8, R2-31, R2-32 | fixed | 4e66d5f | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F14 | HIGH | Docs claim write retries, redirects followed, nothing saved on a failed check | R1-9, R2-30 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
-| F15 | HIGH | German mode leaves login, services, doctor, previews and approvals in English | R1-10, R2-21 | open | | |
+| F15 | HIGH | German mode leaves login, services, doctor, previews and approvals in English | R1-10, R2-21 | fixed | e8b5fd8 | German mode puts doctor, previews and approval dialogs in German |
 | F16 | HIGH | A quarantined corrupt session file stays in plaintext | R1-11 | fixed | b3996d8 | a corrupt plain text session is kept only as an encrypted copy |
 | F17 | HIGH | Login completes without the full user name DATEV requires | R1-12, R2-13 | fixed | 15dcb51 | a login without the full user name saves nothing |
 | F18 | MEDIUM | `azp` checked only for multiple audiences, `at_hash` never | R1-13, R2-23 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
