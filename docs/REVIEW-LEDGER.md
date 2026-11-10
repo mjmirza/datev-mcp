@@ -11,7 +11,7 @@ never fixed twice, never silently reopened, and a fix that breaks an earlier one
 4. **Rejected needs evidence.** A finding we do not adopt carries the reason and the source. Reviewers who disagree are settled by DATEV's own pages, never by the louder reviewer.
 5. **Conflicting fixes are decided once.** When two findings pull in opposite directions (log more against log less), the decision is written here and both findings point at it.
 
-R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which read commit 33c2205. R3 is the reading of DATEV's published Schnittstellenvorgaben on 2026-11-10, see [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). R4 is the Codex attack on commits e3ad92a..bc6085f, 2026-11-10. R5 is the Codex check of the R4 fixes in e9b7706, the same day. Finding numbers are the reviewer's own.
+R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which read commit 33c2205. R3 is the reading of DATEV's published Schnittstellenvorgaben on 2026-11-10, see [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). R4 is the Codex attack on commits e3ad92a..bc6085f, 2026-11-10. R5 is the Codex check of the R4 fixes in e9b7706, the same day. R6 is the Grok attack on the branch up to c87f2a0, the same day. Finding numbers are the reviewer's own.
 
 ## Findings
 
@@ -82,6 +82,14 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F63 | MEDIUM | A cancel after the token but before the request leaves keeps a false uncertain reservation | R5-7 | fixed | 2f0afb4 | a send cancelled before it left releases its reservation |
 | F64 | MEDIUM | The document type cache waits for the token without the call's cancel and budget | R5-8 | fixed | 2f0afb4 | a cancelled document type read does not wait for a token that never comes |
 | F65 | MEDIUM | Cancelling one caller of a shared document type read fails the other callers | R5-9 | fixed | 2f0afb4 | one caller cancelling a shared document type read does not fail the others |
+| F66 | BLOCKER | An EXTF answer of 408 or a redirect deleted the send record, so the same file could be posted again | R6-1 | fixed | c575391 | an EXTF send answered with a timeout or a redirect still counts as sent |
+| F67 | BLOCKER | Any 4xx except 429 from the Export permission check revoked the whole login | R6-2 | fixed | c575391 | only a 403 or a missing service ends the connection, never a timeout, a bad token or an unknown client |
+| F68 | HIGH | A cancel after DATEV answered threw the answer away and lost the job id | R6-3 | fixed | c575391 | an answer DATEV gave before the call was cancelled is kept, with its job id |
+| F69 | HIGH | A lost revoke answer left the revoked access or refresh token in use | R6-4 | fixed | c575391 | a missing Export permission revokes both tokens, and an unconfirmed revocation is retried with no token left in use |
+| F70 | HIGH | An uncertain resend hid an accepted import, and the next resend dropped its job id | R6-5 | fixed | c575391 | a resend that is lost after an accepted import still names the accepted job |
+| F71 | HIGH | The send, permission, client gate and document refusals stayed English in German mode | R6-6 | fixed | c575391 | the safety refusals for sends, permissions, the client gate and documents read fully in German |
+| F72 | MEDIUM | A changed note minted a new document id, and stapled uploads could repeat unnoticed | R6-7 | fixed | c575391 | a changed note reaches the same DATEV document, and a stapled upload is never repeated by accident |
+| F73 | MEDIUM | An empty document type answer was cached for the rest of the Berlin day | R6-8 | fixed | c575391 | an empty document type answer is not kept for the rest of the day |
 
 ## Evidence for rejected and disputed findings
 
