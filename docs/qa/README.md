@@ -1,7 +1,7 @@
 <!-- freshness: 30d -->
 # Questions and answers
 
-2,238 answered questions about datev-mcp and the DATEV APIs it covers. Can't find yours? Ask in the repository's Discussions under Q&A.
+2,244 answered questions about datev-mcp and the DATEV APIs it covers. Can't find yours? Ask in the repository's Discussions under Q&A.
 
 The hand-written sections cover setup, login, safety, compliance, the tools, EXTF files, documents, troubleshooting and the questions people ask about the DATEV API in DATEV's community, on Reddit and in YouTube walkthroughs. The generated sections come from the operation index, the live sandbox ledger and the offline test report, so every number is measured, not written by hand.
 
@@ -22,7 +22,7 @@ It names DATEV operation ids and scopes only. DATEV's own descriptions stay out,
 | [Limits and reliability](limits-and-reliability.md) | 10 |
 | [Testing and quality](testing-and-quality.md) | 10 |
 | [HTTP status codes](http-status-codes.md) | 36 |
-| [Offline test coverage](test-coverage.md) | 124 |
+| [Offline test coverage](test-coverage.md) | 130 |
 | [DATEV API products](products.md) | 184 |
 | [Operations of accounting-clients](operations/accounting-clients.md) | 16 |
 | [Operations of accounting-dataexchange](operations/accounting-dataexchange.md) | 112 |
@@ -47,6 +47,6 @@ It names DATEV operation ids and scopes only. DATEV's own descriptions stay out,
 | [Operations of smarttransfer-inbound](operations/smarttransfer-inbound.md) | 296 |
 | [Operations of smarttransfer-outbound](operations/smarttransfer-outbound.md) | 224 |
 | [Operations of traffiqx-invoice](operations/traffiqx-invoice.md) | 72 |
-| **Total** | **2,238** |
+| **Total** | **2,244** |
 
 Regenerate with `npm run eval` and then `npx tsx scripts/build-qa.ts`.

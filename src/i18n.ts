@@ -36,8 +36,10 @@ const FIXED: Record<string, string> = {
     "Der confirm_token wurde bereits verwendet. Fordern Sie eine neue Vorschau an, um die Anfrage erneut zu senden.",
   "Too many confirmations in the last 15 minutes. Wait and request a new preview.":
     "Zu viele Bestätigungen in den letzten 15 Minuten. Warten Sie und fordern Sie dann eine neue Vorschau an.",
-  "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve writes.":
-    "Dieser Schreibvorgang braucht Ihre Freigabe im Client, aber dieser MCP-Client kann Sie nicht fragen (keine Unterstützung für Rückfragen). Nutzen Sie einen Client, der das kann, oder setzen Sie DATEV_MCP_CONFIRM=token, damit der Bestätigungscode der Vorschau Schreibvorgänge freigibt.",
+  "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve sandbox writes.":
+    "Dieser Schreibvorgang braucht Ihre Freigabe im Client, aber dieser MCP-Client kann Sie nicht fragen (keine Unterstützung für Rückfragen). Nutzen Sie einen Client, der das kann, oder setzen Sie DATEV_MCP_CONFIRM=token, damit der Bestätigungscode der Vorschau Schreibvorgänge in der Sandbox freigibt.",
+  "This write to DATEV production needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Nothing was sent. Use a client that supports it.":
+    "Dieser Schreibvorgang in die DATEV-Produktion braucht Ihre Freigabe im Client, aber dieser MCP-Client kann Sie nicht fragen (keine Unterstützung für Rückfragen). Es wurde nichts gesendet. Nutzen Sie einen Client, der das kann.",
   "You did not approve this write. Nothing was sent.": "Sie haben diesen Schreibvorgang nicht freigegeben. Es wurde nichts gesendet.",
   "There is no saved DATEV connection.": "Es gibt keine gespeicherte DATEV-Verbindung.",
   "DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.":

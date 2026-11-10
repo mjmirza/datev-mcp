@@ -17,7 +17,7 @@ Use `datev_call` with `operation_id: "hr-exchange.saveabsencelug"`. The first ca
 
 ### Does `hr-exchange.saveabsencelug` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.saveabsencelug` need?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveabsencelug` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveabsencelug`?
 
@@ -49,7 +49,7 @@ Use `datev_call` with `operation_id: "hr-exchange.deleteabsencelug"`. The first 
 
 ### Does `hr-exchange.deleteabsencelug` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.deleteabsencelug` need?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteabsencelug` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteabsencelug`?
 
@@ -81,7 +81,7 @@ Use `datev_call` with `operation_id: "hr-exchange.saveabsencelodas"`. The first 
 
 ### Does `hr-exchange.saveabsencelodas` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.saveabsencelodas` need?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveabsencelodas` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveabsencelodas`?
 
@@ -113,7 +113,7 @@ Use `datev_call` with `operation_id: "hr-exchange.deleteabsencelodas"`. The firs
 
 ### Does `hr-exchange.deleteabsencelodas` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.deleteabsencelodas` need?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteabsencelodas` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteabsencelodas`?
 
@@ -157,7 +157,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 144 ms.
 
 ### Is `hr-exchange.getclient` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getclient`?
 
@@ -177,7 +177,7 @@ Use `datev_call` with `operation_id: "hr-exchange.saveemployeebyclientid"`. The 
 
 ### Does `hr-exchange.saveemployeebyclientid` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.saveemployeebyclientid` need?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveemployeebyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveemployeebyclientid`?
 
@@ -209,7 +209,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updateemployeelistbyclientid"`
 
 ### Does `hr-exchange.updateemployeelistbyclientid` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updateemployeelistbyclientid` need?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateemployeelistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateemployeelistbyclientid`?
 
@@ -241,7 +241,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updateemployeebypersonnelnumbe
 
 ### Does `hr-exchange.updateemployeebypersonnelnumber` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updateemployeebypersonnelnumber` need?
 
@@ -253,7 +253,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateemployeebypersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateemployeebypersonnelnumber`?
 
@@ -273,7 +273,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updateemploymentperiodbyemploy
 
 ### Does `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment` need?
 
@@ -285,7 +285,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateemploymentperiodbyemployeeanddateofcommencementofemployment`?
 
@@ -305,7 +305,7 @@ Use `datev_call` with `operation_id: "hr-exchange.deleteemploymentperiodbyemploy
 
 ### Does `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment` need?
 
@@ -317,7 +317,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteemploymentperiodbyemployeeanddateofcommencementofemployment`?
 
@@ -337,7 +337,7 @@ Use `datev_call` with `operation_id: "hr-exchange.saveemploymentperiodsbyemploye
 
 ### Does `hr-exchange.saveemploymentperiodsbyemployee` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.saveemploymentperiodsbyemployee` need?
 
@@ -349,7 +349,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.saveemploymentperiodsbyemployee` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.saveemploymentperiodsbyemployee`?
 
@@ -369,7 +369,7 @@ Use `datev_call` with `operation_id: "hr-exchange.savegrosspaymentbyclientidande
 
 ### Does `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber` need?
 
@@ -381,7 +381,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savegrosspaymentbyclientidandemployeepersonnelnumber`?
 
@@ -401,7 +401,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updategrosspaymentsbyclientida
 
 ### Does `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber` need?
 
@@ -413,7 +413,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updategrosspaymentsbyclientidandemployeepersonnelnumber`?
 
@@ -433,7 +433,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updategrosspaymentbyclientidan
 
 ### Does `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid` need?
 
@@ -445,7 +445,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updategrosspaymentbyclientidandemployeepersonnelnumberandgrosspaymentid`?
 
@@ -465,7 +465,7 @@ Use `datev_call` with `operation_id: "hr-exchange.savehourlywagesbyclientidandem
 
 ### Does `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber` need?
 
@@ -477,7 +477,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savehourlywagesbyclientidandemployeepersonnelnumber`?
 
@@ -497,7 +497,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updatehourlywagesbyclientidand
 
 ### Does `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber` need?
 
@@ -509,7 +509,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updatehourlywagesbyclientidandemployeepersonnelnumber`?
 
@@ -529,7 +529,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updatehourlywagebyclientidande
 
 ### Does `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid` need?
 
@@ -541,7 +541,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updatehourlywagebyclientidandemployeepersonnelnumberandhourlywageid`?
 
@@ -573,7 +573,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 147 ms.
 
 ### Is `hr-exchange.getjobclientresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobclientresult`?
 
@@ -605,7 +605,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 69 ms.
 
 ### Is `hr-exchange.getjobemployeeresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobemployeeresult`?
 
@@ -637,7 +637,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 94 ms.
 
 ### Is `hr-exchange.getjobemploymentperiodresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobemploymentperiodresult`?
 
@@ -669,7 +669,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 82 ms.
 
 ### Is `hr-exchange.getjobmonthrecordresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobmonthrecordresult`?
 
@@ -701,7 +701,7 @@ The DATEV sandbox answered HTTP 501 on 2026-11-07. DATEV refused the request. Th
 
 ### Is `hr-exchange.getjobindividualdataresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobindividualdataresult`?
 
@@ -733,7 +733,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 147 ms.
 
 ### Is `hr-exchange.getjobabsenceresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobabsenceresult`?
 
@@ -765,7 +765,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 144 ms.
 
 ### Is `hr-exchange.getjobabsenceresult_1` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobabsenceresult_1`?
 
@@ -797,7 +797,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 150 ms.
 
 ### Is `hr-exchange.getjobgrosspaymentresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobgrosspaymentresult`?
 
@@ -829,7 +829,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 136 ms.
 
 ### Is `hr-exchange.getjobhourlywageresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobhourlywageresult`?
 
@@ -861,7 +861,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 149 ms.
 
 ### Is `hr-exchange.getjoberrorresult` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjoberrorresult`?
 
@@ -893,7 +893,7 @@ The DATEV sandbox answered HTTP 301 on 2026-11-07. That is a redirect, not a ref
 
 ### Is `hr-exchange.getjobresultstatus` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjobresultstatus`?
 
@@ -925,7 +925,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 137 ms.
 
 ### Is `hr-exchange.getjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getjob`?
 
@@ -945,7 +945,7 @@ Use `datev_call` with `operation_id: "hr-exchange.deletejob"`. The first call re
 
 ### Does `hr-exchange.deletejob` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.deletejob` need?
 
@@ -957,7 +957,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deletejob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deletejob`?
 
@@ -977,7 +977,7 @@ Use `datev_call` with `operation_id: "hr-exchange.createjob"`. The first call re
 
 ### Does `hr-exchange.createjob` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.createjob` need?
 
@@ -989,7 +989,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.createjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.createjob`?
 
@@ -1009,7 +1009,7 @@ Use `datev_call` with `operation_id: "hr-exchange.savemonthrecordsbyemployee"`. 
 
 ### Does `hr-exchange.savemonthrecordsbyemployee` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.savemonthrecordsbyemployee` need?
 
@@ -1021,7 +1021,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savemonthrecordsbyemployee` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savemonthrecordsbyemployee`?
 
@@ -1041,7 +1041,7 @@ Use `datev_call` with `operation_id: "hr-exchange.savemonthrecordsonclientlevel"
 
 ### Does `hr-exchange.savemonthrecordsonclientlevel` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.savemonthrecordsonclientlevel` need?
 
@@ -1053,7 +1053,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.savemonthrecordsonclientlevel` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.savemonthrecordsonclientlevel`?
 
@@ -1085,7 +1085,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 145 ms with 1 items.
 
 ### Is `hr-exchange.getresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getresthook`?
 
@@ -1105,7 +1105,7 @@ Use `datev_call` with `operation_id: "hr-exchange.registerresthook"`. The first 
 
 ### Does `hr-exchange.registerresthook` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.registerresthook` need?
 
@@ -1117,7 +1117,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.registerresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.registerresthook`?
 
@@ -1149,7 +1149,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 153 ms.
 
 ### Is `hr-exchange.getresthookbyid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.getresthookbyid`?
 
@@ -1169,7 +1169,7 @@ Use `datev_call` with `operation_id: "hr-exchange.updateresthook"`. The first ca
 
 ### Does `hr-exchange.updateresthook` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.updateresthook` need?
 
@@ -1181,7 +1181,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.updateresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.updateresthook`?
 
@@ -1201,7 +1201,7 @@ Use `datev_call` with `operation_id: "hr-exchange.deleteresthook"`. The first ca
 
 ### Does `hr-exchange.deleteresthook` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.deleteresthook` need?
 
@@ -1213,7 +1213,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.deleteresthook` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.deleteresthook`?
 
@@ -1233,7 +1233,7 @@ Use `datev_call` with `operation_id: "hr-exchange.posttestresthooks"`. The first
 
 ### Does `hr-exchange.posttestresthooks` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-exchange.posttestresthooks` need?
 
@@ -1245,7 +1245,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-exchange.posttestresthooks` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exchange.posttestresthooks`?
 

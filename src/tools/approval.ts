@@ -5,11 +5,12 @@ import { messageLang } from "../i18n.js";
 type ConfirmMode = "human" | "token";
 
 // "human": the server asks the person through the client (elicitation), so the assistant cannot approve its own write.
-// "token": the preview's confirm code is enough. Production defaults to "human"; DATEV_MCP_CONFIRM overrides it.
+// "token": the preview's confirm code is enough. Production is always "human": the assistant must never approve a
+// write to real DATEV data on its own. DATEV_MCP_CONFIRM only chooses the mode in the sandbox.
 function confirmMode(env: DatevEnv, vars: NodeJS.ProcessEnv = process.env): ConfirmMode {
+  if (env === "production") return "human";
   const v = vars.DATEV_MCP_CONFIRM?.trim().toLowerCase();
-  if (v === "human" || v === "token") return v;
-  return env === "production" ? "human" : "token";
+  return v === "human" ? "human" : "token";
 }
 
 /** Returns undefined when the write may go ahead, otherwise the reason it may not. */
@@ -17,7 +18,9 @@ export async function humanApproval(server: McpServer, env: DatevEnv, summary: s
   const canAsk = server.server.getClientCapabilities()?.elicitation !== undefined;
   if (!canAsk) {
     if (confirmMode(env, vars) === "token") return undefined;
-    return "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve writes.";
+    return env === "production"
+      ? "This write to DATEV production needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Nothing was sent. Use a client that supports it."
+      : "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve sandbox writes.";
   }
   const de = messageLang(vars) === "de";
   let res;

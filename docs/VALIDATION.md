@@ -26,7 +26,7 @@ On top of that, a second AI model reviewed the code four times, described under 
 | Query and headers | 6 | Required values are enforced, arrays repeat correctly, injected `&` or line breaks cannot split a value, server headers cannot be overridden |
 | Wire request | 1 | The exact URL, body bytes and content type that leave the machine match the request, and no credential is in the URL |
 | Auth | 1 | Bearer token, client id, client secret only where DATEV requires it, redirects never followed for operation calls |
-| Retries and network | 7 | Reads retry 429, 502, 503, 504 and network errors up to three attempts. Writes retry only 429 |
+| Retries and network | 7 | Reads retry 429, 502, 503, 504 and network errors up to three attempts. Writes are never retried |
 | Status codes | 10 | 400 to 500 come back as the real status, never retried, never hidden |
 | Parsing | 10 | JSON, single and multi-line NDJSON, invalid JSON, plain text, empty bodies and truncation are each read correctly |
 | Limits | 4 | Endless answers stop at the cap, binaries stay byte-exact, a cancelled call sends nothing, retries never run past the time budget |

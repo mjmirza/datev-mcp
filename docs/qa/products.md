@@ -35,7 +35,7 @@ Ask for `datev_search_operations` with `product: "accounting-clients"` and a few
 
 ### Is `accounting-clients` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `accounting-dataexchange` product?
 
@@ -67,7 +67,7 @@ Ask for `datev_search_operations` with `product: "accounting-dataexchange"` and 
 
 ### Is `accounting-dataexchange` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `accounting-documents` product?
 
@@ -99,7 +99,7 @@ Ask for `datev_search_operations` with `product: "accounting-documents"` and a f
 
 ### Is `accounting-documents` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `accounting-dxso-jobs` product?
 
@@ -131,7 +131,7 @@ Ask for `datev_search_operations` with `product: "accounting-dxso-jobs"` and a f
 
 ### Is `accounting-dxso-jobs` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `accounting-extf-files` product?
 
@@ -163,7 +163,7 @@ Ask for `datev_search_operations` with `product: "accounting-extf-files"` and a 
 
 ### Is `accounting-extf-files` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `cashregister` product?
 
@@ -195,7 +195,7 @@ Ask for `datev_search_operations` with `product: "cashregister"` and a few words
 
 ### Is `cashregister` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `eau-api` product?
 
@@ -227,7 +227,7 @@ Ask for `datev_search_operations` with `product: "eau-api"` and a few words abou
 
 ### Is `eau-api` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-documents` product?
 
@@ -259,7 +259,7 @@ Ask for `datev_search_operations` with `product: "hr-documents"` and a few words
 
 ### Is `hr-documents` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-documents-health` product?
 
@@ -291,7 +291,7 @@ It only has health checks. `datev_search_operations` leaves them out unless you 
 
 ### Is `hr-documents-health` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-exchange` product?
 
@@ -323,7 +323,7 @@ Ask for `datev_search_operations` with `product: "hr-exchange"` and a few words 
 
 ### Is `hr-exchange` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-exchange-health` product?
 
@@ -355,7 +355,7 @@ It only has health checks. `datev_search_operations` leaves them out unless you 
 
 ### Is `hr-exchange-health` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-exports` product?
 
@@ -387,7 +387,7 @@ Ask for `datev_search_operations` with `product: "hr-exports"` and a few words a
 
 ### Is `hr-exports` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-files` product?
 
@@ -419,7 +419,7 @@ Ask for `datev_search_operations` with `product: "hr-files"` and a few words abo
 
 ### Is `hr-files` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-files-health` product?
 
@@ -451,7 +451,7 @@ It only has health checks. `datev_search_operations` leaves them out unless you 
 
 ### Is `hr-files-health` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `hr-payrollreports` product?
 
@@ -483,7 +483,7 @@ Ask for `datev_search_operations` with `product: "hr-payrollreports"` and a few 
 
 ### Is `hr-payrollreports` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `master-data-master-clients` product?
 
@@ -515,7 +515,7 @@ Ask for `datev_search_operations` with `product: "master-data-master-clients"` a
 
 ### Is `master-data-master-clients` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `master-data-master-clients-health` product?
 
@@ -547,7 +547,7 @@ It only has health checks. `datev_search_operations` leaves them out unless you 
 
 ### Is `master-data-master-clients-health` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `my-tax-income-tax-documents` product?
 
@@ -579,7 +579,7 @@ Ask for `datev_search_operations` with `product: "my-tax-income-tax-documents"` 
 
 ### Is `my-tax-income-tax-documents` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `my-tax-mytax-income-tax-documents-health` product?
 
@@ -611,7 +611,7 @@ It only has health checks. `datev_search_operations` leaves them out unless you 
 
 ### Is `my-tax-mytax-income-tax-documents-health` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `property-tax-file-upload-api` product?
 
@@ -643,7 +643,7 @@ Ask for `datev_search_operations` with `product: "property-tax-file-upload-api"`
 
 ### Is `property-tax-file-upload-api` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `smarttransfer-inbound` product?
 
@@ -675,7 +675,7 @@ Ask for `datev_search_operations` with `product: "smarttransfer-inbound"` and a 
 
 ### Is `smarttransfer-inbound` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `smarttransfer-outbound` product?
 
@@ -707,7 +707,7 @@ Ask for `datev_search_operations` with `product: "smarttransfer-outbound"` and a
 
 ### Is `smarttransfer-outbound` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.
 
 ### What is the `traffiqx-invoice` product?
 
@@ -739,4 +739,4 @@ Ask for `datev_search_operations` with `product: "traffiqx-invoice"` and a few w
 
 ### Is `traffiqx-invoice` fully tested offline?
 
-Yes. All its operations passed every scenario that applies in the run of 2026-11-08.
+Yes. All its operations passed every scenario that applies in the run of 2026-11-09.

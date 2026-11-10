@@ -40,7 +40,7 @@ There is no server in between and no shared backend. Every installation belongs 
 | Only one valid refresh token | A new login revokes the previous refresh token, every refresh replaces the stored one | The login test |
 | Fresh PKCE verifier and nonce for every login | `src/auth/pkce.ts`, `src/auth/authorize.ts` | `auth.test.ts` |
 | ID token checked | Signature against DATEV's published keys, issuer, audience, authorized party, expiry, issue time and nonce, in `src/auth/id-token.ts` | The ID token test |
-| Tokens and secret stored encrypted | AES-256-GCM, key in the OS credential store, client secret only in the environment | The encryption tests |
+| Tokens stored encrypted, secret never stored by the app | Tokens use AES-256-GCM with the key in the OS credential store. datev-mcp never writes the client secret anywhere. In production it is injected from a password manager at start, a plain settings file is for sandbox development only | The encryption tests |
 | Only the scopes that are needed | The person chooses data services, only their scopes are requested, an operation outside them is refused before sending | The scope selection test |
 | DATEV's service names shown as DATEV writes them | `src/auth/services.ts`, `datev-mcp services` | The scope selection test |
 | No DATEV documentation passed on | Tool answers carry field names, types and constraints only | The property test over all 209 operations |

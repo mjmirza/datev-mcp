@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_documents_outbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_outbox`?
 
@@ -49,7 +49,7 @@ Use `datev_upload_file` with `operation_id: "smarttransfer-outbound.post_documen
 
 ### Does `smarttransfer-outbound.post_documents_outbox` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.post_documents_outbox` need?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_documents_outbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_documents_outbox`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_documents_sentbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_sentbox`?
 
@@ -125,7 +125,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_documents_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_id`?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_documents_id_types` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_id_types`?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_documents_id_info` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_documents_id_info`?
 
@@ -209,7 +209,7 @@ Use `datev_upload_file` with `operation_id: "smarttransfer-outbound.post_documen
 
 ### Does `smarttransfer-outbound.post_documents_id_privateattachment` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.post_documents_id_privateattachment` need?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_documents_id_privateattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_documents_id_privateattachment`?
 
@@ -241,7 +241,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.delete_documents_id
 
 ### Does `smarttransfer-outbound.delete_documents_id_privateattachment` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.delete_documents_id_privateattachment` need?
 
@@ -253,7 +253,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.delete_documents_id_privateattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.delete_documents_id_privateattachment`?
 
@@ -273,7 +273,7 @@ Use `datev_upload_file` with `operation_id: "smarttransfer-outbound.post_documen
 
 ### Does `smarttransfer-outbound.post_documents_id_publicattachment` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.post_documents_id_publicattachment` need?
 
@@ -285,7 +285,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_documents_id_publicattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_documents_id_publicattachment`?
 
@@ -305,7 +305,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.delete_documents_id
 
 ### Does `smarttransfer-outbound.delete_documents_id_publicattachment` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.delete_documents_id_publicattachment` need?
 
@@ -317,7 +317,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.delete_documents_id_publicattachment` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.delete_documents_id_publicattachment`?
 
@@ -337,7 +337,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_re
 
 ### Does `smarttransfer-outbound.put_documents_id_release` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_release` need?
 
@@ -349,7 +349,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_release` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_release`?
 
@@ -369,7 +369,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_ho
 
 ### Does `smarttransfer-outbound.put_documents_id_hold` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_hold` need?
 
@@ -381,7 +381,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_hold` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_hold`?
 
@@ -401,7 +401,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_se
 
 ### Does `smarttransfer-outbound.put_documents_id_send` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_send` need?
 
@@ -413,7 +413,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_send` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_send`?
 
@@ -433,7 +433,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_ma
 
 ### Does `smarttransfer-outbound.put_documents_id_markdeleted` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_markdeleted` need?
 
@@ -445,7 +445,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_markdeleted` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_markdeleted`?
 
@@ -465,7 +465,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_re
 
 ### Does `smarttransfer-outbound.put_documents_id_reprocess` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_reprocess` need?
 
@@ -477,7 +477,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_reprocess` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_reprocess`?
 
@@ -497,7 +497,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_mo
 
 ### Does `smarttransfer-outbound.put_documents_id_movetoallbox` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_movetoallbox` need?
 
@@ -509,7 +509,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_movetoallbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_movetoallbox`?
 
@@ -529,7 +529,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_re
 
 ### Does `smarttransfer-outbound.put_documents_id_restorefromallbox` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_restorefromallbox` need?
 
@@ -541,7 +541,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_restorefromallbox` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_restorefromallbox`?
 
@@ -561,7 +561,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.put_documents_id_re
 
 ### Does `smarttransfer-outbound.put_documents_id_resetvalidationerror` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.put_documents_id_resetvalidationerror` need?
 
@@ -573,7 +573,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.put_documents_id_resetvalidationerror` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.put_documents_id_resetvalidationerror`?
 
@@ -605,7 +605,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_logs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_logs`?
 
@@ -637,7 +637,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_logs_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_logs_id`?
 
@@ -669,7 +669,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_notifications` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_notifications`?
 
@@ -701,7 +701,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_notifications_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_notifications_id`?
 
@@ -733,7 +733,7 @@ The live sweep skipped it: needs a real "documentId" that no list call has retur
 
 ### Is `smarttransfer-outbound.get_gov_poland_documents_sent_documentid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_gov_poland_documents_sent_documentid`?
 
@@ -765,7 +765,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_gov_serbia_documents_sent` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_gov_serbia_documents_sent`?
 
@@ -785,7 +785,7 @@ Use `datev_call` with `operation_id: "smarttransfer-outbound.post_gov_serbia_doc
 
 ### Does `smarttransfer-outbound.post_gov_serbia_documents_sent` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `smarttransfer-outbound.post_gov_serbia_documents_sent` need?
 
@@ -797,7 +797,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `smarttransfer-outbound.post_gov_serbia_documents_sent` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.post_gov_serbia_documents_sent`?
 
@@ -829,7 +829,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_users` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_users`?
 
@@ -861,7 +861,7 @@ The live sweep skipped it: needs a real "id" that no list call has returned yet.
 
 ### Is `smarttransfer-outbound.get_users_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_users_id`?
 
@@ -893,7 +893,7 @@ The DATEV sandbox answered HTTP 500 on 2026-11-07. DATEV answered with a server 
 
 ### Is `smarttransfer-outbound.get_users_current` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `smarttransfer-outbound.get_users_current`?
 

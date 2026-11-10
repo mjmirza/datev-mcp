@@ -108,7 +108,8 @@ test("every message added for the DATEV review comes out fully German", async ()
     throw new Error("expected a throw");
   };
   const english = [
-    "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve writes.",
+    "This write needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Use a client that supports it, or set DATEV_MCP_CONFIRM=token to let the preview's confirm code approve sandbox writes.",
+    "This write to DATEV production needs your approval in the client, but this MCP client cannot ask you (no elicitation support). Nothing was sent. Use a client that supports it.",
     "You did not approve this write. Nothing was sent.",
     "The approval could not be asked (client went away). Nothing was sent.",
     "There is no saved DATEV connection.",

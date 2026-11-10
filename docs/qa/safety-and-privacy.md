@@ -19,7 +19,7 @@ The code no longer matches and the write is refused. The assistant has to show a
 
 ### Can a write be sent twice by accident?
 
-Writes are never retried, except after a 429 where DATEV refused the request and cannot have applied it.
+Writes are never retried, not even after a 429. Without an idempotency key no answer proves DATEV did not apply it.
 
 ### Can the assistant upload my SSH keys?
 

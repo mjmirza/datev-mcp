@@ -53,7 +53,7 @@ export const CURATED: Section[] = [
     ["Can the assistant change data without me seeing it?", "Through `datev_call`, `datev_upload_file`, `datev_upload_extf` and `datev_upload_document`, no. A write first returns a preview and a confirmation code, and runs only when called again with that exact code. Each code is accepted once, and a failed send needs a new preview. One exception: `datev_account_postings` starts DATEV's postings export job directly, because that job only builds a report and changes no bookings."],
     ["What is the confirmation code bound to?", "An HMAC over the exact request, including tool, environment, operation, parameters, body, and for files their name, type and SHA-256. It is valid for 15 minutes."],
     ["What if the assistant changes the file after the preview?", "The code no longer matches and the write is refused. The assistant has to show a new preview."],
-    ["Can a write be sent twice by accident?", "Writes are never retried, except after a 429 where DATEV refused the request and cannot have applied it."],
+    ["Can a write be sent twice by accident?", "Writes are never retried, not even after a 429. Without an idempotency key no answer proves DATEV did not apply it."],
     ["Can the assistant upload my SSH keys?", "No. Files in hidden folders and names that look like keys or credentials, such as `.env`, `*.pem`, `id_rsa` or `credentials.json`, are refused."],
     ["What about a symlink that points into `~/.ssh`?", "A link is judged by where it really points, so it is refused too. The file is opened once without following links and must be the file that was checked."],
     ["Can a download overwrite an important file?", "Saves never follow a link, never land in a hidden folder, create new files with owner-only permissions, and replace existing files only with `overwrite: true`."],
@@ -213,7 +213,7 @@ export const CURATED: Section[] = [
     ["What other DATEV MCP servers exist?", "There are other projects, for example a DATEV connector in HelpCode-ai/anythingmcp. Compare coverage, write safety and tests before choosing."],
     ["How do I learn the DATEV API quickly?", "Ask the assistant to search operations by plain words and describe one. It reads the operation index that `npm run specs` built on your machine."],
     ["Can I get cost centres (KOST1, KOST2) into DATEV?", "Yes. `datev_write_extf_batch` takes optional `kost1` and `kost2` per row, each up to 36 letters, digits, spaces or underscores. Values DATEV would flag, such as `A-1`, are refused before the file is written."],
-    ["How do I avoid duplicate imports?", "Each confirmation code is accepted once, so one approval cannot be sent twice. If the send fails after the code was accepted, request a new preview. Writes are never retried except after a 429."],
+    ["How do I avoid duplicate imports?", "Each confirmation code is accepted once, so one approval cannot be sent twice. If the send fails after the code was accepted, request a new preview. Writes are never retried."],
   ]),
   s("mcp-clients", "MCP clients", "Running the server in different assistants.", [
     ["Which transport does it use?", "MCP over standard input and output."],
@@ -229,7 +229,7 @@ export const CURATED: Section[] = [
   ]),
   s("limits-and-reliability", "Limits and reliability", "Time budgets, retries and size caps.", [
     ["How long can one call take?", "55 seconds per DATEV call by default, token included, and retries only start if they still fit. This includes `datev_find_accounts`."],
-    ["Which errors are retried?", "For reads 429, 502, 503, 504 and network errors, up to three attempts. For writes only 429."],
+    ["Which errors are retried?", "For reads 429, 502, 503, 504 and network errors, up to three attempts. Writes are never retried."],
     ["Is Retry-After honored?", "Yes, in seconds or as an HTTP date. A wait that does not fit the budget means no retry."],
     ["What is the largest answer it reads?", "50 MB at most for operation answers. Text previews are shorter."],
     ["What happens to a body that breaks off?", "Reads retry it. A truncated answer is never shown as complete."],

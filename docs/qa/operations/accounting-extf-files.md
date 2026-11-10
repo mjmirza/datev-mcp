@@ -17,7 +17,7 @@ The typed tool `datev_upload_extf` uses it for you and checks the answer. `datev
 
 ### Does `accounting-extf-files.importextffile` change data in DATEV?
 
-Yes. Through `datev_upload_extf` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_upload_extf` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `accounting-extf-files.importextffile` need?
 
@@ -29,7 +29,7 @@ The live tour of 2026-11-07 sent it to the DATEV sandbox through `datev_upload_e
 
 ### Is `accounting-extf-files.importextffile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-extf-files.importextffile`?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 145 ms with 3 items.
 
 ### Is `accounting-extf-files.getjobs` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-extf-files.getjobs`?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 135 ms.
 
 ### Is `accounting-extf-files.getjob` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-09, part of 28,586 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-extf-files.getjob`?
 

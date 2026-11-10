@@ -43,7 +43,7 @@ The server reads these environment variables.
 | `DATEV_MCP_HOME` | No | Absolute path for the session file. Default `$XDG_CONFIG_HOME/datev-mcp`, else `~/.config/datev-mcp` |
 | `DATEV_MCP_LOG_DIR` | No | Absolute path for the technical HTTP log. Default `<home>/logs` |
 | `DATEV_MCP_SESSION_KEY` | No | 64 hex characters. Encrypts the session when no OS credential store is available |
-| `DATEV_MCP_CONFIRM` | No | `human` asks you in the client before every write, `token` lets the preview's confirm code approve it. Default `human` in production, `token` in the sandbox |
+| `DATEV_MCP_CONFIRM` | No | Sandbox only. `human` asks you in the client before every write, `token` (default) lets the preview's confirm code approve it. Production always asks you, whatever this says |
 | `DATEV_SMARTTRANSFER_API_KEY` | No | The `X-API-Key` for SmartTransfer. It stays in the server and is never passed through the assistant |
 | `DATEV_MCP_LANG` | No | `de` gives German messages and a German status view. Default English |
 
@@ -58,7 +58,7 @@ node dist/index.js services
 node dist/index.js login --services accounting-documents,accounting-extf-files
 ```
 
-`services` lists every data service with the name DATEV uses for it. A browser opens at DATEV. After you sign in, the server checks DATEV's ID token (signature, issuer, app, nonce and expiry) and reads your name from DATEV's userinfo. Nothing is saved if a check fails.
+`services` lists every data service with the name DATEV uses for it. A browser opens at DATEV. After you sign in, the server checks DATEV's ID token (signature, issuer, app, nonce and expiry) and reads your name from DATEV's userinfo. Nothing is saved if the ID token check fails.
 
 The session is encrypted with AES-256-GCM. The key lives in the macOS Keychain, the Linux Secret Service, a Windows DPAPI-protected file, or `DATEV_MCP_SESSION_KEY`. The access token lasts 15 minutes and is refreshed automatically. The refresh token lasts about 11 hours and can be used only once, so a new one is stored after every refresh. Logging in again revokes the previous refresh token, so only one is ever valid.
 
@@ -111,7 +111,7 @@ Any other MCP client takes `node` as the command and the path to `dist/index.js`
 | HTTP 500 with "Sandboxing policy error" | DATEV's sandbox gateway refuses that resource for your app | Nothing is wrong with the request. Ask DATEV to enable the product for the sandbox |
 | HTTP 429 | DATEV's rate limit | Wait and try again. Reads retry by themselves a few times. Writes are never retried, so nothing is sent twice. When DATEV names a time to wait, every call to that service pauses until then |
 | "not part of the connected data services" | The operation belongs to a service you did not choose at login | Run `login --services` again with that service added |
-| "needs your approval in the client" | Production writes ask you first, and this client cannot ask | Use a client that supports MCP elicitation, or set `DATEV_MCP_CONFIRM=token` |
+| "needs your approval in the client" | Production writes always ask you first, and this client cannot ask | Use a client that supports MCP elicitation. In the sandbox, `DATEV_MCP_CONFIRM=token` also works |
 | "Ran out of time" | The call did not finish within its 55 second budget | Narrow the request, or continue a postings job with its `job_id` |
 
 When DATEV answers an error with a help link, the message shows it after "Help".

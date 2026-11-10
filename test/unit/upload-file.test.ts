@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
 import { registerUploadTools } from "../../src/tools/upload.js";
 
@@ -15,7 +16,7 @@ interface Sent {
   headers: Headers;
 }
 
-async function client(env: "sandbox" | "production" = "sandbox") {
+async function client(env: "sandbox" | "production" = "sandbox", approve?: boolean) {
   const sent: Sent[] = [];
   const f: FetchLike = async (u, init) => {
     sent.push({ url: String(u), form: init?.body instanceof FormData ? init.body : undefined, headers: new Headers(init?.headers) });
@@ -25,7 +26,9 @@ async function client(env: "sandbox" | "production" = "sandbox") {
   registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: f }));
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
-  const c = new Client({ name: "t", version: "0" });
+  // A client that can ask the person (elicitation). approve says what the person answers.
+  const c = new Client({ name: "t", version: "0" }, approve === undefined ? undefined : { capabilities: { elicitation: {} } });
+  if (approve !== undefined) c.setRequestHandler(ElicitRequestSchema, async () => ({ action: "accept", content: { approve } }));
   await c.connect(b);
   return { c, sent };
 }
@@ -113,12 +116,20 @@ test("parts follow the declared types, and a JSON field goes out as JSON", async
 });
 
 test("parts go out in the order the spec lists them, not the order given", async () => {
-  // The cash register API has no sandbox; this client cannot ask the person, so it opts into confirm codes.
+  // The cash register API has no sandbox. In production a person approves every write in the client.
+  const { c, sent } = await client("production", true);
+  await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
+  assert.deepEqual([...sent[0].form!.keys()], ["metadata", "file"]);
+});
+
+test("a production write is never sent on a confirm code alone, even with DATEV_MCP_CONFIRM=token", async () => {
   process.env.DATEV_MCP_CONFIRM = "token";
   try {
     const { c, sent } = await client("production");
-    await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
-    assert.deepEqual([...sent[0].form!.keys()], ["metadata", "file"]);
+    const done = await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
+    assert.equal(done.isError, true);
+    assert.match(text(done), /production needs your approval/);
+    assert.equal(sent.length, 0, "nothing reached DATEV");
   } finally {
     delete process.env.DATEV_MCP_CONFIRM;
   }

@@ -11,7 +11,7 @@ Time budgets, retries and size caps.
 
 ### Which errors are retried?
 
-For reads 429, 502, 503, 504 and network errors, up to three attempts. For writes only 429.
+For reads 429, 502, 503, 504 and network errors, up to three attempts. Writes are never retried.
 
 ### Is Retry-After honored?
 

@@ -43,14 +43,14 @@ npm run build
 
 ### 2. Add your DATEV app credentials
 
-Copy the example settings file and fill in the client id and secret from your app in the DATEV developer portal.
+For production, inject the client id and secret from a password manager when the server starts, so the secret is never written to disk. For sandbox development a local settings file is fine.
 
 ```bash
 cp .env/.env.example .env/.env.local
-# edit .env/.env.local: DATEV_CLIENT_ID and DATEV_CLIENT_SECRET
+# edit .env/.env.local: DATEV_CLIENT_ID and DATEV_CLIENT_SECRET (sandbox only)
 ```
 
-Git ignores `.env/.env.local`. Every setting is explained in [.env/README.md](.env/README.md). A password manager that injects the two values at start is safer than a file, and either works. Never paste the secret into a chat.
+Git ignores `.env/.env.local`, but the file is plain text, so do not keep a production secret in it. Every setting is explained in [.env/README.md](.env/README.md). Never paste the secret into a chat.
 
 ### 3. Sign in once
 
