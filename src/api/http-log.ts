@@ -15,7 +15,7 @@ export interface HttpLogEntry {
   method: string;
   url: string;
   request_headers?: Record<string, string>;
-  request_body?: { bytes: number; sha256: string };
+  request_body?: RequestBody;
   status?: number;
   status_text?: string;
   response_headers?: Record<string, string>;
@@ -33,13 +33,55 @@ export function redactHeaders(h: Headers | Record<string, string> | undefined): 
   return out;
 }
 
-export function bodyFingerprint(body: unknown): { bytes: number; sha256: string } | undefined {
+/**
+ * The request body as DATEV's minimum log scope asks for it: small text bodies inline, larger ones in an owner-only
+ * side file next to the log (kept as long as the log), so every body can be retrieved on demand. Multipart uploads
+ * are listed part by part: name, file name, type, size and SHA-256. The files themselves stay where the person keeps them.
+ */
+export interface RequestBody {
+  bytes: number;
+  sha256: string;
+  text?: string;
+  stored_at?: string;
+  parts?: { name: string; filename?: string; type?: string; bytes: number; sha256?: string; text?: string }[];
+}
+
+const INLINE_BODY_CHARS = 8_000;
+const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
+
+export function bodyFingerprint(body: unknown, env: NodeJS.ProcessEnv = process.env): RequestBody | undefined {
   if (body === undefined || body === null) return undefined;
   if (typeof body === "string" || body instanceof Uint8Array) {
-    const buf = typeof body === "string" ? Buffer.from(body) : Buffer.from(body);
-    return { bytes: buf.length, sha256: createHash("sha256").update(buf).digest("hex") };
+    const buf = Buffer.from(body);
+    const out: RequestBody = { bytes: buf.length, sha256: sha(buf) };
+    if (typeof body !== "string") return out; // binary bodies come from local files the person keeps
+    if (body.length <= INLINE_BODY_CHARS) return { ...out, text: body };
+    try {
+      const dir = join(logDir(env), "bodies");
+      mkdirSync(dir, { recursive: true, mode: 0o700 });
+      const file = join(dir, `${out.sha256}.txt`);
+      appendFileSync(file, "", { mode: 0o600 });
+      if (statSync(file).size === 0) appendFileSync(file, body, { mode: 0o600 });
+      return { ...out, stored_at: file };
+    } catch {
+      return out;
+    }
   }
-  return undefined; // multipart bodies are fingerprinted per file in the confirm code, not here
+  if (body instanceof FormData) {
+    const parts: NonNullable<RequestBody["parts"]> = [];
+    let total = 0;
+    for (const [name, v] of body.entries()) {
+      if (typeof v === "string") {
+        total += Buffer.byteLength(v);
+        parts.push({ name, bytes: Buffer.byteLength(v), text: v.slice(0, INLINE_BODY_CHARS) });
+      } else {
+        total += v.size;
+        parts.push({ name, filename: v.name, type: v.type || undefined, bytes: v.size });
+      }
+    }
+    return { bytes: total, sha256: sha(Buffer.from(JSON.stringify(parts))), parts };
+  }
+  return undefined;
 }
 
 // Error answers and job status answers are kept, answers carrying business data are not.
@@ -58,6 +100,16 @@ function prune(dir: string, now: number): void {
   if (pruned === day) return;
   pruned = day;
   for (const f of readdirSync(dir)) {
+    if (f === "bodies") {
+      for (const b of readdirSync(join(dir, f))) {
+        try {
+          if (now - statSync(join(dir, f, b)).mtimeMs > RETENTION_DAYS * 86_400_000) rmSync(join(dir, f, b), { force: true });
+        } catch {
+          /* removed meanwhile */
+        }
+      }
+      continue;
+    }
     if (!/^http-\d{4}-\d{2}-\d{2}\.jsonl$/.test(f)) continue;
     try {
       if (now - statSync(join(dir, f)).mtimeMs > RETENTION_DAYS * 86_400_000) rmSync(join(dir, f), { force: true });

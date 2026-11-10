@@ -332,6 +332,22 @@ test("DATEV's help link survives list-shaped errors and error_uri, and the tool 
   assert.ok(f.message.endsWith("Help: https://help.datev.de/x3"), f.message);
 });
 
+test("request bodies are logged as DATEV's minimum scope asks: small inline, large retrievable on demand, uploads part by part", async () => {
+  const { bodyFingerprint } = await import("../../src/api/http-log.js");
+  const env = { DATEV_MCP_LOG_DIR: tmp() };
+  assert.equal(bodyFingerprint('{"a":1}', env)?.text, '{"a":1}');
+  const big = JSON.stringify({ rows: "x".repeat(20_000) });
+  const rec = bodyFingerprint(big, env)!;
+  assert.equal(rec.text, undefined);
+  assert.equal(readFileSync(rec.stored_at!, "utf8"), big, "the full body can be retrieved");
+  assert.equal(statSync(rec.stored_at!).mode & 0o777, 0o600);
+  const form = new FormData();
+  form.append("metadata", '{"document_type":"Rechnungseingang"}');
+  form.append("file", new Blob(["%PDF-1.4"], { type: "application/pdf" }), "rechnung.pdf");
+  const parts = bodyFingerprint(form, env)!.parts!;
+  assert.deepEqual(parts.map((p) => [p.name, p.filename, p.bytes]), [["metadata", undefined, 36], ["file", "rechnung.pdf", 8]]);
+});
+
 test("the HTTP log keeps method, full URL, transaction ids and timestamps, never tokens or secrets, and yields the 14-day error rate", () => {
   const dir = tmp();
   const env = { DATEV_MCP_LOG_DIR: dir };

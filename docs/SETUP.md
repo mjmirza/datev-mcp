@@ -76,7 +76,7 @@ node dist/index.js disconnect
 
 ## Technical log
 
-Every call to DATEV, including token calls, is written to a daily JSON lines file in the log directory and kept for 30 days. Each line holds the request time, method, URL, request headers, a size and hash of the request body, the response status, response headers and response time. DATEV's tracing headers such as `X-Global-Transaction-ID` are kept. Secrets, authorization headers and API keys are removed. Response bodies are kept only for errors and job status answers, cut to 8,000 characters. The files are readable only by you.
+Every call to DATEV, including token calls, is written to a daily JSON lines file in the log directory and kept for 30 days. Each line holds the request time, method, full URL, request headers, the request body, the response status, response headers and response time, which is DATEV's minimum log scope. Request bodies up to 8,000 characters are in the line, larger ones in an owner-only file under `logs/bodies/`, and uploads are listed part by part with file name, size and hash (the files themselves stay where you keep them). Token requests never log their body, because it carries codes and tokens. DATEV's tracing headers such as `X-Global-Transaction-ID` are kept. Secrets, authorization headers and API keys are removed. Response bodies are kept only for errors and job status answers, cut to 8,000 characters. Everything is readable only by you and deleted after 30 days.
 
 ## 5. Check the setup
 

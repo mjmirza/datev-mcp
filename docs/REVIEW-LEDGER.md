@@ -36,7 +36,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F17 | HIGH | Login completes without the full user name DATEV requires | R1-12, R2-13 | fixed | 15dcb51 | a login without the full user name saves nothing |
 | F18 | MEDIUM | `azp` checked only for multiple audiences, `at_hash` never | R1-13, R2-23 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F19 | MEDIUM | Client secret not trimmed | R1-14 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
-| F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | open | | decision pending, see rule 5 |
+| F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | rejected | - | DATEV minimum log scope (GEN-18, GEN-19) requires the full URL with query and the bodies of status answers, so they stay. Request bodies are added, see F33 |
 | F21 | HIGH | A failed log write is reported once, then DATEV traffic continues unlogged | R1-16, R2-8 | fixed | 6a099df | no call goes out while the technical HTTP log cannot be written |
 | F22 | MEDIUM | `datev_call` treats 3xx as success | R1-17 | open | | |
 | F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28 | open | | |
