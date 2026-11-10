@@ -11,7 +11,7 @@ never fixed twice, never silently reopened, and a fix that breaks an earlier one
 4. **Rejected needs evidence.** A finding we do not adopt carries the reason and the source. Reviewers who disagree are settled by DATEV's own pages, never by the louder reviewer.
 5. **Conflicting fixes are decided once.** When two findings pull in opposite directions (log more against log less), the decision is written here and both findings point at it.
 
-R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which read commit 33c2205. Finding numbers are the reviewer's own.
+R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which read commit 33c2205. R3 is the reading of DATEV's published Schnittstellenvorgaben on 2026-11-10, see [COMPLIANCE-CHECKLIST.md](COMPLIANCE-CHECKLIST.md). Finding numbers are the reviewer's own.
 
 ## Findings
 
@@ -24,8 +24,8 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F05 | BLOCKER | New login saved before revoking and only warned when revoke failed, leaving two valid refresh tokens | R1-5, R2-1 | fixed | b671e68 | an old refresh token DATEV did not revoke is kept encrypted |
 | F06 | MEDIUM | A refresh token DATEV rejected was sent again on every call | R1-5, R2-25 | fixed | b671e68 | a refresh token DATEV rejected is dropped |
 | F07 | - | Keep the previous refresh token when a refresh returns none | R1-5 | rejected | - | DATEV refresh tokens are single-use, so the old one is spent and resending it is the defect F06 removes |
-| F08 | HIGH | Disconnect reports "revoked" when the access-token revoke failed or no 2xx came | R1-6, R2-11 | open | | |
-| F09 | HIGH | Q&A tells users to delete the config folder instead of running `disconnect` | R1-6, R2-12 | open | | |
+| F08 | HIGH | Disconnect reports "revoked" when the access-token revoke failed or no 2xx came | R1-6, R2-11 | fixed | 2472968 | disconnect never reports success when a usable token was not revoked |
+| F09 | HIGH | Q&A tells users to delete the config folder instead of running `disconnect` | R1-6, R2-12 | fixed | 2472968 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F10 | BLOCKER | `DATEV_MCP_CONFIRM=token` lets production writes through without a human | R1-7, R2-4 | fixed | 134c625 | a production write is never sent on a confirm code alone |
 | F11 | HIGH | Postings export job (a POST) created without approval | R1-7, R2-19 | rejected | - | The postings export job is a read export that changes no bookings, so it is outside the write approval by decision. datev_call still asks for a confirm code for the same operation |
 | F12 | HIGH | cashregister and SmartTransfer have no scopes, so the chosen-service boundary does not apply | R1-8, R2-15 | open | | |
@@ -59,6 +59,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | open | | |
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | open | | |
 | F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | open | | |
+| F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | open | | |
 
 ## Evidence for rejected and disputed findings
 

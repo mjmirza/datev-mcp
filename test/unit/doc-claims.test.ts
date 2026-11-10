@@ -11,6 +11,7 @@ const BANNED: [RegExp, string][] = [
   [/Tokens and secret stored encrypted/i, "the client secret is never stored by the app (F28)"],
   [/Default `human` in production, `token` in the sandbox/i, "production always asks a person (F10)"],
   [/Online-API (?:accounting|master|property)|Einkommenssteuer/, "DATEV's own data service names (F02)"],
+  [/Can I log out\?[^\n]*\n*[^\n]*Delete the session file/i, "logging out is datev-mcp disconnect, never deleting the file (F09)"],
 ];
 
 function files(dir: string): string[] {
