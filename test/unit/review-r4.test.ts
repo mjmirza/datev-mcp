@@ -721,3 +721,79 @@ test("a send record with a damaged earlier entry counts as damaged", async () =>
   const { sentBefore } = await import("../../src/tools/sent-ledger.js");
   assert.throws(() => sentBefore("extf", "sandbox", "455148-1", "abc", { DATEV_MCP_HOME: home }), /damaged/);
 });
+
+// Guards for the Codex check of 2026-11-10 (ledger R9).
+
+test("a saved login known only by DATEV's granted scopes is bounded by them, and an unknown one fails closed", async () => {
+  const hr = selectServices("hr-files").scopes.join(" ");
+  const covered = servicesOfSession({ tokens: { scope: hr } })!;
+  assert.ok(covered.includes("hr-files") && !covered.includes("cashregister"), covered.join(","));
+  assert.deepEqual(servicesOfSession({}), [], "a login with no service and no scope opens nothing without its own scope");
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r9-doc-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now(), scope: hr } });
+  const urls: string[] = [];
+  await doctor({ env: "sandbox", endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid", clientSecret: "s" } }, { store, fetch: async (u) => (urls.push(String(u)), json(200, { sub: "u" })), httpLog: () => {} });
+  assert.ok(!urls.some((u) => u.endsWith("/clients")), urls.join(" "));
+});
+
+test("a scope every service shares, like openid, never connects a service on its own", () => {
+  const hr = selectServices("hr-files").scopes;
+  const got = servicesForScopes(hr);
+  assert.ok(got.includes("hr-files"), got.join(","));
+  assert.ok(!got.includes("master-data-master-clients") && !got.includes("accounting-dataexchange"), got.join(","));
+});
+
+test("an access token DATEV did not confirm as revoked stays on record, after a disconnect and after ending for a missing permission", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const f: FetchLike = async (_u, init) => (new URLSearchParams(String(init?.body)).get("token_type_hint") === "access_token" ? Promise.reject(new TypeError("socket hang up")) : new Response("", { status: 200 }));
+  for (const run of [(store: TokenStore) => disconnect(cfg, { store, fetch: f, httpLog: () => {} }), (store: TokenStore) => endForMissingPermission(cfg, { store, fetch: f, httpLog: () => {} })]) {
+    const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r9-rv-")), envKeyStore());
+    const expiresAt = Date.now() + 9e5;
+    store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt, obtainedAt: Date.now() } });
+    await run(store);
+    const s = store.read();
+    assert.ok(s, "the session is kept so the access token is revoked again");
+    assert.equal(s!.ended, true);
+    assert.equal(s!.tokens.refreshToken, undefined);
+    assert.equal(s!.tokens.expiresAt, expiresAt);
+  }
+});
+
+test("a successful datev_call answer names the client, never its technical id in DATEV's addresses", async () => {
+  const h = await harness((s) => (s.method === "GET" && /\/clients\/\d+-\d+$/.test(s.path) ? json(200, client(["Rechnungsdatenservice 1.0"])) : json(200, { id: "J1" }, { location: "/clients/455148-1/dxso-jobs/J1" })));
+  const r = await h.call("datev_call", { operation_id: "accounting-dxso-jobs.get_clients_client_id_dxso_jobs_job_id", path_params: { "client-id": "455148-1", "job-id": "J1" } });
+  assert.equal(r.error, false, r.text);
+  const out = JSON.parse(r.text);
+  assert.ok(!out.url.includes("455148-1"), out.url);
+  assert.equal(out.client.name, "Muster GmbH");
+});
+
+test("a permission refusal keeps DATEV's title and link even when the detail before them is larger than the read limit", async () => {
+  let ended = 0;
+  const long = { detail: "x".repeat(2_100_000), type: "https://help.datev.de/403-z", title: "Forbidden later title" };
+  const deps: CallDeps = { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => json(403, long), sleep: async () => undefined, onMissingPermission: async () => (ended++, "") };
+  await assert.rejects(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps), (e: Error) => e.message.includes("https://help.datev.de/403-z") && e.message.includes("Forbidden later title"));
+  assert.equal(ended, 1);
+});
+
+test("an EXTF note whose bracket holds several sentences reads fully in German", () => {
+  const note = "DATEV accepted the file, but asking for the result stopped (Ran out of time while waiting for DATEV to answer. Try again, or narrow the request.). Check with datev_extf_job (client_id 455148-1, job_id J9). Do not send the file again.";
+  const de = localize(note, "de");
+  assert.doesNotMatch(de, /accepted|Ran out of time|Try again|Check with|Do not send/, de);
+});
+
+test("a client whose name starts with the words unnamed client keeps its name in German", () => {
+  assert.equal(localizeApproval("Client: unnamed client GmbH (consultant 455148, client 1)", "de"), "Mandant: unnamed client GmbH (Berater 455148, Mandant 1)");
+  assert.equal(localizeApproval("Client: unnamed client (consultant 455148, client 1)", "de"), "Mandant: Mandant ohne Namen (Berater 455148, Mandant 1)");
+});
+
+test("a send record whose status is not a plain text counts as damaged, and a long history from an older version is still read", async () => {
+  const home = mkdtempSync(join(tmpdir(), "datev-r9-home-"));
+  const { sentBefore } = await import("../../src/tools/sent-ledger.js");
+  writeFileSync(join(home, "sent-sandbox.json"), JSON.stringify({ extf: { "455148-1": { abc: { at: "2026-11-10T00:00:00Z", name: "x", status: ["sending"] } } } }));
+  assert.throws(() => sentBefore("extf", "sandbox", "455148-1", "abc", { DATEV_MCP_HOME: home }), /damaged/);
+  let chain: Record<string, unknown> | undefined;
+  for (let n = 0; n < 12; n++) chain = { at: `2026-11-${String(n + 1).padStart(2, "0")}T00:00:00Z`, name: "x", status: n === 0 ? "sent" : "uncertain", ...(chain ? { previous: chain } : {}) };
+  writeFileSync(join(home, "sent-sandbox.json"), JSON.stringify({ extf: { "455148-1": { abc: chain } } }));
+  assert.equal(sentBefore("extf", "sandbox", "455148-1", "abc", { DATEV_MCP_HOME: home })!.status, "uncertain");
+});

@@ -123,6 +123,29 @@ test("a write's approval dialog names the client by name and numbers, not only t
   assert.ok(!asked.includes("455148-1"), "DATEV's technical client id is not shown to the person");
 });
 
+test("a write's approval dialog shows the body exactly as it is sent, even a value equal to the client id", async () => {
+  clearClientGate();
+  const f: FetchLike = async (u, init) => {
+    const path = new URL(String(u)).pathname;
+    if ((init?.method ?? "GET").toUpperCase() === "GET" && /\/clients\/[^/]+$/.test(path))
+      return new Response(JSON.stringify({ name: "Muster GmbH", consultant_number: 455148, client_number: 1, services: [{ name: "Rechnungsdatenservice 1.0" }] }), { headers: { "content-type": "application/json" } });
+    return new Response("{}", { status: 201, headers: { "content-type": "application/json" } });
+  };
+  const server = new McpServer({ name: "t", version: "0" });
+  registerGenericTools(server, () => ({ env: "sandbox" as const, creds: { clientId: "c" }, token: async () => "T", fetch: f, sleep: async () => undefined }));
+  const [a, b] = InMemoryTransport.createLinkedPair();
+  await server.connect(a);
+  const c = new Client({ name: "t", version: "0" }, { capabilities: { elicitation: { form: {} } } });
+  let asked = "";
+  c.setRequestHandler(ElicitRequestSchema, async (req) => ((asked = String(req.params.message)), { action: "accept", content: { approve: true } }));
+  await c.connect(b);
+  const args = { operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs", path_params: { "client-id": "455148-1" }, body: { note: "455148-1", job_type: "x" } };
+  const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
+  await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
+  assert.match(asked, /body: \{"note":"455148-1","job_type":"x"\}/, asked);
+  assert.ok(!asked.split("\n").filter((l) => !l.startsWith("body:")).join("\n").includes("455148-1"), asked);
+});
+
 test("DATEV's API descriptions never ship: the package is private and the built index stays out of git", () => {
   const root = join(import.meta.dirname, "..", "..");
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { private?: boolean };

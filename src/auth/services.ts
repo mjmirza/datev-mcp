@@ -57,16 +57,23 @@ export function selectServices(list: string): { services: string[]; scopes: stri
  *  Each operation's own scopes are still checked, so this only bounds what has no scope of its own. */
 export function servicesForScopes(scopes: string[]): string[] {
   const have = new Set(scopes);
+  // A scope several services share, like openid, says nothing about which service was chosen.
+  const owners = new Map<string, number>();
+  for (const p of Object.keys(SERVICES)) for (const sc of scopesOf(p)) owners.set(sc, (owners.get(sc) ?? 0) + 1);
   return Object.keys(SERVICES)
-    .filter((p) => scopesOf(p).some((sc) => have.has(sc)))
+    .filter((p) => {
+      const own = scopesOf(p).filter((sc) => owners.get(sc) === 1);
+      return own.length ? own.some((sc) => have.has(sc)) : scopesOf(p).length > 0 && scopesOf(p).every((sc) => have.has(sc));
+    })
     .sort();
 }
 
-/** The services a saved login covers: as chosen, or derived from its scopes for an expert login. */
-export function servicesOfSession(s: { services?: string[]; scopes?: string[] } | undefined): string[] | undefined {
+/** The services a saved login covers: as chosen, or derived from its scopes. Unknown means none, so it fails closed. */
+export function servicesOfSession(s: { services?: string[]; scopes?: string[]; tokens?: { scope?: string } } | undefined): string[] | undefined {
   if (!s) return undefined;
   if (s.services) return s.services;
-  return s.scopes ? servicesForScopes(s.scopes) : undefined;
+  const granted = s.scopes ?? s.tokens?.scope?.split(/\s+/).filter(Boolean);
+  return granted ? servicesForScopes(granted) : [];
 }
 
 export function serviceList(): string {

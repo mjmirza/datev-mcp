@@ -47,8 +47,12 @@ const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v =
 // Every level must be an object and every entry carry a name and a status, or the record is treated as damaged.
 const STATUSES = new Set(["sending", "uncertain", "sent"]);
 // An entry, and every earlier entry behind it, needs a time, a name and a known status.
-const isEntry = (e: unknown, depth = 0): boolean =>
-  depth < 8 && isObject(e) && typeof e.at === "string" && typeof e.name === "string" && STATUSES.has(String(e.status)) && (e.previous === undefined || isEntry(e.previous, depth + 1));
+// Checked in a loop, so a long history from an older version is still read and is never cut off.
+function isEntry(e: unknown): boolean {
+  for (let x: unknown = e; x !== undefined; x = (x as Record<string, unknown>).previous)
+    if (!isObject(x) || typeof x.at !== "string" || typeof x.name !== "string" || typeof x.status !== "string" || !STATUSES.has(x.status)) return false;
+  return true;
+}
 const isLedger = (v: unknown): v is Ledger =>
   isObject(v) && Object.values(v).every((byClient) => isObject(byClient) && Object.values(byClient).every((byHash) => isObject(byHash) && Object.values(byHash).every((e) => isEntry(e))));
 

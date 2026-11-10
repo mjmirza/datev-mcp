@@ -222,7 +222,7 @@ const CHECK_NAMES: Record<string, string> = {
 // Only the final bracket describeClient appends is translated. The name before it is DATEV's text.
 const who = (s: string) =>
   s
-    .replace(/^unnamed client/, "Mandant ohne Namen")
+    .replace(/^unnamed client(?= \(|$)/, "Mandant ohne Namen")
     .replace(/ \((consultant \d+)?(, )?(client \d+)?\)$/, (all: string) => all.replace("consultant ", "Berater ").replace("client ", "Mandant "));
 
 // Single sentences the safety refusals are built from. A message no whole-message pattern matches is
@@ -299,8 +299,24 @@ const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^These files are being sent or were just sent to this client \((.+)\)\.$/, (m) => `Diese Dateien werden gerade an diesen Mandanten gesendet oder wurden eben gesendet (${m[1]}).`],
 ];
 
-/** Splits after a period followed by whitespace, so never inside a URL or a version number. */
-const sentencesOf = (s: string) => s.split(/(?<=\.)\s+/);
+/** Splits after a period followed by whitespace, never inside brackets, a URL or a version number. */
+function sentencesOf(s: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === "(") depth++;
+    else if (c === ")") depth = Math.max(0, depth - 1);
+    else if (c === "." && depth === 0 && /\s/.test(s[i + 1] ?? "")) {
+      out.push(s.slice(start, i + 1));
+      while (/\s/.test(s[i + 1] ?? "")) i++;
+      start = i + 1;
+    }
+  }
+  if (start < s.length) out.push(s.slice(start));
+  return out;
+}
 
 function bySentence(message: string): string {
   const parts = sentencesOf(message.trim());

@@ -303,32 +303,82 @@ export function parseJsonOrLines(text: string, ndjson = false): unknown {
 export const HARD_MAX_BYTES = 50 * 1024 * 1024;
 const TEXTUAL = /json|xml|text\/|csv|javascript|html|x-www-form-urlencoded/i;
 
-async function readCapped(res: Response, cap: number): Promise<{ bytes: Uint8Array; overflow: boolean }> {
+const join = (parts: Uint8Array[]): Uint8Array => {
+  const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+};
+
+// An error answer cut off by the cap still has its title and help link at the end, so its last bytes are kept.
+const ERROR_TAIL_BYTES = 64 * 1024;
+
+async function readCapped(res: Response, cap: number, keepTail = false): Promise<{ bytes: Uint8Array; overflow: boolean; tail?: Uint8Array }> {
   if (!res.body) return { bytes: new Uint8Array(), overflow: false };
   const reader = res.body.getReader();
   const parts: Uint8Array[] = [];
+  let tail: Uint8Array[] = [];
+  let tailSize = 0;
   let size = 0;
+  let seen = 0;
   let overflow = false;
   for (;;) {
     const { done, value } = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
     if (done) break;
+    if (overflow) {
+      // Only the last bytes are kept, and the read still stops at the hard limit.
+      seen += value.length;
+      tail.push(value);
+      tailSize += value.length;
+      while (tail.length > 1 && tailSize - tail[0]!.length >= ERROR_TAIL_BYTES) tailSize -= tail.shift()!.length;
+      if (seen >= HARD_MAX_BYTES) break;
+      continue;
+    }
     if (size + value.length > cap) {
+      const rest = value.subarray(cap - size);
       parts.push(value.subarray(0, cap - size));
       size = cap;
       overflow = true;
+      if (keepTail) {
+        tail = [rest];
+        tailSize = rest.length;
+        seen = cap + rest.length;
+        continue;
+      }
       await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once the cap is hit
       break;
     }
     parts.push(value);
     size += value.length;
   }
-  const bytes = new Uint8Array(size);
-  let at = 0;
-  for (const p of parts) {
-    bytes.set(p, at);
-    at += p.length;
+  if (overflow && keepTail) await reader.cancel().catch(() => undefined);
+  return { bytes: join(parts), overflow, ...(overflow && keepTail ? { tail: join(tail).slice(-ERROR_TAIL_BYTES) } : {}) };
+}
+
+// The fields of a JSON problem answer that DATEV puts after a long detail, read from the kept head and tail.
+function problemFromParts(head: string, tail: string): Record<string, unknown> {
+  const field = (name: string) => {
+    for (const t of [tail, head]) {
+      const m = t.match(new RegExp(`"${name}"\\s*:\\s*"((?:[^"\\\\]|\\\\.){0,2000})"`));
+      if (m) {
+        try {
+          return JSON.parse(`"${m[1]}"`) as string;
+        } catch {
+          return m[1];
+        }
+      }
+    }
+    return undefined;
+  };
+  const out: Record<string, unknown> = { cut_off: true };
+  for (const k of ["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"]) {
+    const v = field(k);
+    if (v !== undefined) out[k] = v;
   }
-  return { bytes, overflow };
+  return out;
 }
 
 async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
@@ -338,7 +388,8 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   // A declared binary type gets its own byte budget; the text cap is about what fits in a conversation.
   const declaredBinary = media !== "" && !TEXTUAL.test(media);
   const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
-  const { bytes, overflow } = await readCapped(res, byteCap);
+  const keepTail = res.status >= 400 && TEXTUAL.test(media);
+  const { bytes, overflow, tail } = await readCapped(res, byteCap, keepTail);
   const binary = media !== "" ? !TEXTUAL.test(media) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -347,6 +398,8 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const text = new TextDecoder("utf-8").decode(bytes);
   const truncated = overflow || text.length > maxChars;
   const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
+  // A cut error answer keeps DATEV's title, help link and request id from wherever they appeared.
+  if (truncated && keepTail && /json/i.test(media)) return { body: { ...problemFromParts(text, tail ? new TextDecoder("utf-8").decode(tail) : ""), text: slice }, truncated };
   if (!truncated && /json/i.test(media)) {
     try {
       return { body: parseJsonOrLines(slice, /ndjson/i.test(media)), truncated };

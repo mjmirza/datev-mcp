@@ -229,7 +229,7 @@ test("the status shows active or inactive, the full name, validity as TT.MM.JJJJ
 test("status and doctor put every DATEV call they make into the HTTP log, with DATEV's tracing headers and no token", async () => {
   const dir = tmp();
   const store = new TokenStore("sandbox", dir, envKeyStore());
-  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT-SECRET", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  store.write({ env: "sandbox", clientId: "cid", services: ["accounting-clients"], tokens: { accessToken: "AT-SECRET", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
   const trace = { "x-global-transaction-id": "g-1", "v-cap-request-id": "v-1", "content-type": "application/json" };
   const fake: FetchLike = async (u) =>
     new Response(String(u).endsWith("/clients") ? "[]" : JSON.stringify({ sub: "u1", name: "Erika Mustermann" }), { headers: trace });
