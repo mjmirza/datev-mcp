@@ -31,10 +31,12 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
 /** A URL for a person: DATEV's technical client id becomes {client} in path, query and fragment. Every other byte stays as sent. */
 export function hideClientId(url: string, ids: (string | undefined)[]): string {
   // Passes insert a private-use mark absent from the URL (BMP, then planes 15 and 16), never "{client}".
-  const free = (from: number, to: number) => { for (let c = from; c <= to; c++) if (!url.includes(String.fromCodePoint(c))) return String.fromCodePoint(c); return undefined; };
+  const present = new Set<number>();
+  for (const ch of url) present.add(ch.codePointAt(0)!);
+  const free = (from: number, to: number) => { for (let c = from; c <= to; c++) if (!present.has(c)) return String.fromCodePoint(c); return undefined; };
   const MARK = free(0xe000, 0xf8ff) ?? free(0xf0000, 0xffffd) ?? free(0x100000, 0x10fffd);
-  // An astral mark reads as one unit absent from the URL, so no id can match it; none free means one plain pass.
-  const READ = MARK && MARK.length > 1 ? [...Array.from({ length: 32 }, (_, i) => 0xfdd0 + i), 0xfffe, 0xffff].map((c) => String.fromCharCode(c)).find((c) => !url.includes(c)) : MARK;
+  // An astral mark reads as one unit absent from the URL, so no id can match it; none free means no mark pass.
+  const READ = MARK && MARK.length > 1 ? [...Array.from({ length: 32 }, (_, i) => 0xfdd0 + i), 0xfffe, 0xffff].filter((c) => !present.has(c)).map((c) => String.fromCharCode(c))[0] : MARK;
   const plainIds = [...new Set(ids.filter((x): x is string => !!x && (!MARK || !READ || (!x.includes(MARK) && !x.includes(READ)))))];
   if (!plainIds.length) return url;
   // Scheme, userinfo, host and port are never rewritten; a host never holds "%", so an escaped slash starts the path.
@@ -73,7 +75,8 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
   };
   // Hiding one id can change how a neighbouring escape decodes, so repeat until nothing changes.
   let rest = url.slice(authority.length);
-  if (!MARK || !READ) return authority + hideOnce(rest, "{client}");
+  // No free mark: a single pass can leave a decodable id, so any hit hides the whole rest.
+  if (!MARK || !READ) return hideOnce(rest, "{client}") === rest ? url : authority + (rest.startsWith("/") ? "/" : "") + "{client}";
   for (let next = hideOnce(rest, MARK); next !== rest; next = hideOnce(rest, MARK)) rest = next;
   return authority + rest.replaceAll(MARK, "{client}");
 }
