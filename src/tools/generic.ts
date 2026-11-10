@@ -17,13 +17,20 @@ const fail = (message: string) => ({ ...text(localize(message)), isError: true }
 const INLINE_BINARY_MAX = 256 * 1024;
 const scalar = z.union([z.string(), z.number(), z.boolean()]);
 
+/** How a declared path parameter names the client: its whole id, or one half of a consultant-client pair. */
+export function clientParamRole(name: string): "id" | "consultant" | "number" | undefined {
+  if (/^consultant[-_]?number$/i.test(name)) return "consultant";
+  if (/^client[-_]?number$/i.test(name)) return "number";
+  return /client/i.test(name) ? "id" : undefined;
+}
+
 /** Client ids in a call's own path parameters, for an operation the client gate does not check. */
 function clientIdsOf(op: Operation, pp: Record<string, string | number>): string[] {
-  const declared = op.params.filter((p) => p.in === "path").map((p) => p.name);
-  const value = (re: RegExp) => declared.filter((n) => re.test(n) && pp[n] !== undefined).map((n) => String(pp[n]));
-  const ids = value(/^client[-_]?(id|guid)$/i);
-  const consultant = value(/^consultant[-_]?number$/i)[0];
-  const number = value(/^client[-_]?number$/i)[0];
+  const declared = op.params.filter((p) => p.in === "path" && pp[p.name] !== undefined).map((p) => p.name);
+  const value = (role: string) => declared.filter((n) => clientParamRole(n) === role).map((n) => String(pp[n]));
+  const ids = value("id");
+  const consultant = value("consultant")[0];
+  const number = value("number")[0];
   if (consultant && number) ids.push(`${consultant}-${number}`);
   return ids;
 }

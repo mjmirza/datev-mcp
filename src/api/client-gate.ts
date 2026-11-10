@@ -28,33 +28,23 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
   return `${c.name ?? "unnamed client"}${nums.length ? ` (${nums.join(", ")})` : ""}`;
 }
 
-/** A URL for a person: a path segment that is DATEV's technical client id becomes {client}. Nothing else changes. */
+/** A URL for a person: DATEV's technical client id becomes {client} wherever it stands. Every other byte stays as sent. */
 export function hideClientId(url: string, ids: (string | undefined)[]): string {
-  const hidden = new Set(ids.filter((x): x is string => !!x).flatMap((id) => [id, encodeURIComponent(id)]));
-  const q = url.indexOf("?");
-  const path = q < 0 ? url : url.slice(0, q);
-  // In the query an id stands on its own between separators, also percent-encoded or inside a nested address.
-  const ownWord = (id: string) => new RegExp(`(?<![A-Za-z0-9_-])${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_-])`, "g");
-  const decode = (v: string) => {
-    try {
-      return decodeURIComponent(v.replace(/\+/g, " "));
-    } catch {
-      return v;
-    }
-  };
-  const plainIds = [...hidden].filter((id) => !id.includes("%"));
-  const query = q < 0
-    ? ""
-    : `?${url
-        .slice(q + 1)
-        .split("&")
-        .map((pair) => pair.split("=").map((part) => {
-          const plain = decode(part);
-          const swapped = plainIds.reduce((acc: string, id: string) => acc.replace(ownWord(id), "\u0000"), plain);
-          return swapped === plain ? part : encodeURIComponent(swapped).replace(/%00/g, "{client}");
-        }).join("="))
-        .join("&")}`;
-  return path.split("/").map((seg) => (hidden.has(seg) ? "{client}" : seg)).join("/") + query;
+  const plainIds = [...new Set(ids.filter((x): x is string => !!x))];
+  if (!plainIds.length) return url;
+  // One unit per raw piece, a %XX escape or one character, so each match maps back to the exact bytes it replaces.
+  const units = url.match(/%[0-9A-Fa-f]{2}|[\s\S]/gu) ?? [];
+  const char = (u: string) => (u.length === 3 && u[0] === "%" ? String.fromCharCode(parseInt(u.slice(1), 16)) : u.length === 1 ? u : "\ufffd");
+  const alts = plainIds.map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  // An id stands on its own: no letter, digit or underscore beside it, and no digit joined to it by a dash.
+  const ownWord = new RegExp(`(?<![A-Za-z0-9_])(?<![0-9]-)(?:${alts})(?![A-Za-z0-9_])(?!-[0-9])`, "gi");
+  let out = "";
+  let at = 0;
+  for (const m of units.map(char).join("").matchAll(ownWord)) {
+    out += units.slice(at, m.index).join("") + "{client}";
+    at = m.index + m[0].length;
+  }
+  return out + units.slice(at).join("");
 }
 
 /** Path ids for a person: the client's technical id is replaced, every other id is shown as sent. */
