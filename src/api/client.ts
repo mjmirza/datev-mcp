@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { problemOf, problemText, type Problem } from "./problem.js";
 export { problemFields, problemOf, problemText } from "./problem.js";
-import { bodyFingerprint, clip, iso, keepResponseBody, redactHeaders, type HttpLogEntry } from "./http-log.js";
+import { bodyFingerprint, clip, httpLogProblem, iso, keepResponseBody, redactHeaders, type HttpLogEntry } from "./http-log.js";
 import type { DatevEnv } from "../auth/endpoints.js";
 import type { ClientCredentials, FetchLike } from "../auth/token-client.js";
 import type { Operation } from "../spec/types.js";
@@ -84,6 +84,8 @@ export interface CallDeps {
   grantedScopes?: ReadonlySet<string>;
   /** Writes one line of the technical HTTP log DATEV requires. Tests leave it out. */
   httpLog?: (entry: HttpLogEntry) => void;
+  /** Reports why the HTTP log cannot be written. Defaults to the file log's own check. */
+  httpLogProblem?: () => string | undefined;
   /** Service keys the server adds itself, by header name, so the model never sees them (SmartTransfer's X-API-Key). */
   serviceKeys?: Record<string, string | undefined>;
   /** Per host: until when DATEV asked us to wait. Shared across calls, so a long Retry-After is honored by the next call too. */
@@ -375,6 +377,9 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   let res: Response | undefined;
   let netErr: unknown;
   let read: Awaited<ReturnType<typeof readBody>> | undefined;
+  // DATEV requires a log line for every call: no call goes out while the log cannot be written.
+  const logProblem = deps.httpLog && (deps.httpLogProblem ?? httpLogProblem)();
+  if (logProblem) throw new CallError(`The technical HTTP log cannot be written (${logProblem}). DATEV requires it, so nothing was sent. Free disk space or fix DATEV_MCP_LOG_DIR, then try again.`);
   const sentAt = Date.now();
   const logLine = (extra: Partial<HttpLogEntry>) =>
     deps.httpLog?.({
@@ -395,12 +400,17 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   }
   // Only reads are retried. A write is never sent twice: without an idempotency key, even a 429 is no proof it was not applied.
   const statusRetry = res !== undefined && op.method === "get" && RETRYABLE.has(res.status);
-  if (res && !statusRetry) {
+  // The answer is read even when it will be retried, so the log keeps DATEV's error body for every attempt.
+  if (res) {
     try {
       read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
     } catch (e) {
       netErr = e; // the answer broke off while it was being read
-      if (op.method !== "get" || deps.signal?.aborted) throw new CallError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
+      if (op.method !== "get" || deps.signal?.aborted) {
+        // A write may have reached DATEV: its headers and the break are logged before giving up.
+        logLine({ error: `answer broke off: ${e instanceof Error ? e.message : String(e)}` });
+        throw new CallError(`DATEV's answer broke off: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
   }
   if (!res) logLine({ error: netErr instanceof Error ? netErr.message : String(netErr) });

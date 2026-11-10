@@ -51,6 +51,7 @@ export const clip = (s: string) => (s.length > MAX_BODY_CHARS ? `${s.slice(0, MA
 
 let warned = false;
 let pruned = "";
+let broken: string | undefined;
 
 function prune(dir: string, now: number): void {
   const day = iso(now).slice(0, 10);
@@ -73,10 +74,29 @@ export function writeHttpLog(entry: HttpLogEntry, env: NodeJS.ProcessEnv = proce
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     appendFileSync(join(dir, `http-${iso(now).slice(0, 10)}.jsonl`), `${JSON.stringify(entry)}\n`, { mode: 0o600 });
     prune(dir, now);
+    broken = undefined;
   } catch (e) {
-    if (!warned) process.stderr.write(`datev-mcp: the HTTP log could not be written (${e instanceof Error ? e.message : String(e)})\n`);
+    broken = e instanceof Error ? e.message : String(e);
+    if (!warned) process.stderr.write(`datev-mcp: the HTTP log could not be written (${broken})\n`);
     warned = true;
   }
+}
+
+/**
+ * Why the technical HTTP log cannot be written right now, or undefined when it works. After a failed write it
+ * checks again, so calls resume as soon as the disk or folder is fixed. DATEV requires every call to be logged.
+ */
+export function httpLogProblem(env: NodeJS.ProcessEnv = process.env, now = Date.now()): string | undefined {
+  if (!broken) return undefined;
+  try {
+    const dir = logDir(env);
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    appendFileSync(join(dir, `http-${iso(now).slice(0, 10)}.jsonl`), "", { mode: 0o600 });
+    broken = undefined;
+  } catch (e) {
+    broken = e instanceof Error ? e.message : String(e);
+  }
+  return broken;
 }
 
 export interface ErrorRate {

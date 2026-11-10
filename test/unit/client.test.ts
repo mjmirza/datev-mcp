@@ -318,3 +318,32 @@ test("a binary answer stays binary even when its content type parameters mention
     assert.deepEqual([...r.bytes!], [...raw], `bytes changed for ${ct}`);
   }
 });
+
+test("no call goes out while the technical HTTP log cannot be written", async () => {
+  let sent = 0;
+  const f: FetchLike = async () => (sent++, json(200, {}));
+  await assert.rejects(
+    callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { httpLog: () => {}, httpLogProblem: () => "ENOSPC" })),
+    /HTTP log cannot be written \(ENOSPC\).*nothing was sent/,
+  );
+  assert.equal(sent, 0);
+  await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { httpLog: () => {}, httpLogProblem: () => undefined }));
+  assert.equal(sent, 1, "calls resume once the log works");
+});
+
+test("a write whose answer breaks off is still logged, and a retried error answer is logged with its body", async () => {
+  type Line = { status?: number; error?: string; response_body?: string };
+  const lines: Line[] = [];
+  const broken = () =>
+    new Response(new ReadableStream({ start: (c) => (c.enqueue(new TextEncoder().encode("{")), c.error(new Error("socket hang up"))) }), { status: 201, headers: { "content-type": "application/json" } });
+  await assert.rejects(callOperation(op({ method: "post", write: true }), { pathParams: { "client-id": "1" } }, deps(async () => broken(), { httpLog: (e) => lines.push(e) })), /broke off/);
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0]!.status, 201);
+  assert.match(lines[0]!.error ?? "", /broke off/);
+  lines.length = 0;
+  let n = 0;
+  const f: FetchLike = async () => (n++ === 0 ? json(429, { title: "Too many", type: "https://help.datev.de/429" }) : json(200, []));
+  await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { httpLog: (e) => lines.push(e) }));
+  assert.equal(lines.length, 2);
+  assert.match(lines[0]!.response_body ?? "", /help\.datev\.de\/429/, "the retried 429 keeps DATEV's problem details in the log");
+});
