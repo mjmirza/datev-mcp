@@ -42,7 +42,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28 | open | | |
 | F24 | MEDIUM | Shipped `dist/data/operations.json` carries DATEV description text | R1-19 | open | | |
 | F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20 | open | | covered row by row as fixes land |
-| F26 | LOW | Connection tool says true or false instead of AKTIV or INAKTIV, disconnect without a session lacks the tokrevui link | R1-21 | open | | |
+| F26 | LOW | Connection tool says true or false instead of AKTIV or INAKTIV, disconnect without a session lacks the tokrevui link | R1-21 | fixed | 0324e85 | the connection status tool answers with AKTIV or INAKTIV text the person can read |
 | F27 | BLOCKER | JWKS (signing key) requests not in the HTTP log | R2-2 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F28 | BLOCKER | Quick start keeps the client secret in a plaintext file while docs claim it is stored encrypted | R2-3 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F29 | BLOCKER | Token, userinfo and revoke errors drop DATEV's help link | R2-5 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
