@@ -15,7 +15,7 @@ import {
   type BatchRow,
   type Report,
 } from "@seamless-engineering/datev-extf";
-import { buildHeaders, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, problemFields, problemText, type CallDeps } from "../api/client.js";
 import { requireClientService } from "../api/permission.js";
 import { recordSent, sentBefore } from "./sent-ledger.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -213,6 +213,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
             preview: true,
             note: `Nothing was sent. This imports ${summary.rows} rows into Buchungsdatenservice of ${who} in DATEV ${d.env}${earlier ? ", AGAIN although it was sent before" : ""}. Ask the user, then call again with confirm: true and this confirm_token.`,
             client: { name: client.name, consultant_number: client.consultant_number, client_number: client.client_number },
+            destination: buildUrl(op, d.env, { pathParams: { "client-id": client_id } }).toString(),
             file: file.path,
             header: summary.header,
             warnings: summary.warnings,
@@ -221,7 +222,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}`);
+        const denied = await humanApproval(server, d.env, `Import ${summary.rows} booking rows from ${file.name} into Buchungsdatenservice of ${who}${earlier ? " (sent again)" : ""}\n${buildUrl(op, d.env, { pathParams: { "client-id": client_id } })}`);
         if (denied) return err(denied);
         const r = await callOperation(op, { pathParams: { "client-id": client_id }, headers: { Filename: file.name }, rawBody: file.bytes }, d);
         if (r.status < 200 || r.status >= 300) {

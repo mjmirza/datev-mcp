@@ -95,7 +95,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
-          const summary = [`${op.method.toUpperCase()} ${op.id}`, path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
+          const summary = [`${op.method.toUpperCase()} ${op.id}`, buildUrl(op, d.env, input).toString(), path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
           const denied = await humanApproval(server, d.env, summary);
           if (denied) return fail(denied);
         }

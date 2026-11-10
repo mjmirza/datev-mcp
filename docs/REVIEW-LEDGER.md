@@ -52,8 +52,8 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F33 | HIGH | Request bodies kept only as a hash | R2-10 | fixed | b49460d | request bodies are logged as DATEV's minimum scope asks |
 | F34 | HIGH | Status reports ACTIVE without checking userinfo's shape and that `sub` matches the saved identity | R2-14 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
 | F35 | HIGH | Choosing accounting services silently adds the accounting-clients scope | R2-16 | open | | |
-| F36 | HIGH | Upload approval does not show the destination client, query and resolved URL | R2-18 | open | | |
-| F37 | HIGH | Uploads do not check the client list and the service before sending | R2-20 | open | | |
+| F36 | HIGH | Upload approval does not show the destination client, query and resolved URL | R2-18 | fixed | 6182745 | documents use only the client's document types and the field rules of the chosen service |
+| F37 | HIGH | Uploads do not check the client list and the service before sending | R2-20 | fixed | 6182745 | a document is refused before sending when the client has not switched the service on, with DATEV's setup link |
 | F38 | MEDIUM | A `null` token answer crashes before it is logged | R2-22 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
 | F39 | MEDIUM | Session key creation not serialised across environments | R2-24 | open | | |
 | F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |

@@ -254,7 +254,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const summary = [`${op.method.toUpperCase()} ${op.id}`, ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].filter(Boolean).join("\n");
+        const summary = [`${op.method.toUpperCase()} ${op.id}`, String(url), ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].filter(Boolean).join("\n");
         const denied = await humanApproval(server, d.env, summary);
         if (denied) return err(denied);
         const r = await callOperation(op, { ...target, rawBody: buildForm(order, read, f) }, d);
