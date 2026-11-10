@@ -54,12 +54,16 @@ export async function disconnect(
     }
     store.clear();
     const revoked = !opts.localOnly && sameApp;
+    // Another app registration's tokens cannot be revoked with this app's credentials: say how many are left open.
+    const foreign = sameApp ? 0 : new Set([...(s.pendingRevoke ?? []), ...(s.tokens.refreshToken ? [s.tokens.refreshToken] : []), ...openAccess(s).map((a) => a.token), ...(s.tokens.expiresAt > Date.now() ? [s.tokens.accessToken] : [])]).size;
     return {
       revoked,
       removed: true,
       message: revoked
         ? `Disconnected. The connection was revoked at DATEV and the local session deleted.`
-        : `The local session was deleted. Check ${REVOKE_UI} that the app no longer appears there.`,
+        : foreign
+          ? `The local session was deleted. ${foreign} token(s) of another DATEV app registration could not be revoked here, so remove that app at ${REVOKE_UI}.`
+          : `The local session was deleted. Check ${REVOKE_UI} that the app no longer appears there.`,
     };
   });
 }
@@ -67,13 +71,15 @@ export async function disconnect(
 /** DATEV's Export rules: without the data service, revoke both tokens at once and say exactly what happened. */
 export async function endForMissingPermission(
   cfg: Config,
-  opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void } = {},
+  opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void; accessToken?: string } = {},
 ): Promise<string> {
   const store = opts.store ?? new TokenStore(cfg.env);
   const log = tokenLog(opts.httpLog ?? ((e: HttpLogEntry) => writeHttpLog(e)));
   return store.withLock(async () => {
     const s = store.read();
     if (!s || s.clientId !== cfg.creds.clientId) return "There was no saved connection to end.";
+    // A late 403 from an older token must not end a login saved since: only the refused token's session ends.
+    if (opts.accessToken !== undefined && s.tokens.accessToken !== opts.accessToken) return " A newer login replaced the refused connection, so it was kept.";
     const callOpts = { fetch: opts.fetch, log };
     const refresh = [...new Set([...(s.pendingRevoke ?? []), ...(s.tokens.refreshToken ? [s.tokens.refreshToken] : [])])];
     const accessLive = s.tokens.expiresAt > Date.now();

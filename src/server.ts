@@ -47,10 +47,10 @@ function createServer(cfg: Config): McpServer {
   const httpLog = (e: HttpLogEntry) => writeHttpLog(e);
   const session = new Session(store, cfg.endpoints, cfg.creds, { log: httpLog });
   // DATEV's Export rules: a missing permission revokes both tokens at once.
-  const onMissingPermission = async () => {
+  const onMissingPermission = async (accessToken?: string) => {
     clearDataexchangeCache();
     clearClientGate();
-    return endForMissingPermission(cfg, { store, httpLog });
+    return endForMissingPermission(cfg, { store, httpLog, accessToken });
   };
   const identity = () => {
     try {
@@ -59,7 +59,12 @@ function createServer(cfg: Config): McpServer {
       return undefined;
     }
   };
-  const deps = (signal?: AbortSignal) => ({ env: cfg.env, creds: cfg.creds, token: () => session.accessToken(), signal, httpLog, grantedScopes: grantedScopes(store), chosenServices: chosenServices(store), onMissingPermission, identity });
+  // Each call remembers the token it used, so a 403 ends only the session that token belongs to.
+  const deps = (signal?: AbortSignal) => {
+    let used: string | undefined;
+    const token = async () => (used = await session.accessToken());
+    return { env: cfg.env, creds: cfg.creds, token, signal, httpLog, grantedScopes: grantedScopes(store), chosenServices: chosenServices(store), onMissingPermission: () => onMissingPermission(used), identity };
+  };
   // A refresh token an earlier login could not revoke is retried in the background: DATEV allows only one.
   void revokePending(store, cfg.endpoints, cfg.creds, { log: tokenLog(httpLog) }).catch(() => undefined);
   registerConnectionTools(server, cfg, store, httpLog);

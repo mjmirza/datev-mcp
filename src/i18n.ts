@@ -22,6 +22,7 @@ const LOGIN_REASON: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^session expired and has no refresh token$/, () => "die Sitzung ist abgelaufen und enthält kein Refresh-Token"],
   [/^DATEV no longer accepts the saved session \(([^)]*)\)$/, (m) => `DATEV akzeptiert die gespeicherte Sitzung nicht mehr (${m[1]})`],
   [/^the connection was ended here and is not used again; DATEV has not confirmed every revoke yet$/, () => "die Verbindung wurde hier beendet und wird nicht mehr genutzt; DATEV hat noch nicht jeden Widerruf bestätigt"],
+  [/^the connection was ended here and is not used again; DATEV confirmed every revoke$/, () => "die Verbindung wurde hier beendet und wird nicht mehr genutzt; DATEV hat jeden Widerruf bestätigt"],
 ];
 
 const TARGET: Record<string, string> = { "the chart of accounts": "den Kontenplan" };
@@ -262,6 +263,10 @@ const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^It can also be removed at (\S+?)\.$/, (m) => `Sie kann auch unter ${m[1]} entfernt werden.`],
   [/^The connection was ended, but DATEV did not confirm revoking the access token \(([\s\S]*)\); it can no longer be renewed and expires at (\d{2}:\d{2}) UTC\.$/, (m) => `Die Verbindung wurde beendet, aber DATEV hat den Widerruf des Zugriffstokens nicht bestätigt (${m[1]}). Es kann nicht mehr erneuert werden und läuft um ${m[2]} UTC ab.`],
   [/^There was no saved connection to end\.$/, () => "Es gab keine gespeicherte Verbindung zu beenden."],
+  [/^A newer login replaced the refused connection, so it was kept\.$/, () => "Eine neuere Anmeldung hat die abgelehnte Verbindung ersetzt, sie wurde daher behalten."],
+  [/^The local session was deleted\.$/, () => "Die lokale Sitzung wurde gelöscht."],
+  [/^Check (\S+) that the app no longer appears there\.$/, (m) => `Prüfen Sie unter ${m[1]}, dass die App dort nicht mehr erscheint.`],
+  [/^(\d+) token\(s\) of another DATEV app registration could not be revoked here, so remove that app at (\S+?)\.$/, (m) => `${m[1]} Token(s) einer anderen DATEV-App-Registrierung konnten hier nicht widerrufen werden, entfernen Sie diese App daher unter ${m[2]}.`],
   [/^Ending the connection failed \(([\s\S]*)\)\.$/, (m) => `Das Beenden der Verbindung ist fehlgeschlagen (${m[1]}).`],
   [/^(\S+) names its client by GUID, which this server cannot check\.$/, (m) => `${m[1]} nennt den Mandanten per GUID, die dieser Server nicht prüfen kann.`],
   [/^DATEV's client list could not be read \(HTTP (\d{3})\), so the client was not checked\.$/, (m) => `Die Mandantenliste von DATEV konnte nicht gelesen werden (HTTP ${m[1]}), daher wurde der Mandant nicht geprüft.`],

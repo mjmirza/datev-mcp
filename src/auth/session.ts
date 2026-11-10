@@ -2,7 +2,7 @@ import type { Endpoints } from "./endpoints.js";
 import type { HttpLogEntry } from "../api/http-log.js";
 import { tokenLog } from "../setup/token-log.js";
 import { refreshTokens, TokenError, type ClientCredentials, type FetchLike } from "./token-client.js";
-import type { TokenStore } from "./token-store.js";
+import type { StoredSession, TokenStore } from "./token-store.js";
 import { revokePending } from "./pending-revoke.js";
 
 export class NeedsLoginError extends Error {
@@ -13,6 +13,13 @@ export class NeedsLoginError extends Error {
 }
 
 const SKEW_MS = 60_000;
+const ENDED_OPEN = "the connection was ended here and is not used again; DATEV has not confirmed every revoke yet";
+const ENDED_DONE = "the connection was ended here and is not used again; DATEV confirmed every revoke";
+
+/** Whether an ended session still holds a token DATEV has not confirmed as revoked. */
+function revokeOpen(s: StoredSession, now: number): boolean {
+  return !!s.pendingRevoke?.length || s.tokens.expiresAt > now || (s.pendingAccessRevoke ?? []).some((a) => a.expiresAt > now);
+}
 const RETRY_EVERY_MS = 30_000;
 
 // Hands out a valid access token. Refreshes at most once per expiry, across concurrent
@@ -38,6 +45,7 @@ export class Session {
     if (!s) throw new NeedsLoginError("no saved session");
     if (s.clientId !== this.creds.clientId) throw new NeedsLoginError("saved session belongs to a different DATEV app");
     if (s.ended) {
+      if (!revokeOpen(s, this.now())) throw new NeedsLoginError(ENDED_DONE);
       // A refused call retries the revokes DATEV has not confirmed: one at a time, at most every 30 seconds.
       if (!this.retrying && this.now() - this.lastRetry >= RETRY_EVERY_MS) {
         this.lastRetry = this.now();
@@ -47,7 +55,7 @@ export class Session {
             this.retrying = undefined;
           });
       }
-      throw new NeedsLoginError("the connection was ended here and is not used again; DATEV has not confirmed every revoke yet");
+      throw new NeedsLoginError(ENDED_OPEN);
     }
     if (s.tokens.expiresAt - SKEW_MS > this.now()) return s.tokens.accessToken;
     this.inflight ??= this.refresh().finally(() => {
@@ -61,7 +69,7 @@ export class Session {
       const s = this.store.read();
       if (!s) throw new NeedsLoginError("no saved session");
       if (s.clientId !== this.creds.clientId) throw new NeedsLoginError("saved session belongs to a different DATEV app");
-      if (s.ended) throw new NeedsLoginError("the connection was ended here and is not used again; DATEV has not confirmed every revoke yet");
+      if (s.ended) throw new NeedsLoginError(revokeOpen(s, this.now()) ? ENDED_OPEN : ENDED_DONE);
       if (s.tokens.expiresAt - SKEW_MS > this.now()) return s.tokens.accessToken; // another process refreshed
       if (!s.tokens.refreshToken) throw new NeedsLoginError("session expired and has no refresh token");
       // On a dropped connection the token is kept on purpose: if DATEV never received it a retry succeeds, and if it did the session is lost either way.
