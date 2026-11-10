@@ -30,16 +30,17 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
 
 /** A URL for a person: DATEV's technical client id becomes {client} in path, query and fragment. Every other byte stays as sent. */
 export function hideClientId(url: string, ids: (string | undefined)[]): string {
-  // Passes insert a private-use mark absent from the URL, never "{client}", so an id inside it cannot loop.
-  let code = 0xe000;
-  while (code < 0xf8ff && url.includes(String.fromCharCode(code))) code++;
-  const MARK = String.fromCharCode(code);
-  const plainIds = [...new Set(ids.filter((x): x is string => !!x && !x.includes(MARK)))];
+  // Passes insert a private-use mark absent from the URL (BMP, then planes 15 and 16), never "{client}".
+  const free = (from: number, to: number) => { for (let c = from; c <= to; c++) if (!url.includes(String.fromCodePoint(c))) return String.fromCodePoint(c); return undefined; };
+  const MARK = free(0xe000, 0xf8ff) ?? free(0xf0000, 0xffffd) ?? free(0x100000, 0x10fffd);
+  // An astral mark reads as one unit absent from the URL, so no id can match it; none free means one plain pass.
+  const READ = MARK && MARK.length > 1 ? [...Array.from({ length: 32 }, (_, i) => 0xfdd0 + i), 0xfffe, 0xffff].map((c) => String.fromCharCode(c)).find((c) => !url.includes(c)) : MARK;
+  const plainIds = [...new Set(ids.filter((x): x is string => !!x && (!MARK || !READ || (!x.includes(MARK) && !x.includes(READ)))))];
   if (!plainIds.length) return url;
   // Scheme, userinfo, host and port are never rewritten; a host never holds "%", so an escaped slash starts the path.
   const authority = /^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/(?:[^/?#]*@)?[^/?#@%]*/.exec(url)?.[0] ?? "";
   type Ch = { ch: string; from: number; to: number };
-  const chars = (text: string): Ch[] => [...text.matchAll(/[\s\S]/gu)].map((m) => ({ ch: m[0].length === 1 ? m[0] : "�", from: m.index, to: m.index + m[0].length }));
+  const chars = (text: string): Ch[] => [...text.matchAll(/[\s\S]/gu)].map((m) => ({ ch: m[0].length === 1 ? m[0] : m[0] === MARK ? READ! : "�", from: m.index, to: m.index + m[0].length }));
   const hex = (c?: Ch) => !!c && /^[0-9A-Fa-f]$/.test(c.ch);
   const decode = (r: Ch[]): Ch[] => {
     const out: Ch[] = [];
@@ -54,7 +55,7 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
   // An id stands on its own: no letter, digit, underscore or digit-dash before it, nothing of a longer token after it.
   const ownWord = new RegExp(`(?<![A-Za-z0-9_])(?<![0-9]-)(?:${alts})(?![A-Za-z0-9_-])`, "gi");
   // Hidden when it shows raw, decoded once or decoded twice; each match maps back to the raw bytes it came from.
-  const hideOnce = (rest: string): string => {
+  const hideOnce = (rest: string, mark: string): string => {
     const raw = chars(rest);
     const once = decode(raw);
     const hits: [number, number][] = [];
@@ -65,14 +66,15 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
     let at = 0;
     for (const [from, to] of hits) {
       if (to <= at) continue;
-      if (from >= at) out += rest.slice(at, from) + MARK;
+      if (from >= at) out += rest.slice(at, from) + mark;
       at = to;
     }
     return out + rest.slice(at);
   };
   // Hiding one id can change how a neighbouring escape decodes, so repeat until nothing changes.
   let rest = url.slice(authority.length);
-  for (let next = hideOnce(rest); next !== rest; next = hideOnce(rest)) rest = next;
+  if (!MARK || !READ) return authority + hideOnce(rest, "{client}");
+  for (let next = hideOnce(rest, MARK); next !== rest; next = hideOnce(rest, MARK)) rest = next;
   return authority + rest.replaceAll(MARK, "{client}");
 }
 
