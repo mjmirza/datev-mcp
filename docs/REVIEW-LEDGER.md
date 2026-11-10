@@ -150,6 +150,9 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F131 | MEDIUM | A write that timed out before DATEV answered said try again, with no warning that it may already be applied | Codex R15 | fixed | 713bba8 | a write that times out before DATEV answers warns it may be applied and does not invite a retry |
 | F132 | LOW | The architecture doc claimed unconditional approval, a key never next to the session, no stored client data and no calls without a tool, which the code contradicts | Codex R15 | fixed | 2976e1d | the architecture doc names the start-up revoke retry and the HTTP log the code keeps |
 | F133 | LOW | The ledger check matched two-digit ids only, so no row from F100 on was checked against its guarding test | self-check | fixed | 03ec479 | the ledger check reads finding ids of three or more digits |
+| F134 | MEDIUM | An errors list nested inside the first member of a list-shaped error answer lost its title and help link | Codex R16 | fixed | 199312a | a list body whose first member nests errors keeps errors[0]'s title and help link |
+| F135 | LOW | When every private-use character already stood in a value, hiding the client id turned an unrelated character into {client} | Codex R16 | fixed | dce0173 | every BMP private-use character with no id stays exactly as sent |
+| F136 | LOW | The architecture doc said only the HTTP log is kept, but the EXTF sent ledger with client id and file name is kept too | Codex R16 | fixed | 9f7a613 | the architecture doc names the EXTF sent ledger the code keeps |
 
 ## Evidence for rejected and disputed findings
 
