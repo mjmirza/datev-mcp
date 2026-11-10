@@ -73,11 +73,15 @@ export class TokenStore {
   private aad = () => Buffer.from(`datev-mcp:${this.env}`);
 
   private seal(s: StoredSession): Sealed {
-    this.key ??= loadOrCreateKey(this.keys);
+    return this.sealText(JSON.stringify(s));
+  }
+
+  private sealText(plain: string): Sealed {
+    this.key ??= loadOrCreateKey(this.keys, dirname(this.file));
     const iv = randomBytes(12);
     const c = createCipheriv("aes-256-gcm", this.key, iv);
     c.setAAD(this.aad());
-    const data = Buffer.concat([c.update(JSON.stringify(s), "utf8"), c.final()]);
+    const data = Buffer.concat([c.update(plain, "utf8"), c.final()]);
     return { v: 2, alg: "A256GCM", iv: iv.toString("base64"), tag: c.getAuthTag().toString("base64"), data: data.toString("base64") };
   }
 
@@ -113,9 +117,28 @@ export class TokenStore {
     return s;
   }
 
-  // Keep the unreadable file for inspection rather than deleting it, then act as logged out.
+  // Keep the unreadable file for inspection, then act as logged out. Plain text may hold live tokens,
+  // so only an encrypted copy of it is kept.
   private quarantine(): undefined {
-    renameSync(this.file, `${this.file}.corrupt-${Date.now()}`);
+    const target = `${this.file}.corrupt-${Date.now()}`;
+    let plain = "";
+    let sealedOnDisk = false;
+    try {
+      plain = readFileSync(this.file, "utf8");
+      sealedOnDisk = isSealed(JSON.parse(plain));
+    } catch {
+      // not JSON, so certainly not encrypted
+    }
+    if (sealedOnDisk) {
+      renameSync(this.file, target);
+      return undefined;
+    }
+    try {
+      writeFileSync(target, JSON.stringify(this.sealText(plain)), { mode: 0o600 });
+    } catch {
+      // no key to encrypt with: nothing is kept rather than a plain text copy
+    }
+    rmSync(this.file, { force: true });
     return undefined;
   }
 

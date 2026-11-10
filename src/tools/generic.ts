@@ -109,13 +109,15 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         }
         const { bytes, ...r } = await callOperation(op, input, d);
         const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
+        // A redirect is not an answer: it is never followed, so nothing was read or done.
+        if (r.status >= 300 && r.status < 400) out.note = `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. Nothing was read or changed.`;
         // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
-        if (bytes) {
-          if (save_to && r.status < 400 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
+        if (bytes && (r.status < 300 || r.status >= 400)) {
+          if (save_to && r.status < 300 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
           else if (bytes.length <= INLINE_BINARY_MAX && !r.truncated) out.base64 = Buffer.from(bytes).toString("base64");
           else out.note = r.truncated ? `The file is larger than ${(r.body as { cut_at_bytes?: number }).cut_at_bytes ?? HARD_MAX_BYTES} bytes and was not read completely. Nothing was saved.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
         }
-        return r.status >= 400 ? { ...text(out), isError: true } : text(out);
+        return r.status >= 300 ? { ...text(out), isError: true } : text(out);
       } catch (e) {
         if (e instanceof NeedsLoginError || e instanceof CallError || e instanceof FileError) return fail(e.message);
         return fail(`DATEV call failed: ${e instanceof Error ? e.message : String(e)}`);

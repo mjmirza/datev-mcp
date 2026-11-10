@@ -76,7 +76,10 @@ export async function doctor(cfg: Config, opts: DoctorOpts = {}): Promise<Check[
   }
   const clients = ops.find((o) => o.product === "accounting-clients" && o.path === "/clients" && o.method === "get");
   const base = clients && (cfg.env === "sandbox" ? clients.servers.sandbox : clients.servers.production);
-  if (base) {
+  // Only probe a service the login chose. Sessions from before service selection carry no list and are probed.
+  if (base && s.services && !s.services.includes("accounting-clients")) {
+    checks.push({ name: "accounting-clients API", ok: true, detail: "not connected (no accounting service chosen at login), not checked" });
+  } else if (base) {
     try {
       const r = await get(`${base}/clients`, token, cfg, o);
       const n = Array.isArray(r.body) ? r.body.length : undefined;

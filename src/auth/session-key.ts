@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 
@@ -118,13 +118,47 @@ export function defaultKeyStore(dir: string, env: NodeJS.ProcessEnv = process.en
   };
 }
 
-/** Returns the existing key, or creates and stores a new one. */
-export function loadOrCreateKey(store: KeyStore): Buffer {
+// One key serves every environment, so its creation is serialised across processes, not per session file.
+function withKeyLock<T>(dir: string, fn: () => T): T {
+  const lock = join(dir, "session-key.lock");
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  const until = Date.now() + 60_000;
+  for (;;) {
+    try {
+      mkdirSync(lock);
+      break;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      try {
+        // Three credential store calls take at most 45 seconds, so an older lock was left by a dead process.
+        if (Date.now() - statSync(lock).mtimeMs > 120_000) rmSync(lock, { recursive: true, force: true });
+      } catch {
+        // removed by its owner meanwhile
+      }
+      if (Date.now() > until) throw new Error("Another datev-mcp process is creating the session key. Try again in a minute.");
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
+}
+
+/** Returns the existing key, or creates and stores a new one. With a directory, creation is locked across processes. */
+export function loadOrCreateKey(store: KeyStore, dir?: string): Buffer {
   const have = store.get();
   if (have) return have;
-  const key = randomBytes(32);
-  store.set(key);
-  const back = store.get();
-  if (!back || !back.equals(key)) throw new Error(`The session key could not be stored in the ${store.name}`);
-  return key;
+  const create = () => {
+    // Another process may have stored the key while this one waited for the lock.
+    const now = store.get();
+    if (now) return now;
+    const key = randomBytes(32);
+    store.set(key);
+    const back = store.get();
+    if (!back || !back.equals(key)) throw new Error(`The session key could not be stored in the ${store.name}`);
+    return key;
+  };
+  return dir ? withKeyLock(dir, create) : create();
 }
