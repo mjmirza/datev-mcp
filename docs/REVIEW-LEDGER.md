@@ -153,6 +153,9 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F134 | MEDIUM | An errors list nested inside the first member of a list-shaped error answer lost its title and help link | Codex R16 | fixed | 199312a | a list body whose first member nests errors keeps errors[0]'s title and help link |
 | F135 | LOW | When every private-use character already stood in a value, hiding the client id turned an unrelated character into {client} | Codex R16 | fixed | dce0173 | every BMP private-use character with no id stays exactly as sent |
 | F136 | LOW | The architecture doc said only the HTTP log is kept, but the EXTF sent ledger with client id and file name is kept too | Codex R16 | fixed | 9f7a613 | the architecture doc names the EXTF sent ledger the code keeps |
+| F137 | MEDIUM | A value holding every private-use character made the client id hiding search for a free marker for about 42 seconds, freezing the server | Codex R17 | fixed | 24e3dda | every private-use character in all three ranges returns in under 2 s |
+| F138 | LOW | When no free marker was left, the fallback hid the plain id but showed a percent-escaped copy of it | Codex R17 | fixed | 24e3dda | exhausted READ forms never leak an escaped id in any decoding |
+| F139 | LOW | The architecture doc promised the same bookings are never sent twice, but the check compares whole files, so a re-exported file counts as new | Codex R17 | fixed | fb60536 | the architecture doc promises duplicate detection per file, as the whole-file hash gives |
 
 ## Evidence for rejected and disputed findings
 

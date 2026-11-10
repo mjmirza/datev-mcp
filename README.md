@@ -7,7 +7,7 @@ Ask your AI assistant about your DATEV bookkeeping, payroll and documents in pla
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
 ![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C582%20passing-green)
-![Tests](https://img.shields.io/badge/unit%20tests-394%20passing-green)
+![Tests](https://img.shields.io/badge/unit%20tests-400%20passing-green)
 
 ## What this is, in plain words
 
@@ -170,9 +170,9 @@ Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check
 |---|---|
 | Offline scenarios across all 209 operations | 28,582 of 28,582 passing |
 | Planted bugs the scenarios had to catch | 5 of 5 caught |
-| Unit and integration tests | 394 of 394 passing |
+| Unit and integration tests | 400 of 400 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
-| Adversarial review by two other AI models (Codex and Grok), 17 rounds | 131 of 136 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
+| Adversarial review by two other AI models (Codex and Grok), 18 rounds | 134 of 139 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
 
 Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
