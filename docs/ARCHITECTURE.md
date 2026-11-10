@@ -63,7 +63,9 @@ Writes never go out on the AI's word alone.
 ## What is deliberately not here
 
 - No background polling. DATEV is called when a tool is used, and once at start-up to retry revoking a token DATEV did not confirm before.
-- No database of client data. Answers pass through to the AI client. The one thing kept is the technical HTTP log DATEV requires, at least 14 days, in an owner-only folder on this computer. It holds request bodies and the answer body of failed requests and job status calls, which can contain client data.
+- No database of client data. Answers pass through to the AI client. Two things are kept in an owner-only folder on this computer.
+  - The technical HTTP log DATEV requires, kept at least 14 days. It holds request bodies and the answer body of failed requests and job status calls, which can contain client data.
+  - The EXTF sent ledger, `sent-sandbox.json` or `sent-production.json`. For each uploaded batch it keeps the client id, file name, content hash, time, job id and result, so the same bookings are never sent twice. It is not pruned, because forgetting a batch would allow a duplicate send. `datev-mcp disconnect` leaves it in place.
 - No DATEV specifications, descriptions or logos in this repository. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Where to read more

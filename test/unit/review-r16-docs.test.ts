@@ -34,3 +34,9 @@ test("the ledger check reads finding ids of three or more digits", () => {
   const rowRe = new RegExp(`^\\| F${re[1]} \\|`);
   assert.ok(rowRe.test("| F133 | LOW |") && rowRe.test("| F07 | LOW |"), `pattern F${re[1]} misses an id`);
 });
+
+test("the architecture doc names the EXTF sent ledger the code keeps", () => {
+  assert.match(read("src/tools/sent-ledger.ts"), /sent-\$\{env\}\.json/);
+  assert.match(arch, /sent-sandbox\.json/);
+  assert.doesNotMatch(arch, /The one thing kept/);
+});
