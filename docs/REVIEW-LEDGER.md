@@ -39,7 +39,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | rejected | - | DATEV minimum log scope (GEN-18, GEN-19) requires the full URL with query and the bodies of status answers, so they stay. Request bodies are added, see F33 |
 | F21 | HIGH | A failed log write is reported once, then DATEV traffic continues unlogged | R1-16, R2-8 | fixed | 6a099df | no call goes out while the technical HTTP log cannot be written |
 | F22 | MEDIUM | `datev_call` treats 3xx as success | R1-17 | fixed | b3996d8 | datev_call reports a DATEV redirect as an error and never saves its body |
-| F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28 | open | | |
+| F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28 | fixed | 9add0d5 | a write's approval dialog names the client by name and numbers, not only the technical id |
 | F24 | MEDIUM | Shipped `dist/data/operations.json` carries DATEV description text | R1-19 | open | | |
 | F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20 | open | | covered row by row as fixes land |
 | F26 | LOW | Connection tool says true or false instead of AKTIV or INAKTIV, disconnect without a session lacks the tokrevui link | R1-21 | fixed | 0324e85 | the connection status tool answers with AKTIV or INAKTIV text the person can read |
