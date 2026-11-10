@@ -112,3 +112,10 @@ test("an error answer exactly as long as the read limit that then goes quiet is 
   assert.equal((r.body as Record<string, unknown>).title, "EXACT");
 });
 
+
+test("an error answer that breaks off past the read limit still logs the break", async () => {
+  const entries: { error?: string; status?: number }[] = [];
+  const r = await callOperation(write(), writeInput, deps(async () => breaking(head), { httpLog: (e) => entries.push(e as { error?: string; status?: number }), httpLogProblem: () => undefined }));
+  assert.equal(r.status, 403);
+  assert.ok(entries.some((e) => /answer broke off: socket hang up/.test(e.error ?? "")), JSON.stringify(entries));
+});

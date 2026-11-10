@@ -354,7 +354,7 @@ async function idleRead(reader: ReadableStreamDefaultReader<Uint8Array>, ms: num
   }
 }
 
-async function readCapped(res: Response, cap: number, scan = false): Promise<{ bytes: Uint8Array; overflow: boolean; fields?: Record<string, unknown> }> {
+async function readCapped(res: Response, cap: number, scan = false): Promise<{ bytes: Uint8Array; overflow: boolean; fields?: Record<string, unknown>; broke?: string }> {
   if (!res.body) return { bytes: new Uint8Array(), overflow: false };
   const reader = res.body.getReader();
   const parts: Uint8Array[] = [];
@@ -383,6 +383,7 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
     if (pendingSize >= SCAN_BATCH) flush(false);
   };
   let scanEnd = 0;
+  let broke: string | undefined;
   for (;;) {
     // Past the cap only the error fields are wanted, so an answer that goes quiet or keeps dribbling is not waited for.
     let next: Awaited<ReturnType<typeof idleRead>>;
@@ -391,7 +392,8 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       if (left <= 0) break;
       try {
         next = await idleRead(reader, Math.min(SCAN_IDLE_MS, left)); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
-      } catch {
+      } catch (e) {
+        broke = e instanceof Error ? e.message : String(e);
         break; // a break past the cap keeps the head and the fields found so far
       }
     } else if (scan && size >= cap) {
@@ -426,10 +428,10 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
   }
   if (overflow && scan) flush(true);
   if (overflow) await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once done
-  return { bytes: join(parts), overflow, ...(overflow && scan ? { fields } : {}) };
+  return { bytes: join(parts), overflow, ...(overflow && scan ? { fields } : {}), ...(broke !== undefined ? { broke } : {}) };
 }
 
-async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array }> {
+async function readBody(res: Response, maxChars: number, maxBinary: number): Promise<{ body: unknown; truncated: boolean; bytes?: Uint8Array; broke?: string }> {
   const ct = res.headers.get("content-type") ?? "";
   // Only the bare media type counts, so a parameter like "; profile=json" cannot turn a PDF into text.
   const media = ct.split(";")[0]!.trim();
@@ -438,7 +440,7 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
   // Only a JSON error answer is scanned past the cap, for the fields DATEV puts after a long detail.
   const scan = res.status >= 400 && /json/i.test(media);
-  const { bytes, overflow, fields } = await readCapped(res, byteCap, scan);
+  const { bytes, overflow, fields, broke } = await readCapped(res, byteCap, scan);
   const binary = media !== "" ? !TEXTUAL.test(media) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -451,7 +453,7 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   if (truncated && scan) {
     const found: Record<string, unknown> = {};
     scanFields(text, found);
-    return { body: { cut_off: true, ...found, ...Object.fromEntries(Object.entries(fields ?? {}).filter(([k]) => found[k] === undefined)), text: slice }, truncated };
+    return { body: { cut_off: true, ...found, ...Object.fromEntries(Object.entries(fields ?? {}).filter(([k]) => found[k] === undefined)), text: slice }, truncated, ...(broke !== undefined ? { broke } : {}) };
   }
   if (!truncated && /json/i.test(media)) {
     try {
@@ -529,6 +531,8 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   if (res) {
     try {
       read = await readBody(res, deps.maxBodyChars ?? 100_000, deps.maxBinaryBytes ?? HARD_MAX_BYTES);
+      // A break past the cap keeps the answer, and the log still records the break.
+      if (read.broke !== undefined) cutOff = read.broke;
     } catch (e) {
       netErr = e; // the answer broke off while it was being read
       if (op.method !== "get" && res.status >= 200 && res.status < 300) {
