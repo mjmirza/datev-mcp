@@ -128,3 +128,11 @@ test("an access token that had already expired when the connection ended is neve
   assert.doesNotMatch(err.message, /confirmed every revoke/);
   assert.match(err.message, /expired/);
 });
+
+test("disconnect exits with an error when another app registration's tokens stay live, and not after --local-only", async () => {
+  const { disconnectExitCode } = await import("../../src/setup/disconnect.js");
+  assert.equal(disconnectExitCode({ removed: true, revoked: true }, false), 0);
+  assert.equal(disconnectExitCode({ removed: true, revoked: false }, false), 1, "tokens could not be revoked here");
+  assert.equal(disconnectExitCode({ removed: true, revoked: false }, true), 0, "the person chose --local-only");
+  assert.equal(disconnectExitCode({ removed: false, revoked: false }, false), 1);
+});

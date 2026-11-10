@@ -14,6 +14,9 @@ export interface DisconnectResult {
   message: string;
 }
 
+/** Exit code for the CLI: tokens left live at DATEV are a failure, unless the person chose --local-only. */
+export const disconnectExitCode = (r: { removed: boolean; revoked: boolean }, localOnly: boolean): number => (r.removed && (r.revoked || localOnly) ? 0 : 1);
+
 // DATEV requires a "disconnect" that revokes the refresh token at DATEV and deletes it in the app.
 // If DATEV cannot be reached the session is kept, so the token is never forgotten while it is still valid there.
 export async function disconnect(

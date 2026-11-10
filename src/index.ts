@@ -3,7 +3,7 @@ import { writeHttpLog } from "./api/http-log.js";
 import { serviceList } from "./auth/services.js";
 import { loadConfig } from "./config.js";
 import { doctorLine, localize, messageLang } from "./i18n.js";
-import { disconnect } from "./setup/disconnect.js";
+import { disconnect, disconnectExitCode } from "./setup/disconnect.js";
 import { complianceView, renderCompliance } from "./setup/compliance.js";
 import { doctor } from "./setup/doctor.js";
 import { login } from "./setup/login.js";
@@ -38,9 +38,10 @@ async function main(argv: string[]): Promise<number> {
     return st.connected ? 0 : 1;
   }
   if (cmd === "disconnect" || cmd === "logout") {
-    const r = await disconnect(loadConfig(), { localOnly: argv.includes("--local-only") });
+    const localOnly = argv.includes("--local-only");
+    const r = await disconnect(loadConfig(), { localOnly });
     process.stdout.write(`${localize(r.message, lang)}\n`);
-    return r.removed ? 0 : 1;
+    return disconnectExitCode(r, localOnly);
   }
   if (cmd === "services") {
     process.stdout.write(`${localize(serviceList(), lang)}\n`);
