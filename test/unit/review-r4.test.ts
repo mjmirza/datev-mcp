@@ -701,7 +701,7 @@ test("lost answers and the EXTF result note read in German", async () => {
   writeFileSync(stapledPdf, "%PDF-1.4 r8 lost");
   const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? Promise.reject(new TypeError("socket hang up")) : json(200, client(["Belegbilderservice"]))));
   const lost = await h.confirmed("datev_upload_file", { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-2" }, files: { files: [stapledPdf] }, fields: { metadata: { document_type: "Rechnungseingang" } } });
-  assert.match(localize(lost.text, "de"), /^DATEV hat nicht geantwortet: /);
+  assert.match(localize(lost.text, "de"), /^Die Verbindung zu DATEV brach ab, bevor DATEV antwortete\. DATEV hat diese Änderung möglicherweise schon übernommen/);
   const note = "DATEV accepted the file, but asking for the result stopped (DATEV did not answer: socket hang up). Check with datev_extf_job (client_id 455148-1, job_id J9). Do not send the file again.";
   assert.doesNotMatch(localize(note, "de"), /accepted|Check with|Do not send|did not answer/);
 });

@@ -291,7 +291,7 @@ function perOperation(op: Operation) {
       throw new TypeError("fetch failed");
     };
     const expected = op.method === "get" ? 3 : 1;
-    expectThrow("network.error", id, () => callOperation(op, good, mockDeps(() => json(200, {}), { fetch: failing }).deps), /did not answer/, () =>
+    expectThrow("network.error", id, () => callOperation(op, good, mockDeps(() => json(200, {}), { fetch: failing }).deps), op.method === "get" ? /did not answer/ : /broke off before it answered\. DATEV may already have applied/, () =>
       record("network.attempts", id, n === expected, `attempts ${n}, expected ${expected}`),
     );
   }

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { FetchLike } from "../../src/auth/token-client.js";
-import { callOperation, UncertainSendError, type CallDeps } from "../../src/api/client.js";
+import { callOperation, type CallDeps } from "../../src/api/client.js";
 import { getOperation } from "../../src/tools/catalog.js";
 
 // Guards for the error scan past the read limit (ledger R12).
@@ -77,9 +77,12 @@ test("a write whose error answer breaks off past the read limit is reported as r
   assert.equal((r.body as Record<string, unknown>).title, "REFUSED");
 });
 
-test("an error answer that breaks off before the read limit still counts as broken off", async () => {
-  const small = enc.encode(`{"title":"SHORT"`);
-  await assert.rejects(callOperation(write(), writeInput, deps(async () => breaking(small))), (e: Error) => e instanceof UncertainSendError && /broke off/.test(e.message));
+test("an error answer that breaks off before the read limit keeps its status and counts as cut off", async () => {
+  const small = enc.encode(`{"title":"SHORT",`);
+  const r = await callOperation(write(), writeInput, deps(async () => breaking(small)));
+  assert.equal(r.status, 403);
+  assert.equal(r.truncated, true);
+  assert.deepEqual([(r.body as Record<string, unknown>).cut_off, (r.body as Record<string, unknown>).title], [true, "SHORT"]);
 });
 
 test("the error scan keeps a numeric request id, also one cut at a scan batch edge", async () => {

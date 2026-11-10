@@ -248,6 +248,7 @@ const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Call again with save_to to store it as a file\.$/, () => "Rufen Sie erneut mit save_to auf, um sie als Datei zu speichern."],
   [/^The call was cancelled before DATEV was asked\.?$/, () => "Der Aufruf wurde abgebrochen, bevor DATEV gefragt wurde."],
   [/^The call was cancelled\.?$/, () => "Der Aufruf wurde abgebrochen."],
+  [/^The connection to DATEV broke off before it answered\.$/, () => "Die Verbindung zu DATEV brach ab, bevor DATEV antwortete."],
   [/^DATEV did not answer: ([\s\S]*)$/, (m) => `DATEV hat nicht geantwortet: ${m[1]}`],
   [/^DATEV's answer broke off: ([\s\S]*)$/, (m) => `Die Antwort von DATEV brach ab: ${m[1]}`],
   [/^Ran out of time while waiting for DATEV to answer\.$/, () => "Die Zeit beim Warten auf die Antwort von DATEV ist abgelaufen."],

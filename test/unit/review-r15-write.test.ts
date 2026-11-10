@@ -92,7 +92,8 @@ test("datev_call keeps the may-be-applied warning on a binary 5xx answer that wa
 test("a write whose answer breaks off before the cap says the change may already be applied", async () => {
   const c = await connect((s) => registerGenericTools(s, () => deps(breaking(new TextEncoder().encode("{\"a\":"), 500, "application/json"))));
   const out = await confirmed(c, "datev_call", release);
-  assert.match(out, /answer broke off/);
+  assert.match(out, /"status": 500/);
+  assert.match(out, /"cut_off": true/);
   assert.match(out, WARN);
   assert.match(localize("DATEV's answer broke off: socket hang up. DATEV may already have applied this change, so check in DATEV before sending it again.", "de"), /Antwort von DATEV brach ab: socket hang up\. DATEV hat diese Änderung möglicherweise schon übernommen/);
 });

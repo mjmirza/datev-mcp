@@ -494,7 +494,7 @@ async function idleRead(reader: ReadableStreamDefaultReader<Uint8Array>, ms: num
   }
 }
 
-async function readCapped(res: Response, cap: number, scan = false): Promise<{ bytes: Uint8Array; overflow: boolean; fields?: Record<string, unknown>; broke?: string }> {
+async function readCapped(res: Response, cap: number, scan = false, keepOnBreak = false): Promise<{ bytes: Uint8Array; overflow: boolean; fields?: Record<string, unknown>; broke?: string }> {
   if (!res.body) return { bytes: new Uint8Array(), overflow: false };
   const reader = res.body.getReader();
   const parts: Uint8Array[] = [];
@@ -548,7 +548,16 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
         overflow = true;
         if (scan) queue(join(parts));
       }
-    } else next = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+    } else {
+      try {
+        next = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+      } catch (e) {
+        // An error answer keeps what arrived, so its status and fields survive; a success must be whole.
+        if (!keepOnBreak) throw e;
+        broke = e instanceof Error ? e.message : String(e);
+        break;
+      }
+    }
     if (next === "idle" || next.done) break;
     const { value } = next;
     if (overflow) {
@@ -586,14 +595,14 @@ async function readBody(res: Response, maxChars: number, maxBinary: number): Pro
   const byteCap = Math.min(HARD_MAX_BYTES, declaredBinary ? maxBinary : maxChars >= HARD_MAX_BYTES ? HARD_MAX_BYTES : maxChars * 4 + 4);
   // Only a JSON error answer is scanned past the cap, for the fields DATEV puts after a long detail.
   const scan = res.status >= 400 && /json/i.test(media);
-  const { bytes, overflow, fields, broke } = await readCapped(res, byteCap, scan);
+  const { bytes, overflow, fields, broke } = await readCapped(res, byteCap, scan, res.status >= 400);
   const binary = media !== "" ? !TEXTUAL.test(media) : bytes.includes(0);
   if (binary) {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
-    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow, bytes, ...(broke !== undefined ? { broke } : {}) };
+    return { body: { binary: true, content_type: ct || undefined, size: bytes.length, sha256, ...(overflow ? { cut_at_bytes: byteCap } : {}) }, truncated: overflow || broke !== undefined, bytes, ...(broke !== undefined ? { broke } : {}) };
   }
   const text = new TextDecoder("utf-8").decode(bytes);
-  const truncated = overflow || text.length > maxChars;
+  const truncated = overflow || broke !== undefined || text.length > maxChars;
   const slice = text.length > maxChars ? text.slice(0, maxChars) : text;
   // A cut error answer keeps DATEV's title, help link and request id from wherever they appeared.
   if (truncated && scan) {
@@ -626,6 +635,17 @@ export const MAY_BE_APPLIED = "DATEV may already have applied this change, so ch
 function brokeOff(e: unknown, write: boolean): string {
   const why = (e instanceof Error ? e.message : String(e)).replace(/\.+$/, "");
   return `DATEV's answer broke off: ${why}.${write ? ` ${MAY_BE_APPLIED}` : ""}`;
+}
+
+// Codes that prove the request never left: no connection, no address, or a refused TLS handshake.
+const UNSENT = new Set(["ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN", "ENETUNREACH", "EHOSTUNREACH", "UNABLE_TO_VERIFY_LEAF_SIGNATURE", "DEPTH_ZERO_SELF_SIGNED_CERT"]);
+
+function nothingSent(e: unknown): boolean {
+  for (let cur = e, depth = 0; cur && typeof cur === "object" && depth < 5; cur = (cur as { cause?: unknown }).cause, depth++) {
+    const code = (cur as { code?: unknown }).code;
+    if (typeof code === "string" && (UNSENT.has(code) || code.startsWith("CERT_") || code.startsWith("ERR_TLS_"))) return true;
+  }
+  return false;
 }
 
 async function attempt(p: Prepared, n: number): Promise<CallResult> {
@@ -730,6 +750,7 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
     // A write may have reached DATEV before the time ran out, so it is checked first, never blindly resent.
     if ((netErr as Error | undefined)?.name === "TimeoutError" || Date.now() >= p.deadline - 100)
       throw new UncertainSendError(`Ran out of time while waiting for DATEV to answer. ${op.method !== "get" ? MAY_BE_APPLIED : "Try again, or narrow the request."}`);
+    if (op.method !== "get" && !nothingSent(netErr)) throw new UncertainSendError(`The connection to DATEV broke off before it answered. ${MAY_BE_APPLIED}`);
     throw new UncertainSendError(`DATEV did not answer: ${netErr instanceof Error ? netErr.message : String(netErr)}`);
   }
   if (!read) {
