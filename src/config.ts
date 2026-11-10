@@ -12,14 +12,16 @@ export interface Config {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const missing = ["DATEV_CLIENT_ID", "DATEV_CLIENT_SECRET"].filter((k) => !env[k]?.trim());
-  if (missing.length) throw new Error(`Missing ${missing.join(" and ")}. Provide them via your secret manager or environment.`);
+  // DATEV_CLIENT_SECRET is set for a Confidential client and left out for a Public one. In production a local
+  // app with an http://localhost redirect must be a Public client: DATEV blocks localhost redirects for Confidential ones.
+  if (!env.DATEV_CLIENT_ID?.trim()) throw new Error("Missing DATEV_CLIENT_ID. Provide it via your secret manager or environment.");
+  const secret = env.DATEV_CLIENT_SECRET?.trim() || undefined;
   const datevEnv = parseEnv(env.DATEV_ENV?.trim() || undefined);
   const scopes = env.DATEV_SCOPES?.trim() ? env.DATEV_SCOPES.split(/[\s+]+/).filter(Boolean) : undefined;
   return {
     env: datevEnv,
     endpoints: ENDPOINTS[datevEnv],
-    creds: { clientId: (env.DATEV_CLIENT_ID as string).trim(), clientSecret: env.DATEV_CLIENT_SECRET as string },
+    creds: { clientId: (env.DATEV_CLIENT_ID as string).trim(), ...(secret ? { clientSecret: secret } : {}) },
     services: env.DATEV_MCP_SERVICES?.trim() || undefined,
     scopes,
   };

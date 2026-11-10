@@ -363,7 +363,10 @@ async function attempt(p: Prepared, n: number): Promise<CallResult> {
   };
   // The caller's Accept wins, e.g. application/pdf for a PDF report. Otherwise ask for JSON first.
   if (!Object.keys(headers).some((k) => k.toLowerCase() === "accept")) headers.accept = "application/json, */*;q=0.5";
-  if (op.clientSecretHeader) headers["X-DATEV-Client-Secret"] = deps.creds.clientSecret;
+  if (op.clientSecretHeader) {
+    if (!deps.creds.clientSecret) throw new CallError(`${op.id} needs the app's client secret, which a DATEV Public client does not have. This API is available to Confidential clients only.`);
+    headers["X-DATEV-Client-Secret"] = deps.creds.clientSecret;
+  }
   for (const name of serverHeadersOf(op)) headers[name] = serviceKey(name, deps)!;
   if (p.contentType) headers["content-type"] = p.contentType;
   const cooldowns = deps.cooldowns ?? defaultCooldowns;

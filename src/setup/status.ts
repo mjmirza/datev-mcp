@@ -26,15 +26,28 @@ export interface ConnectionStatus {
   refresh_valid_until?: string;
   data_services?: string[];
   manage_connections: string;
+  /** DATEV client type: "Public" (PKCE, no secret) or "Confidential" (with secret). */
+  app_type: "Public" | "Confidential";
+  /** Setups DATEV does not allow, shown so the person sees them before DATEV's review does. */
+  warnings?: string[];
   error_rate_14_days?: ErrorRate;
   /** Refresh tokens of earlier logins that DATEV has not yet confirmed as revoked. Should be 0. */
   pending_revocations?: number;
 }
 
+/** Configurations DATEV blocks or forbids, worded for the person running the app. */
+export function setupWarnings(cfg: Pick<Config, "env" | "creds">): string[] {
+  const w: string[] = [];
+  if (cfg.env === "production" && cfg.creds.clientSecret)
+    w.push("DATEV blocks Confidential apps with a localhost redirect in production since 01.03.2026. Ask DATEV to switch this app to a Public client and remove DATEV_CLIENT_SECRET.");
+  return w;
+}
+
 export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void; now?: () => number } = {}): Promise<ConnectionStatus> {
   const store = opts.store ?? new TokenStore(cfg.env);
   const now = (opts.now ?? Date.now)();
-  const base: ConnectionStatus = { connected: false, env: cfg.env, manage_connections: REVOKE_UI };
+  const warnings = setupWarnings(cfg);
+  const base: ConnectionStatus = { connected: false, env: cfg.env, manage_connections: REVOKE_UI, app_type: cfg.creds.clientSecret ? "Confidential" : "Public", ...(warnings.length ? { warnings } : {}) };
   let s;
   try {
     s = store.read();
@@ -84,6 +97,8 @@ const T = {
     reason: "Reason",
     manage: "Manage connected apps at DATEV",
     rate: "Error rate, last 14 days",
+    appType: "App type",
+    warning: "Warning",
     pending: "Old refresh tokens not yet revoked",
     actions: 'Connect: datev-mcp login --services ...   Disconnect: datev-mcp disconnect',
   },
@@ -98,6 +113,8 @@ const T = {
     reason: "Grund",
     manage: "Verbundene Anwendungen bei DATEV",
     rate: "Fehlerquote, letzte 14 Tage",
+    appType: "App-Typ",
+    warning: "Warnung",
     pending: "Alte Refresh-Tokens noch nicht widerrufen",
     actions: "Verbinden: datev-mcp login --services ...   Trennen: datev-mcp disconnect",
   },
@@ -109,11 +126,17 @@ const REASON_DE: Record<string, string> = {
   "the saved connection belongs to a different DATEV app": "die gespeicherte Verbindung gehört zu einer anderen DATEV-App",
 };
 
+const WARN_DE: Record<string, string> = {
+  "DATEV blocks Confidential apps with a localhost redirect in production since 01.03.2026. Ask DATEV to switch this app to a Public client and remove DATEV_CLIENT_SECRET.":
+    "DATEV sperrt seit 01.03.2026 Confidential-Apps mit localhost-Redirect in der Produktion. Lassen Sie die App bei DATEV auf einen Public Client umstellen und entfernen Sie DATEV_CLIENT_SECRET.",
+};
+
 export function renderStatus(st: ConnectionStatus, lang: MessageLang, color = false): string {
   const t = T[lang];
   const light = st.connected ? (color ? "\u001b[32m●\u001b[0m" : "●") : color ? "\u001b[31m●\u001b[0m" : "○";
   const rows: [string, string | undefined][] = [
     [t.env, st.env],
+    [t.appType, st.app_type],
     [t.user, st.user],
     [t.until, st.refresh_valid_until],
     [t.services, st.data_services?.join(", ")],
@@ -126,6 +149,7 @@ export function renderStatus(st: ConnectionStatus, lang: MessageLang, color = fa
     ],
     [t.pending, st.pending_revocations ? String(st.pending_revocations) : undefined],
     [t.manage, st.manage_connections],
+    ...(st.warnings ?? []).map((w): [string, string] => [t.warning, lang === "de" ? (WARN_DE[w] ?? w) : w]),
   ];
   return [`${light} ${t.title}: ${st.connected ? t.on : t.off}`, ...rows.filter(([, v]) => v).map(([k, v]) => `  ${k.padEnd(34)} ${v}`), "", `  ${t.actions}`].join("\n");
 }

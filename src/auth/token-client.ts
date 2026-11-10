@@ -28,7 +28,15 @@ export class TokenError extends Error {
 
 export interface ClientCredentials {
   clientId: string;
-  clientSecret: string;
+  /** Absent for a DATEV "Public" client: a local app that cannot keep a secret signs in with PKCE alone. */
+  clientSecret?: string;
+}
+
+/** How the app identifies itself to the token and revoke endpoints: HTTP Basic for a Confidential client, client_id in the form for a Public one. */
+function clientAuth(creds: ClientCredentials, form: Record<string, string>): { headers: Record<string, string>; form: Record<string, string> } {
+  if (!creds.clientSecret) return { headers: {}, form: { ...form, client_id: creds.clientId } };
+  const basic = Buffer.from(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.clientSecret)}`).toString("base64");
+  return { headers: { authorization: `Basic ${basic}` }, form };
 }
 
 interface RawToken {
@@ -67,15 +75,15 @@ export interface TokenCallOptions {
 export async function postToken(url: string, form: Record<string, string>, creds: ClientCredentials, opts: TokenCallOptions = {}): Promise<TokenSet> {
   const doFetch = opts.fetch ?? fetch;
   const now = opts.now ?? Date.now;
-  const basic = Buffer.from(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.clientSecret)}`).toString("base64");
-  const headers = { authorization: `Basic ${basic}`, "content-type": "application/x-www-form-urlencoded", accept: "application/json" };
+  const auth = clientAuth(creds, form);
+  const headers = { ...auth.headers, "content-type": "application/x-www-form-urlencoded", accept: "application/json" };
   const call = { url, sentAt: Date.now(), requestHeaders: headers };
   let res: Response;
   try {
     res = await doFetch(url, {
       method: "POST",
       headers,
-      body: new URLSearchParams(form).toString(),
+      body: new URLSearchParams(auth.form).toString(),
       // A redirect would carry the client secret and the code or refresh token to another host.
       redirect: "error",
       signal: AbortSignal.timeout(opts.timeoutMs ?? 20_000),
@@ -139,15 +147,15 @@ export async function revokeToken(
   creds: ClientCredentials,
   opts: TokenCallOptions = {},
 ): Promise<void> {
-  const basic = Buffer.from(`${encodeURIComponent(creds.clientId)}:${encodeURIComponent(creds.clientSecret)}`).toString("base64");
-  const headers = { authorization: `Basic ${basic}`, "content-type": "application/x-www-form-urlencoded" };
+  const auth = clientAuth(creds, { token, token_type_hint: hint });
+  const headers = { ...auth.headers, "content-type": "application/x-www-form-urlencoded" };
   const call = { url: revokeUrl, sentAt: Date.now(), requestHeaders: headers };
   let res: Response;
   try {
     res = await (opts.fetch ?? fetch)(revokeUrl, {
       method: "POST",
       headers,
-      body: new URLSearchParams({ token, token_type_hint: hint }).toString(),
+      body: new URLSearchParams(auth.form).toString(),
       redirect: "error",
       signal: AbortSignal.timeout(opts.timeoutMs ?? 20_000),
     });

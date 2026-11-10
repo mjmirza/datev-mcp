@@ -133,6 +133,28 @@ test("revocation posts the token with Basic auth, refuses redirects, and fails l
   await assert.rejects(revokeToken(ep.revoke, "RT", "refresh_token", creds, { fetch: async () => new Response(null, { status: 400 }) }), /refused to revoke/);
 });
 
+test("a DATEV Public client signs in with PKCE and client_id alone, and production warns about a Confidential localhost setup", async () => {
+  const pub = loadConfig({ DATEV_CLIENT_ID: " cid ", DATEV_ENV: "production" });
+  assert.equal(pub.creds.clientSecret, undefined);
+  assert.equal(loadConfig({ DATEV_CLIENT_ID: "cid", DATEV_CLIENT_SECRET: "  s3cret \n" }).creds.clientSecret, "s3cret", "the secret is trimmed");
+  const { postToken } = await import("../../src/auth/token-client.js");
+  const seen: RequestInit[] = [];
+  const f: FetchLike = async (_u, i) => (seen.push(i!), new Response(JSON.stringify({ access_token: "AT", expires_in: 900 }), { headers: { "content-type": "application/json" } }));
+  await postToken(ep.token, { grant_type: "refresh_token", refresh_token: "RT" }, pub.creds, { fetch: f });
+  await revokeToken(ep.revoke, "RT", "refresh_token", pub.creds, { fetch: async (_u, i) => (seen.push(i!), new Response(null, { status: 200 })) });
+  for (const i of seen) {
+    assert.equal((i.headers as Record<string, string>).authorization, undefined, "no Basic header without a secret");
+    assert.equal(new URLSearchParams(String(i.body)).get("client_id"), "cid");
+  }
+  const { setupWarnings } = await import("../../src/setup/status.js");
+  assert.deepEqual(setupWarnings(pub), []);
+  const conf = loadConfig({ DATEV_CLIENT_ID: "cid", DATEV_CLIENT_SECRET: "s", DATEV_ENV: "production" });
+  assert.match(setupWarnings(conf)[0]!, /Public client/);
+  const st = await connectionStatus(conf, { store: new TokenStore("production", tmp(), envKeyStore()) });
+  assert.equal(st.app_type, "Confidential");
+  assert.match(renderStatus(st, "de"), /Warnung\s+DATEV sperrt/);
+});
+
 test("disconnect never reports success when a usable token was not revoked, and revokes pending tokens too", async () => {
   const store = new TokenStore("sandbox", tmp(), envKeyStore());
   const live = { accessToken: "AT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() };

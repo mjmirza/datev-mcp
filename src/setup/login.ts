@@ -11,7 +11,7 @@ import { TokenStore } from "../auth/token-store.js";
 import { fetchUserInfo } from "../auth/userinfo.js";
 import type { Config } from "../config.js";
 import { tokenLog } from "./token-log.js";
-import { formatDe, REVOKE_UI } from "./status.js";
+import { formatDe, REVOKE_UI, setupWarnings } from "./status.js";
 
 // DATEV's short-lived refresh token lasts 11 hours from login and is not extended by a refresh.
 const REFRESH_LIFETIME_MS = 11 * 60 * 60_000;
@@ -47,6 +47,7 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
   const log = opts.log ?? ((s: string) => process.stderr.write(`${s}\n`));
   const httpLog = opts.httpLog ?? ((e: HttpLogEntry) => writeHttpLog(e));
   const { services, scopes } = chooseScopes(cfg, opts.services);
+  for (const w of setupWarnings(cfg)) log(`WARNING: ${w}`);
   const state = randomToken();
   const nonce = randomToken();
   const pkce = newPkce();

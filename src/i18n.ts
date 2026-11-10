@@ -135,6 +135,10 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
     /^The DATEV session is encrypted, but its key is missing from the (.+)\. Log in again\.$/,
     (m) => `Die DATEV-Sitzung ist verschlüsselt, aber ihr Schlüssel fehlt im Speicher "${m[1]}". Melden Sie sich erneut an.`,
   ],
+  [
+    /^(\S+) needs the app's client secret, which a DATEV Public client does not have\. This API is available to Confidential clients only\.$/,
+    (m) => `${m[1]} braucht das Client Secret der App, das ein DATEV Public Client nicht hat. Diese API steht nur Confidential Clients zur Verfügung.`,
+  ],
   [/^Choose at least one DATEV data service\. ([\s\S]*)$/, (m) => `Wählen Sie mindestens einen DATEV-Datenservice. ${servicesTail(m[1])}`],
   [
     /^Unknown data service ((?:"[^"]*"(?:, )?)+)\. ([\s\S]*)$/,

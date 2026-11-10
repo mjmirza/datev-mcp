@@ -14,8 +14,9 @@ This takes about 20 minutes the first time, most of it in the DATEV developer po
 
 1. Sign in to the DATEV developer portal and create an app.
 2. Subscribe the app to the API products you need. Each product is a separate subscription. A call to a product you have not subscribed to fails with 401 or 403, and that is DATEV refusing, not this server.
-3. Add a redirect URI of the form `http://localhost` as your app settings allow. The login command starts a short-lived receiver on a free local port and prints the exact URL it uses.
-4. Copy the client id and client secret into your password manager.
+3. Choose the client type **Public**. datev-mcp runs on your own machine and signs in with PKCE, so it needs no client secret. DATEV blocks Confidential apps with a localhost redirect in production since 01.03.2026, so a Public client is the only setup that works in production. For an existing Confidential app, ask DATEV to switch it to Public.
+4. Add the redirect URI `http://localhost`. The login command starts a short-lived receiver on a free local port and prints the exact URL it uses. Never register an IP address or `https://localhost`, DATEV does not allow them.
+5. Copy the client id into your password manager. A Confidential sandbox app also has a client secret, keep it there too.
 
 ## 2. Install and build
 
@@ -36,7 +37,7 @@ The server reads these environment variables.
 | Variable | Required | Meaning |
 |---|---|---|
 | `DATEV_CLIENT_ID` | Yes | The app's client id from the portal |
-| `DATEV_CLIENT_SECRET` | Yes | The app's client secret |
+| `DATEV_CLIENT_SECRET` | No | Only for a Confidential app. Leave it out for a Public client, which production requires. A few APIs (Basisdaten online, SmartTransfer) work only with a Confidential client |
 | `DATEV_ENV` | No | `sandbox` (default) or `production` |
 | `DATEV_MCP_SERVICES` | No | Comma separated DATEV data services to connect, the same as `login --services`. Only their scopes are requested |
 | `DATEV_SCOPES` | No | Experts only. Exact space separated scopes, overriding the service choice |
@@ -47,7 +48,7 @@ The server reads these environment variables.
 | `DATEV_SMARTTRANSFER_API_KEY` | No | The `X-API-Key` for SmartTransfer. It stays in the server and is never passed through the assistant |
 | `DATEV_MCP_LANG` | No | `de` gives German messages and a German status view. Default English |
 
-Inject the two credentials from your password manager when you start the server, for example with a small launcher script that reads them from the vault and then runs `node dist/index.js`. Do not write them into a committed file, and never paste them into an AI conversation.
+Inject the credentials from your password manager when you start the server, for example with a small launcher script that reads them from the vault and then runs `node dist/index.js`. Do not write them into a committed file, and never paste them into an AI conversation.
 
 ## 4. Log in once
 
