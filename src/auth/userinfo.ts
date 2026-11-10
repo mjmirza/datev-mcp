@@ -1,3 +1,4 @@
+import { problemOf } from "../api/problem.js";
 import { iso, redactHeaders, type HttpLogEntry } from "../api/http-log.js";
 import type { FetchLike } from "./token-client.js";
 
@@ -36,7 +37,16 @@ export async function fetchUserInfo(
     response_headers: redactHeaders(res.headers),
     ...(res.ok ? {} : { response_body: text.slice(0, 2000) }),
   });
-  if (!res.ok) throw new Error(`DATEV's userinfo answered HTTP ${res.status}`);
+  if (!res.ok) {
+    let parsed: unknown = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* keep raw text */
+    }
+    const help = problemOf(parsed).help_url;
+    throw new Error(`DATEV's userinfo answered HTTP ${res.status}${help ? `. Help: ${help}` : ""}`);
+  }
   let body: Record<string, unknown> = {};
   try {
     body = JSON.parse(text) as Record<string, unknown>;

@@ -60,7 +60,7 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
   const tokenOpts = { fetch: opts.fetch, log: tokenLog(httpLog) };
   const tokens = await exchangeCode(cfg.endpoints.token, { code, redirectUri: cb.redirectUri, codeVerifier: pkce.verifier }, cfg.creds, tokenOpts);
   if (!tokens.idToken) throw new Error("DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.");
-  const claims = await verifyIdToken(tokens.idToken, { issuer: cfg.endpoints.issuer, clientId: cfg.creds.clientId, nonce, jwksUrl: cfg.endpoints.jwks, fetch: opts.fetch });
+  const claims = await verifyIdToken(tokens.idToken, { issuer: cfg.endpoints.issuer, clientId: cfg.creds.clientId, nonce, jwksUrl: cfg.endpoints.jwks, fetch: opts.fetch, accessToken: tokens.accessToken, log: httpLog });
   let name: string | undefined;
   try {
     const u = await fetchUserInfo(cfg.endpoints.userinfo, tokens.accessToken, cfg.creds.clientId, { fetch: opts.fetch, log: httpLog });

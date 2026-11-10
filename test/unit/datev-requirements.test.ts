@@ -56,6 +56,35 @@ test("an ID token is accepted only with DATEV's signature, issuer, audience, exp
   await assert.rejects(verifyIdToken(none, want), /algorithm/);
 });
 
+test("the ID token check rejects a foreign authorized party and a mismatching at_hash, and logs the signing-key request", async () => {
+  const { createHash } = await import("node:crypto");
+  await assert.rejects(verifyIdToken(idToken({ ...good, azp: "another-client" }), want), /authorized party/);
+  const half = (t: string) => createHash("sha256").update(t).digest().subarray(0, 16).toString("base64url");
+  const withHash = idToken({ ...good, at_hash: half("AT-1") });
+  assert.equal((await verifyIdToken(withHash, { ...want, accessToken: "AT-1" })).sub, "user-1");
+  await assert.rejects(verifyIdToken(withHash, { ...want, accessToken: "AT-2" }), /does not belong/);
+  const logged: HttpLogEntry[] = [];
+  await verifyIdToken(idToken(good), { ...want, log: (e) => logged.push(e) });
+  assert.equal(logged.length, 1);
+  assert.equal(logged[0]!.url, ep.jwks);
+  assert.equal(logged[0]!.status, 200);
+});
+
+test("token, userinfo and revoke errors keep DATEV's help link, and a null token answer is logged, not a crash", async () => {
+  const { postToken } = await import("../../src/auth/token-client.js");
+  const { fetchUserInfo } = await import("../../src/auth/userinfo.js");
+  const jsonRes = (status: number, body: unknown) => async () => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+  await assert.rejects(
+    postToken(ep.token, { grant_type: "refresh_token", refresh_token: "RT" }, creds, { fetch: jsonRes(400, { error: "invalid_grant", error_uri: "https://developer.datev.de/err/9" }) }),
+    /invalid_grant.*Help: https:\/\/developer\.datev\.de\/err\/9/,
+  );
+  await assert.rejects(fetchUserInfo(ep.userinfo, "AT", "cid", { fetch: jsonRes(403, { type: "https://help.datev.de/u1", title: "Forbidden" }) }), /HTTP 403\. Help: https:\/\/help\.datev\.de\/u1/);
+  await assert.rejects(revokeToken(ep.revoke, "RT", "refresh_token", creds, { fetch: jsonRes(400, { error: "unsupported", error_uri: "https://developer.datev.de/err/r" }) }), /HTTP 400\)\. Help: https:\/\/developer\.datev\.de\/err\/r/);
+  const lines: unknown[] = [];
+  await assert.rejects(postToken(ep.token, { grant_type: "refresh_token", refresh_token: "RT" }, creds, { fetch: jsonRes(200, null), log: (e) => lines.push(e) }), /non-JSON|bad_response|not/i);
+  assert.equal(lines.length, 1, "the null answer is in the log");
+});
+
 test("the session file holds no readable token, and an old plain-text session is encrypted on first read", () => {
   const dir = tmp();
   const store = new TokenStore("sandbox", dir, envKeyStore());

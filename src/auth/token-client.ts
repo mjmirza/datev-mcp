@@ -1,3 +1,4 @@
+import { problemOf } from "../api/problem.js";
 // DATEV token calls. Client auth is HTTP Basic. Never retried: codes and refresh tokens are
 // single-use, and a retried refresh that already reached DATEV invalidates the whole session.
 
@@ -87,7 +88,9 @@ export async function postToken(url: string, form: Record<string, string>, creds
   }
   let body: RawToken;
   try {
-    body = (await res.json()) as RawToken;
+    const parsed = (await res.json()) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+    body = parsed as RawToken;
   } catch {
     opts.log?.({ ...call, status: res.status, statusText: res.statusText, headers: res.headers, error: "non-JSON answer" });
     throw new TokenError("bad_response", `DATEV token endpoint returned HTTP ${res.status} with a non-JSON body`, res.status);
@@ -96,7 +99,8 @@ export async function postToken(url: string, form: Record<string, string>, creds
   if (!res.ok || str(body.error)) {
     const code = str(body.error) ?? `http_${res.status}`;
     const detail = str(body.error_description);
-    throw new TokenError(code, `DATEV rejected the token request: ${code}${detail ? ` (${detail})` : ""}`, res.status);
+    const help = problemOf(body).help_url;
+    throw new TokenError(code, `DATEV rejected the token request: ${code}${detail ? ` (${detail})` : ""}${help ? `. Help: ${help}` : ""}`, res.status);
   }
   const accessToken = str(body.access_token);
   if (!accessToken) throw new TokenError("bad_response", "DATEV token response has no access_token", res.status);
@@ -151,7 +155,16 @@ export async function revokeToken(
     opts.log?.({ ...call, error: e instanceof Error ? e.message : String(e) });
     throw new TokenError("network", `Could not reach DATEV to revoke the ${hint === "refresh_token" ? "refresh" : "access"} token: ${e instanceof Error ? e.message : String(e)}`);
   }
-  await res.body?.cancel();
+  const text = res.ok ? (await res.body?.cancel(), "") : await res.text().catch(() => "");
   opts.log?.({ ...call, status: res.status, statusText: res.statusText, headers: res.headers });
-  if (!res.ok) throw new TokenError(`http_${res.status}`, `DATEV refused to revoke the ${hint === "refresh_token" ? "refresh" : "access"} token (HTTP ${res.status})`, res.status);
+  if (!res.ok) {
+    let parsed: unknown = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* keep raw text */
+    }
+    const help = problemOf(parsed).help_url;
+    throw new TokenError(`http_${res.status}`, `DATEV refused to revoke the ${hint === "refresh_token" ? "refresh" : "access"} token (HTTP ${res.status})${help ? `. Help: ${help}` : ""}`, res.status);
+  }
 }
