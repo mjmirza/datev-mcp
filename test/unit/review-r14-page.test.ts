@@ -108,3 +108,88 @@ test("the login command on the page never splits across lines", async () => {
     assert.match(html, /code\{white-space:nowrap/, lang);
   }
 });
+
+async function visitWithPort(query: string, lang: "en" | "de") {
+  const before = process.env.DATEV_MCP_LANG;
+  process.env.DATEV_MCP_LANG = lang;
+  try {
+    const cb = await startCallbackServer(STATE, { timeoutMs: 5000 });
+    const settled = cb.result.catch(() => undefined);
+    const port = new URL(cb.redirectUri).port;
+    const res = await fetch(`${cb.redirectUri.replace("localhost", "127.0.0.1")}?${query}`, { signal: AbortSignal.timeout(5000) });
+    const html = await res.text();
+    await settled;
+    return { html, port };
+  } finally {
+    if (before === undefined) delete process.env.DATEV_MCP_LANG;
+    else process.env.DATEV_MCP_LANG = before;
+  }
+}
+
+test("the page height uses dynamic viewport units with a vh fallback", async () => {
+  const { html } = await visit(ok);
+  assert.match(html, /min-height:100vh;min-height:100dvh/);
+});
+
+test("the result is not drawn as an icon in a tinted disc", async () => {
+  for (const q of [ok, failed, mismatch]) {
+    const { html } = await visit(q);
+    assert.doesNotMatch(html, /<svg|class="mark"|\.mark\{/);
+  }
+});
+
+test("a status label in the tone colour sits above the heading", async () => {
+  const cases = [
+    [ok, "en", "Signed in"],
+    [failed, "en", "Sign-in failed"],
+    [mismatch, "en", "Not accepted"],
+    [ok, "de", "Angemeldet"],
+    [failed, "de", "Anmeldung fehlgeschlagen"],
+    [mismatch, "de", "Nicht angenommen"],
+  ] as const;
+  for (const [q, lang, label] of cases) {
+    const { html } = await visit(q, lang);
+    assert.match(html, new RegExp(`<p class="status">${label}</p><h1>`), `${lang} ${label}`);
+  }
+});
+
+test("the header names the product and the local port that took the callback", async () => {
+  for (const [lang, words] of [["en", "local sign-in"], ["de", "lokale Anmeldung"]] as const) {
+    const { html, port } = await visitWithPort(ok, lang);
+    assert.match(html, /<header>/);
+    assert.match(html, /<span class="wordmark">datev-mcp<\/span>/);
+    assert.ok(html.includes(words), `${lang} header words`);
+    assert.ok(port, "no port in redirect uri");
+    assert.ok(html.includes(`${lang === "de" ? "Port" : "port"} ${port}`), `${lang} port ${port}`);
+    assert.match(html, /--font-mono:/);
+  }
+});
+
+test("known OAuth errors become one plain sentence, the raw code stays secondary", async () => {
+  const en = await visit(`error=access_denied&state=${STATE}`, "en");
+  assert.match(en.html, /You cancelled the consent at DATEV, or this account cannot grant the requested data services\./);
+  assert.match(en.html, /<p class="raw">DATEV answered with <code>access_denied<\/code><\/p>/);
+  const de = await visit(`error=access_denied&state=${STATE}`, "de");
+  assert.match(de.html, /Sie haben die Zustimmung bei DATEV abgebrochen/);
+  assert.match(de.html, /<p class="raw">DATEV antwortete mit <code>access_denied<\/code><\/p>/);
+  for (const code of ["invalid_scope", "invalid_request", "unauthorized_client", "server_error", "temporarily_unavailable", "consent_required", "login_required"]) {
+    const a = await visit(`error=${code}&state=${STATE}`, "en");
+    const b = await visit(`error=${code}&state=${STATE}`, "de");
+    assert.doesNotMatch(a.html, /DATEV did not complete the login\./, code);
+    assert.doesNotMatch(b.html, /DATEV hat die Anmeldung nicht abgeschlossen\./, code);
+  }
+  const unknown = await visit(`error=weird_code&state=${STATE}`, "en");
+  assert.match(unknown.html, /DATEV did not complete the login\./);
+  assert.match(unknown.html, /<code>weird_code<\/code>/);
+});
+
+test("error pages show the next command as a full-width block", async () => {
+  for (const q of [failed, mismatch, `state=${STATE}`]) {
+    const { html } = await visit(q);
+    assert.match(html, /<div class="cmd"><code>datev-mcp login<\/code><\/div>/);
+    assert.match(html, /\.cmd\{display:block;/);
+  }
+  const { html } = await visit(ok);
+  assert.doesNotMatch(html, /class="cmd"/);
+  assert.match(html, /<p class="close">You can close this tab and return to your terminal\.<\/p>/);
+});

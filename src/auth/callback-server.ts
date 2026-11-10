@@ -15,32 +15,41 @@ export interface CallbackServer {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-// Mirrors the shadcn token names in OKLCH. One emerald accent, a rust tone only for the failure mark.
-const STYLE = `:root{color-scheme:light dark;--background:oklch(0.985 0.004 155);--foreground:oklch(0.22 0.012 155);--card:oklch(1 0 0);--card-foreground:oklch(0.22 0.012 155);--muted-foreground:oklch(0.46 0.012 155);--border:oklch(0.9 0.006 155);--primary:oklch(0.52 0.13 155);--primary-foreground:oklch(0.985 0.01 155);--destructive:oklch(0.52 0.16 28);--radius:0.75rem}
-@media (prefers-color-scheme: dark){:root{--background:oklch(0.18 0.006 155);--foreground:oklch(0.95 0.006 155);--card:oklch(0.22 0.008 155);--card-foreground:oklch(0.95 0.006 155);--muted-foreground:oklch(0.74 0.01 155);--border:oklch(0.32 0.01 155);--primary:oklch(0.74 0.14 155);--primary-foreground:oklch(0.18 0.006 155);--destructive:oklch(0.72 0.14 28)}}
+// Mirrors the shadcn token names in OKLCH. One emerald accent, a rust tone only for the failure status.
+const STYLE = `:root{color-scheme:light dark;--background:oklch(0.985 0.004 155);--foreground:oklch(0.22 0.012 155);--card:oklch(0.965 0.006 155);--card-foreground:oklch(0.22 0.012 155);--muted-foreground:oklch(0.46 0.012 155);--border:oklch(0.88 0.008 155);--primary:oklch(0.5 0.13 155);--primary-foreground:oklch(0.985 0.01 155);--destructive:oklch(0.52 0.16 28);--radius:0.5rem;--font-sans:"Inter","Geist",ui-sans-serif,sans-serif;--font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme: dark){:root{--background:oklch(0.18 0.006 155);--foreground:oklch(0.95 0.006 155);--card:oklch(0.22 0.008 155);--card-foreground:oklch(0.95 0.006 155);--muted-foreground:oklch(0.74 0.01 155);--border:oklch(0.34 0.01 155);--primary:oklch(0.76 0.14 155);--primary-foreground:oklch(0.18 0.006 155);--destructive:oklch(0.74 0.14 28)}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:clamp(1rem,4vw,2rem);background:var(--background);color:var(--foreground);font-family:"Inter","Geist",ui-sans-serif,sans-serif;font-size:clamp(0.95rem,0.9rem + 0.2vw,1.05rem);line-height:1.6}
-main{width:100%;max-width:28rem;padding:clamp(1.5rem,5vw,2.25rem);background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius)}
-.mark{display:grid;place-items:center;width:2.75rem;height:2.75rem;margin-bottom:1.25rem;border-radius:999px;color:var(--tone);background:color-mix(in oklch,var(--tone) 14%,transparent)}
-.mark svg{width:1.5rem;height:1.5rem}
+body{margin:0;min-height:100vh;min-height:100dvh;padding:12vh clamp(1rem,7vw,5rem) 3rem;background:var(--background);color:var(--foreground);font-family:var(--font-sans);font-size:1rem;line-height:1.6}
+main{max-width:36rem}
 .ok{--tone:var(--primary)}
 .bad{--tone:var(--destructive)}
-h1{margin:0 0 0.5rem;font-size:clamp(1.25rem,1.1rem + 0.8vw,1.6rem);line-height:1.25;font-weight:650;letter-spacing:-0.01em}
-p{margin:0 0 0.75rem;overflow-wrap:anywhere}
-.next{margin:1.25rem 0 0;padding-top:1rem;border-top:1px solid var(--border);color:var(--muted-foreground)}
-code{white-space:nowrap;font-family:ui-monospace,monospace;font-size:0.9em;padding:0.1em 0.35em;border:1px solid var(--border);border-radius:0.35rem}`;
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:0.25rem 0.75rem;margin-bottom:3rem;color:var(--muted-foreground);font-size:0.875rem}
+.wordmark{font-family:var(--font-mono);font-weight:600;font-size:1rem;color:var(--foreground);letter-spacing:-0.01em}
+.status{display:flex;align-items:center;gap:0.5rem;margin:0 0 0.5rem;color:var(--tone);font-weight:600;font-size:0.95rem}
+.status::before{content:"";width:0.55rem;height:0.55rem;border-radius:0.1rem;background:var(--tone);flex:none}
+h1{margin:0 0 0.75rem;font-size:clamp(1.6rem,1.25rem + 1.5vw,2.25rem);line-height:1.15;font-weight:700;letter-spacing:-0.02em}
+p{margin:0;overflow-wrap:anywhere}
+.lead{font-size:1.0625rem}
+.raw{margin-top:0.5rem;color:var(--muted-foreground);font-size:0.85rem}
+.close{margin-top:2rem;font-weight:600}
+.next{margin-top:2.5rem}
+.next p{color:var(--muted-foreground);margin-bottom:0.625rem}
+code{white-space:nowrap;font-family:var(--font-mono);font-size:0.9em;padding:0.1em 0.35em;border:1px solid var(--border);border-radius:0.3rem}
+.cmd{display:block;width:100%;padding:0.75rem 1rem;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto}
+.cmd code{border:0;padding:0;font-size:0.95rem}`;
 
-const CHECK = '<path d="M5 12.5l4.5 4.5L19 7.5"/>';
-const CROSS = '<path d="M7 7l10 10M17 7L7 17"/>';
+const COMMAND = "datev-mcp login";
 
-function page(outcome: CallbackOutcome, answer?: string): string {
+function page(outcome: CallbackOutcome, port: number, error?: string): string {
   const lang = messageLang();
-  const t = callbackPageText(outcome, lang);
+  const t = callbackPageText(outcome, lang, { port, error });
   const ok = outcome === "done";
-  const icon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ok ? CHECK : CROSS}</svg>`;
-  const detail = answer === undefined ? "" : `<p>${escapeHtml(t.answerLabel)} <code>${escapeHtml(answer)}</code></p>`;
-  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(t.title)}</title><style>${STYLE}</style></head><body><main class="${ok ? "ok" : "bad"}"><div class="mark">${icon}</div><h1>${escapeHtml(t.title)}</h1><p role="status">${escapeHtml(t.lead)}</p>${detail}<p class="next">${escapeHtml(t.next).replace("datev-mcp login", "<code>datev-mcp login</code>")}</p></main></body></html>`;
+  const raw = error === undefined ? "" : `<p class="raw">${escapeHtml(t.answerLabel)} <code>${escapeHtml(error)}</code></p>`;
+  const after = ok
+    ? `<p class="close">${escapeHtml(t.next)}</p>`
+    : `<section class="next"><p>${escapeHtml(t.next)}</p><div class="cmd"><code>${COMMAND}</code></div></section>`;
+  return `<!doctype html><html lang="${lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(t.title)}</title><style>${STYLE}</style></head><body><main class="${ok ? "ok" : "bad"}"><header><span class="wordmark">datev-mcp</span><span>${escapeHtml(t.where)}</span></header><p class="status">${escapeHtml(t.status)}</p><h1>${escapeHtml(t.title)}</h1><p class="lead" role="status">${escapeHtml(t.lead)}</p>${raw}${after}</main></body></html>`;
 }
 
 const HEADERS = {
@@ -57,6 +66,7 @@ export async function startCallbackServer(expectedState: string, opts: { timeout
   let settle!: { resolve: (r: CallbackResult) => void; reject: (e: Error) => void };
   const result = new Promise<CallbackResult>((resolve, reject) => (settle = { resolve, reject }));
   const servers: Server[] = [];
+  let port = 0;
 
   const handler: Parameters<typeof createServer>[1] = (req, res) => {
     const url = new URL(req.url ?? "/", "http://localhost");
@@ -68,16 +78,16 @@ export async function startCallbackServer(expectedState: string, opts: { timeout
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     if (state !== expectedState) {
-      res.writeHead(400, HEADERS).end(page("mismatch"));
+      res.writeHead(400, HEADERS).end(page("mismatch", port));
       settle.reject(new Error("State mismatch on the DATEV login redirect"));
       return;
     }
     if (error || !code) {
-      res.writeHead(400, HEADERS).end(error ? page("failed", error) : page("no-code"));
+      res.writeHead(400, HEADERS).end(error ? page("failed", port, error) : page("no-code", port));
       settle.reject(new Error(`DATEV login failed: ${error ?? "no code returned"}`));
       return;
     }
-    res.writeHead(200, HEADERS).end(page("done"));
+    res.writeHead(200, HEADERS).end(page("done", port));
     settle.resolve({ code });
   };
 
@@ -90,7 +100,7 @@ export async function startCallbackServer(expectedState: string, opts: { timeout
 
   const first = await listen("127.0.0.1", opts.port ?? 0);
   servers.push(first);
-  const port = (first.address() as AddressInfo).port;
+  port = (first.address() as AddressInfo).port;
   // Browsers may resolve "localhost" to ::1 first, so listen there too when IPv6 is available.
   await listen("::1", port).then((s) => servers.push(s), () => undefined);
 

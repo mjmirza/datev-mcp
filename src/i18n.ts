@@ -366,7 +366,9 @@ export type CallbackOutcome = "done" | "failed" | "no-code" | "mismatch";
 
 interface CallbackPageText {
   title: string;
+  status: string;
   lead: string;
+  where: string;
   answerLabel: string;
   next: string;
 }
@@ -374,37 +376,69 @@ interface CallbackPageText {
 interface CallbackWords {
   answerLabel: string;
   retry: string;
-  pages: Record<CallbackOutcome, { title: string; lead: string; next?: string }>;
+  where: (port: number) => string;
+  pages: Record<CallbackOutcome, { title: string; status: string; lead: string; next?: string }>;
+  oauthErrors: Record<string, string>;
 }
 
 const CALLBACK_TEXT: Record<MessageLang, CallbackWords> = {
   en: {
     answerLabel: "DATEV answered with",
-    retry: "Close this tab and run datev-mcp login again.",
+    retry: "Close this tab and run this command in your terminal again.",
+    where: (port) => `local sign-in on port ${port}`,
     pages: {
-      done: { title: "DATEV login complete", lead: "You are signed in to DATEV.", next: "You can close this tab and return to your terminal." },
-      failed: { title: "DATEV login failed", lead: "DATEV did not complete the login." },
-      "no-code": { title: "DATEV login failed", lead: "DATEV sent back no login code." },
-      mismatch: { title: "Login not accepted", lead: "The answer that reached this page does not belong to this login attempt, so it was not used." },
+      done: { title: "DATEV login complete", status: "Signed in", lead: "You are signed in to DATEV.", next: "You can close this tab and return to your terminal." },
+      failed: { title: "DATEV login failed", status: "Sign-in failed", lead: "DATEV did not complete the login." },
+      "no-code": { title: "DATEV login failed", status: "Sign-in failed", lead: "DATEV sent back no login code." },
+      mismatch: { title: "Login not accepted", status: "Not accepted", lead: "The answer that reached this page does not belong to this login attempt, so it was not used." },
+    },
+    oauthErrors: {
+      access_denied: "You cancelled the consent at DATEV, or this account cannot grant the requested data services.",
+      invalid_scope: "DATEV did not accept one of the requested data services for this client.",
+      invalid_request: "DATEV rejected the login request as incomplete or malformed.",
+      unauthorized_client: "This client is not allowed to sign in this way at DATEV. Check the client ID and its settings in the DATEV developer portal.",
+      server_error: "DATEV hit an internal error during the login. Try again in a moment.",
+      temporarily_unavailable: "The DATEV login service is busy or under maintenance right now. Try again later.",
+      consent_required: "DATEV needs your consent before it can sign you in.",
+      login_required: "DATEV needs you to sign in again before it can continue.",
     },
   },
   de: {
     answerLabel: "DATEV antwortete mit",
-    retry: "Schließen Sie diesen Tab und führen Sie datev-mcp login erneut aus.",
+    retry: "Schließen Sie diesen Tab und führen Sie diesen Befehl im Terminal erneut aus.",
+    where: (port) => `lokale Anmeldung über Port ${port}`,
     pages: {
-      done: { title: "DATEV-Anmeldung abgeschlossen", lead: "Sie sind bei DATEV angemeldet.", next: "Sie können diesen Tab schließen und zum Terminal zurückkehren." },
-      failed: { title: "DATEV-Anmeldung fehlgeschlagen", lead: "DATEV hat die Anmeldung nicht abgeschlossen." },
-      "no-code": { title: "DATEV-Anmeldung fehlgeschlagen", lead: "DATEV hat keinen Anmeldecode zurückgegeben." },
-      mismatch: { title: "Anmeldung nicht angenommen", lead: "Die Antwort auf dieser Seite gehört nicht zu diesem Anmeldeversuch und wurde daher nicht verwendet." },
+      done: { title: "DATEV-Anmeldung abgeschlossen", status: "Angemeldet", lead: "Sie sind bei DATEV angemeldet.", next: "Sie können diesen Tab schließen und zum Terminal zurückkehren." },
+      failed: { title: "DATEV-Anmeldung fehlgeschlagen", status: "Anmeldung fehlgeschlagen", lead: "DATEV hat die Anmeldung nicht abgeschlossen." },
+      "no-code": { title: "DATEV-Anmeldung fehlgeschlagen", status: "Anmeldung fehlgeschlagen", lead: "DATEV hat keinen Anmeldecode zurückgegeben." },
+      mismatch: { title: "Anmeldung nicht angenommen", status: "Nicht angenommen", lead: "Die Antwort auf dieser Seite gehört nicht zu diesem Anmeldeversuch und wurde daher nicht verwendet." },
+    },
+    oauthErrors: {
+      access_denied: "Sie haben die Zustimmung bei DATEV abgebrochen, oder dieses Konto kann die angefragten Datenservices nicht freigeben.",
+      invalid_scope: "DATEV hat einen der angefragten Datenservices für diesen Client nicht akzeptiert.",
+      invalid_request: "DATEV hat die Anmeldeanfrage als unvollständig oder fehlerhaft abgelehnt.",
+      unauthorized_client: "Dieser Client darf sich auf diesem Weg nicht bei DATEV anmelden. Prüfen Sie die Client-ID und ihre Einstellungen im DATEV-Entwicklerportal.",
+      server_error: "Bei DATEV ist während der Anmeldung ein interner Fehler aufgetreten. Versuchen Sie es gleich noch einmal.",
+      temporarily_unavailable: "Der Anmeldedienst von DATEV ist gerade ausgelastet oder in Wartung. Versuchen Sie es später erneut.",
+      consent_required: "DATEV benötigt Ihre Zustimmung, bevor die Anmeldung möglich ist.",
+      login_required: "DATEV verlangt eine erneute Anmeldung, bevor es weitergehen kann.",
     },
   },
 };
 
-/** The words on the browser page the login redirect lands on. */
-export function callbackPageText(outcome: CallbackOutcome, lang: MessageLang = messageLang()): CallbackPageText {
+/** The words on the browser page the login redirect lands on. A known OAuth error code gets its own plain sentence. */
+export function callbackPageText(outcome: CallbackOutcome, lang: MessageLang = messageLang(), opts: { port?: number; error?: string } = {}): CallbackPageText {
   const t = CALLBACK_TEXT[lang];
   const o = t.pages[outcome];
-  return { title: o.title, lead: o.lead, answerLabel: t.answerLabel, next: o.next ?? t.retry };
+  const known = opts.error !== undefined && Object.hasOwn(t.oauthErrors, opts.error) ? t.oauthErrors[opts.error] : undefined;
+  return {
+    title: o.title,
+    status: o.status,
+    lead: outcome === "failed" && known ? known : o.lead,
+    where: t.where(opts.port ?? 0),
+    answerLabel: t.answerLabel,
+    next: o.next ?? t.retry,
+  };
 }
 
 /** One doctor line, in the chosen language. */
