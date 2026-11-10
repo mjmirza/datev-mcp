@@ -62,8 +62,11 @@ export class Session {
             if (now.tokens.expiresAt - SKEW_MS > this.now()) return now.tokens.accessToken;
             throw new Error("Another process refreshed the DATEV session at the same moment. Try the call again");
           }
-          // The session file is never deleted here: another process may have just saved a newer one,
-          // and a dead session costs only one refused refresh until the next login overwrites it.
+          // The session file is never deleted here: another process may have just saved a newer one.
+          // The rejected refresh token is dropped, so it is never sent to DATEV again.
+          if (now && now.clientId === this.creds.clientId && now.tokens.refreshToken === s.tokens.refreshToken) {
+            this.store.write({ ...now, tokens: { ...now.tokens, refreshToken: undefined } });
+          }
           throw new NeedsLoginError(`DATEV no longer accepts the saved session (${e.code})`);
         }
         if (e instanceof TokenError && e.code === "invalid_client") throw new Error("DATEV rejected the app credentials (invalid_client). Check DATEV_CLIENT_ID and DATEV_CLIENT_SECRET. The saved session was kept, so no new login is needed once they are right");

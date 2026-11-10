@@ -18,6 +18,8 @@ export interface StoredSession {
   scopes?: string[];
   /** When the refresh token from this login stops working. DATEV does not extend it on refresh. */
   refreshExpiresAt?: number;
+  /** Refresh tokens of earlier logins that DATEV has not confirmed as revoked yet. Retried until it does. */
+  pendingRevoke?: string[];
 }
 
 interface Sealed {

@@ -202,6 +202,40 @@ test("data services carry DATEV's own names, spelled as DATEV writes them, never
   assert.doesNotMatch(list, /Online-API|Einkommenssteuer/);
 });
 
+test("an old refresh token DATEV did not revoke is kept encrypted, shown in the status, and retried until DATEV confirms", async () => {
+  const { revokePending } = await import("../../src/auth/pending-revoke.js");
+  const dir = tmp();
+  const store = new TokenStore("sandbox", dir, envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "NEW", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() }, pendingRevoke: ["OLD"] });
+  const down: FetchLike = async () => Promise.reject(new TypeError("fetch failed"));
+  assert.deepEqual(await revokePending(store, ep, creds, { fetch: down }), { revoked: 0, left: 1 });
+  assert.deepEqual(store.read()?.pendingRevoke, ["OLD"], "kept until DATEV confirms");
+  assert.ok(!readFileSync(store.file, "utf8").includes("OLD"), "stored encrypted");
+  const userinfo: FetchLike = async (u) => (String(u) === ep.revoke ? Promise.reject(new TypeError("down")) : new Response(JSON.stringify({ sub: "u1", name: "Erika" })));
+  const st = await connectionStatus(cfg, { store, fetch: userinfo, httpLog: () => {} });
+  assert.equal(st.pending_revocations, 1);
+  assert.match(renderStatus(st, "de"), /Alte Refresh-Tokens noch nicht widerrufen\s+1/);
+  const bodies: string[] = [];
+  const up: FetchLike = async (_u, i) => (bodies.push(String(i?.body)), new Response(null, { status: 200 }));
+  assert.deepEqual(await revokePending(store, ep, creds, { fetch: up }), { revoked: 1, left: 0 });
+  assert.ok(bodies[0]!.includes("token=OLD"));
+  assert.equal(store.read()?.pendingRevoke, undefined);
+  assert.equal(store.read()?.tokens.refreshToken, "NEW", "the current session is untouched");
+});
+
+test("a refresh token DATEV rejected is dropped, so it is never sent to DATEV again", async () => {
+  const { Session } = await import("../../src/auth/session.js");
+  const store = new TokenStore("sandbox", tmp(), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "DEAD", expiresAt: 1, obtainedAt: 0 } });
+  let sent = 0;
+  const reject: FetchLike = async () => (sent++, new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400, headers: { "content-type": "application/json" } }));
+  const s = new Session(store, ep, creds, { fetch: reject });
+  await assert.rejects(s.accessToken(), /login needed/i);
+  await assert.rejects(s.accessToken(), /login needed/i);
+  assert.equal(sent, 1, "the dead token went to DATEV once");
+  assert.equal(store.read()?.tokens.refreshToken, undefined);
+});
+
 test("token calls are logged with the real request time and redacted request headers, also when DATEV times out", async () => {
   const { postToken } = await import("../../src/auth/token-client.js");
   const { tokenLog } = await import("../../src/setup/token-log.js");

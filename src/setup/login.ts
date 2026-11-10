@@ -5,7 +5,8 @@ import { startCallbackServer } from "../auth/callback-server.js";
 import { verifyIdToken } from "../auth/id-token.js";
 import { newPkce, randomToken } from "../auth/pkce.js";
 import { selectServices, serviceLabel, serviceList, ServiceSelectionError } from "../auth/services.js";
-import { exchangeCode, revokeToken, type FetchLike } from "../auth/token-client.js";
+import { exchangeCode, type FetchLike } from "../auth/token-client.js";
+import { revokePending } from "../auth/pending-revoke.js";
 import { TokenStore } from "../auth/token-store.js";
 import { fetchUserInfo } from "../auth/userinfo.js";
 import type { Config } from "../config.js";
@@ -73,19 +74,15 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
   const store = opts.store ?? new TokenStore(cfg.env);
   // Under the session lock, so a refresh in another process cannot overwrite this login. The old refresh token is
   // revoked right after: DATEV allows only one valid refresh token per app and user at a time.
-  const previous = await store.withLock(async () => {
+  await store.withLock(async () => {
     const old = store.read();
-    store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt });
-    return old;
+    const sameApp = old?.clientId === cfg.creds.clientId;
+    const stale = [...(sameApp ? (old?.pendingRevoke ?? []) : []), ...(sameApp && old?.tokens.refreshToken ? [old.tokens.refreshToken] : [])].filter((t) => t !== tokens.refreshToken);
+    store.write({ env: cfg.env, clientId: cfg.creds.clientId, tokens, identity: { sub: claims.sub, name }, services, scopes, refreshExpiresAt, ...(stale.length ? { pendingRevoke: stale } : {}) });
   });
-  if (previous?.tokens.refreshToken && previous.clientId === cfg.creds.clientId && previous.tokens.refreshToken !== tokens.refreshToken) {
-    try {
-      await revokeToken(cfg.endpoints.revoke, previous.tokens.refreshToken, "refresh_token", cfg.creds, tokenOpts);
-      log("The refresh token of the previous login was revoked at DATEV.");
-    } catch (e) {
-      log(`WARNING: the previous refresh token could not be revoked (${(e as Error).message}). Remove the old connection at ${REVOKE_UI}.`);
-    }
-  }
+  const r = await revokePending(store, cfg.endpoints, cfg.creds, tokenOpts);
+  if (r.revoked) log("The refresh token of the previous login was revoked at DATEV.");
+  if (r.left) log(`WARNING: ${r.left} earlier refresh token(s) could not be revoked yet. Every "datev-mcp status" and server start retries. To end it now, remove the old connection at ${REVOKE_UI}.`);
   log(`Connected to DATEV ${cfg.env} as ${name ?? claims.sub}. The connection is valid until ${formatDe(refreshExpiresAt)}.`);
   log(`Session saved encrypted to ${store.file}. "datev-mcp status" shows the connection, "datev-mcp disconnect" ends it.`);
 }

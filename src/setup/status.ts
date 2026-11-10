@@ -1,5 +1,7 @@
 import { errorRate, type ErrorRate, type HttpLogEntry } from "../api/http-log.js";
+import { revokePending } from "../auth/pending-revoke.js";
 import { serviceLabel } from "../auth/services.js";
+import { tokenLog } from "./token-log.js";
 import type { FetchLike } from "../auth/token-client.js";
 import { TokenStore } from "../auth/token-store.js";
 import { fetchUserInfo } from "../auth/userinfo.js";
@@ -25,6 +27,8 @@ export interface ConnectionStatus {
   data_services?: string[];
   manage_connections: string;
   error_rate_14_days?: ErrorRate;
+  /** Refresh tokens of earlier logins that DATEV has not yet confirmed as revoked. Should be 0. */
+  pending_revocations?: number;
 }
 
 export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; fetch?: FetchLike; httpLog?: (e: HttpLogEntry) => void; now?: () => number } = {}): Promise<ConnectionStatus> {
@@ -38,6 +42,14 @@ export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; 
     return { ...base, reason: (e as Error).message };
   }
   if (!s) return { ...base, reason: "not connected" };
+  let pending = s.pendingRevoke?.length ?? 0;
+  if (pending) {
+    try {
+      pending = (await revokePending(store, cfg.endpoints, cfg.creds, { fetch: opts.fetch, log: opts.httpLog && tokenLog(opts.httpLog) })).left;
+    } catch {
+      /* the count stays as read */
+    }
+  }
   const until = s.refreshExpiresAt ?? s.tokens.obtainedAt + 11 * 60 * 60_000;
   const out: ConnectionStatus = {
     ...base,
@@ -45,6 +57,7 @@ export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; 
     refresh_valid_until: formatDe(until),
     data_services: s.services?.map(serviceLabel),
     error_rate_14_days: errorRate(14),
+    ...(pending ? { pending_revocations: pending } : {}),
   };
   if (s.clientId !== cfg.creds.clientId) return { ...out, reason: "the saved connection belongs to a different DATEV app" };
   if (!s.tokens.refreshToken && s.tokens.expiresAt <= now) return { ...out, reason: "the connection has expired" };
@@ -71,6 +84,7 @@ const T = {
     reason: "Reason",
     manage: "Manage connected apps at DATEV",
     rate: "Error rate, last 14 days",
+    pending: "Old refresh tokens not yet revoked",
     actions: 'Connect: datev-mcp login --services ...   Disconnect: datev-mcp disconnect',
   },
   de: {
@@ -84,6 +98,7 @@ const T = {
     reason: "Grund",
     manage: "Verbundene Anwendungen bei DATEV",
     rate: "Fehlerquote, letzte 14 Tage",
+    pending: "Alte Refresh-Tokens noch nicht widerrufen",
     actions: "Verbinden: datev-mcp login --services ...   Trennen: datev-mcp disconnect",
   },
 };
@@ -109,6 +124,7 @@ export function renderStatus(st: ConnectionStatus, lang: MessageLang, color = fa
         ? `${(st.error_rate_14_days.rate * 100).toFixed(1).replace(".", lang === "de" ? "," : ".")} % (${st.error_rate_14_days.errors}/${st.error_rate_14_days.requests})`
         : undefined,
     ],
+    [t.pending, st.pending_revocations ? String(st.pending_revocations) : undefined],
     [t.manage, st.manage_connections],
   ];
   return [`${light} ${t.title}: ${st.connected ? t.on : t.off}`, ...rows.filter(([, v]) => v).map(([k, v]) => `  ${k.padEnd(34)} ${v}`), "", `  ${t.actions}`].join("\n");
