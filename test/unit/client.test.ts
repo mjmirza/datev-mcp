@@ -29,6 +29,7 @@ const deps = (f: FetchLike, extra: Partial<CallDeps> = {}): CallDeps => ({
   token: async () => "TOKEN",
   fetch: f,
   sleep: async () => undefined,
+  cooldowns: new Map(),
   ...extra,
 });
 
@@ -155,12 +156,26 @@ test("catalog search finds the clients list and hides health checks by default",
   assert.ok(OPERATIONS.some((o) => o.clientSecretHeader), "smarttransfer and master-data need the secret header");
 });
 
-test("chaos: a write retries a 429, because DATEV refused it and cannot have applied it", async () => {
+test("fault injection: a write is never sent twice, not even after a 429, and the 429 is handed back", async () => {
   let n = 0;
   const w = op({ method: "post", write: true, path: "/x", params: [], body: { required: true, contentTypes: ["application/json"] } });
   const r = await callOperation(w, { body: { a: 1 } }, deps(async () => (++n < 3 ? json(429, {}, { "retry-after": "0" }) : json(201, { ok: true }))));
-  assert.equal(n, 3);
-  assert.equal(r.status, 201);
+  assert.equal(n, 1);
+  assert.equal(r.status, 429);
+});
+
+test("a long Retry-After pauses the next call to that service without asking DATEV, and the pause ends on time", async () => {
+  const cooldowns = new Map<string, number>();
+  let n = 0;
+  const f: FetchLike = async () => (n++, json(429, {}, { "retry-after": "3600" }));
+  const r = await callOperation(op(), { pathParams: { "client-id": "1" } }, deps(f, { cooldowns }));
+  assert.equal(r.status, 429);
+  assert.equal(n, 1, "a wait longer than the budget is not slept through");
+  await assert.rejects(callOperation(op(), { pathParams: { "client-id": "1" } }, deps(f, { cooldowns })), /pause requests to this service/);
+  assert.equal(n, 1, "the second call never reached DATEV");
+  for (const k of cooldowns.keys()) cooldowns.set(k, Date.now() - 1);
+  await callOperation(op(), { pathParams: { "client-id": "1" } }, deps(f, { cooldowns }));
+  assert.equal(n, 2, "after the pause, calls go out again");
 });
 
 test("never follows redirects, so the client secret header cannot reach another host", async () => {
@@ -302,4 +317,36 @@ test("a binary answer stays binary even when its content type parameters mention
     assert.ok(r.bytes, `no bytes for ${ct}`);
     assert.deepEqual([...r.bytes!], [...raw], `bytes changed for ${ct}`);
   }
+});
+
+test("no call goes out while the technical HTTP log cannot be written", async () => {
+  let sent = 0;
+  const f: FetchLike = async () => (sent++, json(200, {}));
+  await assert.rejects(
+    callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { httpLog: () => {}, httpLogProblem: () => "ENOSPC" })),
+    /HTTP log cannot be written \(ENOSPC\).*nothing was sent/,
+  );
+  assert.equal(sent, 0);
+  await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { httpLog: () => {}, httpLogProblem: () => undefined }));
+  assert.equal(sent, 1, "calls resume once the log works");
+});
+
+test("a write whose answer breaks off is still logged, and a retried error answer is logged with its body", async () => {
+  type Line = { status?: number; error?: string; response_body?: string };
+  const lines: Line[] = [];
+  const broken = () =>
+    new Response(new ReadableStream({ start: (c) => (c.enqueue(new TextEncoder().encode("{")), c.error(new Error("socket hang up"))) }), { status: 201, headers: { "content-type": "application/json" } });
+  // DATEV took the write (201): the status and headers are kept, the cut body is marked, and the break is logged once.
+  const r = await callOperation(op({ method: "post", write: true }), { pathParams: { "client-id": "1" } }, deps(async () => broken(), { httpLog: (e) => lines.push(e) }));
+  assert.equal(r.status, 201);
+  assert.equal(r.truncated, true);
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0]!.status, 201);
+  assert.match(lines[0]!.error ?? "", /broke off/);
+  lines.length = 0;
+  let n = 0;
+  const f: FetchLike = async () => (n++ === 0 ? json(429, { title: "Too many", type: "https://help.datev.de/429" }) : json(200, []));
+  await callOperation(op({}), { pathParams: { "client-id": "1" } }, deps(f, { httpLog: (e) => lines.push(e) }));
+  assert.equal(lines.length, 2);
+  assert.match(lines[0]!.response_body ?? "", /help\.datev\.de\/429/, "the retried 429 keeps DATEV's problem details in the log");
 });

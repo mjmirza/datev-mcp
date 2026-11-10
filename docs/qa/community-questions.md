@@ -75,4 +75,4 @@ Yes. `datev_write_extf_batch` takes optional `kost1` and `kost2` per row, each u
 
 ### How do I avoid duplicate imports?
 
-Each confirmation code is accepted once, so one approval cannot be sent twice. If the send fails after the code was accepted, request a new preview. Writes are never retried except after a 429.
+Each confirmation code is accepted once, so one approval cannot be sent twice. If the send fails after the code was accepted, request a new preview. Writes are never retried.

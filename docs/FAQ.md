@@ -36,7 +36,7 @@ Call the operation with `datev_call` and pass `save_to` with an absolute path. T
 DATEV prepares postings as a background job. Call again with the returned `job_id`, and with `from_page` if some pages were already read. No second job is started.
 
 **What happens when DATEV is slow or rate limits?**
-Reads retry 429, 502, 503, 504 and network errors up to three attempts, honoring `Retry-After`. Writes retry only a 429. Each DATEV call has a 55 second budget, token included, and your AI client can cancel it earlier.
+Reads retry 429, 502, 503, 504 and network errors up to three attempts, honoring `Retry-After`. Writes are never retried. Each DATEV call has a 55 second budget, token included, and your AI client can cancel it earlier.
 
 **How do I know the tests mean anything?**
 The offline scenarios are checked by planting bugs in the client and confirming the scenarios fail. The last check caught all three planted bugs with 440 failing scenarios. See [VALIDATION.md](VALIDATION.md).

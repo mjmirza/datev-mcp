@@ -1,6 +1,10 @@
 import { z } from "zod";
+import type { Operation } from "../spec/types.js";
+import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, MAY_BE_APPLIED, problemFields, type CallDeps } from "../api/client.js";
+import { describeClient, gateCall, hideClientId, hideClientParams, hideClientValues, shownClient } from "../api/client-gate.js";
+import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
@@ -12,6 +16,24 @@ const fail = (message: string) => ({ ...text(localize(message)), isError: true }
 
 const INLINE_BINARY_MAX = 256 * 1024;
 const scalar = z.union([z.string(), z.number(), z.boolean()]);
+
+/** How a declared path parameter names the client: its whole id, or one half of a consultant-client pair. */
+export function clientParamRole(name: string): "id" | "consultant" | "number" | undefined {
+  if (/^consultant[-_]?number$/i.test(name)) return "consultant";
+  if (/^client[-_]?number$/i.test(name)) return "number";
+  return /client/i.test(name) ? "id" : undefined;
+}
+
+/** Client ids in a call's own path parameters, for an operation the client gate does not check. */
+function clientIdsOf(op: Operation, pp: Record<string, string | number>): string[] {
+  const declared = op.params.filter((p) => p.in === "path" && pp[p.name] !== undefined).map((p) => p.name);
+  const value = (role: string) => declared.filter((n) => clientParamRole(n) === role).map((n) => String(pp[n]));
+  const ids = value("id");
+  const consultant = value("consultant")[0];
+  const number = value("number")[0];
+  if (consultant && number) ids.push(`${consultant}-${number}`);
+  return ids;
+}
 
 export function registerGenericTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
   server.registerTool(
@@ -77,14 +99,24 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
       const fingerprint = { tool: "datev_call", env: d.env, operation_id, path_params, query, headers, body, content_type };
       try {
         if (save_to) assertShareable(expandPath(save_to)); // never into ~/.ssh, a dotfile or a key file
+        // DATEV's permission checks run before any data moves, also through this generic tool.
+        const pp = (path_params ?? {}) as Record<string, string | number>;
+        if (op.product === "accounting-dataexchange" && pp.clientId !== undefined)
+          await dataexchangeGuard(String(pp.clientId), pp.fiscalYearId === undefined ? undefined : String(pp.fiscalYearId), d);
+        const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
+        // The ids that name a client in this call's address: the checked client, or the declared path parameters that name one.
+        const ids = client ? [client.client_id, client.guid] : clientIdsOf(op, pp);
         if (op.write && confirm !== true) {
           const url = buildUrl(op, d.env, input);
-          buildHeaders(op, input);
+          const sentHeaders = buildHeaders(op, input);
           return text({
             preview: true,
-            note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`,
+            note: localize(`This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`),
             method: op.method.toUpperCase(),
-            url: url.toString(),
+            url: hideClientId(url.toString(), ids),
+            ...(client ? { client: shownClient(client) } : {}),
+            // Every header the caller set, because some decide where DATEV delivers the result (Target-System, Notify-Url).
+            ...(Object.keys(sentHeaders).length ? { headers: hideClientValues(sentHeaders, ids) } : {}),
             body,
             confirm_token: issueConfirmToken(fingerprint),
           });
@@ -92,16 +124,38 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
+          const summary = [client && `Client: ${describeClient(client)}`, `${op.method.toUpperCase()} ${op.id}`, hideClientId(buildUrl(op, d.env, input).toString(), ids), path_params && `ids: ${JSON.stringify(hideClientParams(path_params, ids))}`, query && `query: ${JSON.stringify(hideClientValues(query as Record<string, unknown>, ids))}`, headers && `headers: ${JSON.stringify(hideClientValues(headers, ids))}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
+          const denied = await humanApproval(server, d.env, summary);
+          if (denied) return fail(denied);
         }
         const { bytes, ...r } = await callOperation(op, input, d);
-        const out: Record<string, unknown> = { ...r, env: d.env };
-        // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
-        if (bytes) {
-          if (save_to && r.status < 400 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
-          else if (bytes.length <= INLINE_BINARY_MAX && !r.truncated) out.base64 = Buffer.from(bytes).toString("base64");
-          else out.note = r.truncated ? `The file is larger than ${(r.body as { cut_at_bytes?: number }).cut_at_bytes ?? HARD_MAX_BYTES} bytes and was not read completely. Nothing was saved.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
+        const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
+        // The answer names the client by its name, never by the technical id in the addresses DATEV used.
+        if (ids.some(Boolean)) {
+          out.url = hideClientId(r.url, ids);
+          if (r.location) out.location = hideClientId(r.location, ids);
+          if (r.paging?.link) out.paging = { ...r.paging, link: hideClientId(r.paging.link, ids) };
         }
-        return r.status >= 400 ? { ...text(out), isError: true } : text(out);
+        if (client) out.client = shownClient(client);
+        // A redirect is not an answer: it is never followed, so nothing was read or done.
+        if (r.status >= 300 && r.status < 400)
+          out.note = op.write
+            ? `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. DATEV may already have applied this change, so check in DATEV before sending it again.`
+            : `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. Nothing was read.`;
+        // A server error on a write proves nothing: DATEV may still have applied it.
+        const warn = op.write && (r.status >= 500 || r.status === 408) ? MAY_BE_APPLIED : undefined;
+        if (warn) out.note = localize(warn);
+        // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
+        if (bytes && (r.status < 300 || r.status >= 400)) {
+          if (save_to && r.status < 300 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);
+          else if (bytes.length <= INLINE_BINARY_MAX && !r.truncated) out.base64 = Buffer.from(bytes).toString("base64");
+          else {
+            const why = r.truncated ? `The file is larger than ${(r.body as { cut_at_bytes?: number }).cut_at_bytes ?? HARD_MAX_BYTES} bytes and was not read completely. Nothing was saved.` : "Binary answer too large to show. Call again with save_to to store it as a file.";
+            // The may-be-applied warning is never replaced, only joined.
+            out.note = localize(warn ? `${warn} ${why}` : why);
+          }
+        }
+        return r.status >= 300 ? { ...text(out), isError: true } : text(out);
       } catch (e) {
         if (e instanceof NeedsLoginError || e instanceof CallError || e instanceof FileError) return fail(e.message);
         return fail(`DATEV call failed: ${e instanceof Error ? e.message : String(e)}`);

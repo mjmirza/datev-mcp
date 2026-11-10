@@ -17,11 +17,11 @@ Use `datev_upload_file` with `operation_id: "hr-files.post_v1_clients_client_id_
 
 ### Does `hr-files.post_v1_clients_client_id_files` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-files.post_v1_clients_client_id_files` need?
 
-`datev:hr:payrolldataupload` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataupload` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-files.post_v1_clients_client_id_files` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-files.post_v1_clients_client_id_files` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.post_v1_clients_client_id_files`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-files.get_v1_clients_client_id_jobs_job_id` need?
 
-`datev:hr:payrolldataupload` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataupload` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-files.get_v1_clients_client_id_jobs_job_id` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "job-id" that no list call has returned 
 
 ### Is `hr-files.get_v1_clients_client_id_jobs_job_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.get_v1_clients_client_id_jobs_job_id`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-files.get_v1_clients` need?
 
-`datev:hr:payrolldataupload` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataupload` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-files.get_v1_clients` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 363 ms with 6 items.
 
 ### Is `hr-files.get_v1_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.get_v1_clients`?
 
@@ -117,7 +117,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-files.get_v1_clients_client_id` need?
 
-`datev:hr:payrolldataupload` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`datev:hr:payrolldataupload` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `hr-files.get_v1_clients_client_id` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 251 ms.
 
 ### Is `hr-files.get_v1_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-files.get_v1_clients_client_id`?
 

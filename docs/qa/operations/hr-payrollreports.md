@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-payrollreports.getclients` need?
 
-`datev:hr:payrolldatareport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldatareport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-payrollreports.getclients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 148 ms with 6 items.
 
 ### Is `hr-payrollreports.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getclients`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-payrollreports.getclientbyclientid` need?
 
-`datev:hr:payrolldatareport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldatareport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-payrollreports.getclientbyclientid` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 240 ms.
 
 ### Is `hr-payrollreports.getclientbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getclientbyclientid`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-payrollreports.getpdfdocuments` need?
 
-`datev:hr:payrolldatareport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldatareport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-payrollreports.getpdfdocuments` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The live sweep skipped it: needs a real "period" that no list call has returned 
 
 ### Is `hr-payrollreports.getpdfdocuments` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getpdfdocuments`?
 
@@ -117,7 +117,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-payrollreports.getstatus` need?
 
-`datev:hr:payrolldatareport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldatareport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-payrollreports.getstatus` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The live sweep skipped it: needs a real "period" that no list call has returned 
 
 ### Is `hr-payrollreports.getstatus` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getstatus`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-payrollreports.getemployeenumbersbyperiod` need?
 
-`datev:hr:payrolldatareport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldatareport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-payrollreports.getemployeenumbersbyperiod` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "period" that no list call has returned 
 
 ### Is `hr-payrollreports.getemployeenumbersbyperiod` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getemployeenumbersbyperiod`?
 
@@ -181,7 +181,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-payrollreports.getdocumentmetadata` need?
 
-`datev:hr:payrolldatareport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldatareport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-payrollreports.getdocumentmetadata` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a value for required query "document_types".
 
 ### Is `hr-payrollreports.getdocumentmetadata` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-payrollreports.getdocumentmetadata`?
 

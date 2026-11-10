@@ -43,23 +43,38 @@ export function searchOperations(query: string, opts: SearchOptions = {}): Opera
   return hits.sort((a, b) => b.score - a.score || a.o.id.localeCompare(b.o.id)).slice(0, opts.limit ?? 15).map((s) => s.o);
 }
 
+// DATEV's terms forbid passing on its API documentation. Its prose (summaries, descriptions, examples) stays inside
+// the server for search and validation; tool answers carry only structure: names, types, formats and constraints.
+const PROSE = new Set(["description", "summary", "title", "example", "examples", "externalDocs", "x-example", "x-examples"]);
+
+export function structureOnly(v: unknown, fieldNames = false): unknown {
+  if (Array.isArray(v)) return v.map((x) => structureOnly(x));
+  if (!v || typeof v !== "object") return v;
+  const out: Record<string, unknown> = {};
+  for (const [k, val] of Object.entries(v)) {
+    // Under "properties" the keys are field names, so a field called "description" is a field, not prose.
+    if (!fieldNames && PROSE.has(k)) continue;
+    out[k] = structureOnly(val, !fieldNames && (k === "properties" || k === "patternProperties"));
+  }
+  return out;
+}
+
 export function summarize(o: Operation) {
-  return { id: o.id, method: o.method.toUpperCase(), path: o.path, summary: o.summary, write: o.write };
+  return { id: o.id, product: o.product, method: o.method.toUpperCase(), path: o.path, write: o.write };
 }
 
 export function describe(o: Operation, maxSchemaChars = 20_000) {
-  const schema = o.body?.schema === undefined ? undefined : JSON.stringify(o.body.schema);
+  const bodySchema = o.body?.schema === undefined ? undefined : structureOnly(o.body.schema);
+  const schema = bodySchema === undefined ? undefined : JSON.stringify(bodySchema);
   return {
     ...summarize(o),
-    product: o.product,
     api: o.api,
-    description: o.description,
     scopes: o.scopes,
-    params: o.params.map((p) => ({ name: p.name, in: p.in, required: p.required, description: p.description, schema: p.schema })),
+    params: o.params.map((p) => ({ name: p.name, in: p.in, required: p.required, schema: structureOnly(p.schema) })),
     body: o.body && {
       required: o.body.required,
       contentTypes: o.body.contentTypes,
-      schema: schema && schema.length > maxSchemaChars ? `${schema.slice(0, maxSchemaChars)}... [truncated]` : o.body.schema,
+      schema: schema && schema.length > maxSchemaChars ? `${schema.slice(0, maxSchemaChars)}... [truncated]` : bodySchema,
     },
     servers: o.servers,
   };

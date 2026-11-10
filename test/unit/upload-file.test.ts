@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { FetchLike } from "../../src/auth/token-client.js";
 import { registerUploadTools } from "../../src/tools/upload.js";
 
@@ -15,9 +16,15 @@ interface Sent {
   headers: Headers;
 }
 
-async function client(env: "sandbox" | "production" = "sandbox") {
+async function client(env: "sandbox" | "production" = "sandbox", approve?: boolean) {
   const sent: Sent[] = [];
   const f: FetchLike = async (u, init) => {
+    // DATEV's permission read before a transfer is not a transfer; only sends are counted.
+    if ((init?.method ?? "GET").toUpperCase() === "GET") {
+      const client = { name: "Muster GmbH", consultant_number: 455148, client_number: 1, client_guid: GUID };
+      const body = new URL(String(u)).pathname.endsWith("/clients") ? { clients: [client] } : client;
+      return new Response(JSON.stringify(body), { headers: { "content-type": "application/json" } });
+    }
     sent.push({ url: String(u), form: init?.body instanceof FormData ? init.body : undefined, headers: new Headers(init?.headers) });
     return new Response(JSON.stringify({ id: "ok" }), { status: 201, headers: { "content-type": "application/json" } });
   };
@@ -25,7 +32,9 @@ async function client(env: "sandbox" | "production" = "sandbox") {
   registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: f }));
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
-  const c = new Client({ name: "t", version: "0" });
+  // A client that can ask the person (elicitation). approve says what the person answers.
+  const c = new Client({ name: "t", version: "0" }, approve === undefined ? undefined : { capabilities: { elicitation: {} } });
+  if (approve !== undefined) c.setRequestHandler(ElicitRequestSchema, async () => ({ action: "accept", content: { approve } }));
   await c.connect(b);
   return { c, sent };
 }
@@ -113,9 +122,23 @@ test("parts follow the declared types, and a JSON field goes out as JSON", async
 });
 
 test("parts go out in the order the spec lists them, not the order given", async () => {
-  const { c, sent } = await client("production");
+  // The cash register API has no sandbox. In production a person approves every write in the client.
+  const { c, sent } = await client("production", true);
   await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
   assert.deepEqual([...sent[0].form!.keys()], ["metadata", "file"]);
+});
+
+test("a production write is never sent on a confirm code alone, even with DATEV_MCP_CONFIRM=token", async () => {
+  process.env.DATEV_MCP_CONFIRM = "token";
+  try {
+    const { c, sent } = await client("production");
+    const done = await send(c, { operation_id: "cashregister.importfile", path_params: { "tenant-id": "455148-1" }, headers: { "Request-Id": GUID }, files: { file: xml, metadata: meta } });
+    assert.equal(done.isError, true);
+    assert.match(text(done), /production needs your approval/);
+    assert.equal(sent.length, 0, "nothing reached DATEV");
+  } finally {
+    delete process.env.DATEV_MCP_CONFIRM;
+  }
 });
 
 test("a list of files goes to an array part as repeated parts", async () => {
@@ -148,7 +171,8 @@ test("wrong parts, wrong types, bad fields and bad headers are refused before an
     [{ operation_id: "my-tax-income-tax-documents.saveincometaxdocument", files: { file: pdf }, fields: { document: { note: "x" } } }, /source/],
     [{ operation_id: "hr-files.post_v1_clients_client_id_files", path_params: { "client-id": "455148-1" }, files: { file: big }, fields: { import_file_type: "bwd", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" } }, /limit is 3000000/],
     [{ operation_id: "hr-files.post_v1_clients_client_id_files", path_params: { "client-id": "455148-1" }, files: { file: xml }, fields: { import_file_type: "zip", target_system: "lodas", file_provider: "test", creation_time: "2026-11-08T10:00:00+01:00", payroll_accounting_month: "2026-10-31" } }, /one of/],
-    [{ operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: file("a.zip", "PK") } }, /ZIP/],
+    [{ operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-1" }, files: { files: [file("a.zip", "PK")] } }, /ZIP/],
+    [{ operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: pdf } }, /Use datev_upload_document/],
     [{ operation_id: "my-tax-income-tax-documents.saveincometaxdocument", files: { file: pdf }, fields: { document: { source: "fixture", note: "x".repeat(1001) } } }, /document\.note/],
     [{ ...hrFields(), files: { file: file("x".repeat(51) + ".txt", "x") } }, /at most 50/],
     [{ ...hrFields(), files: { file: xml }, fields: { ...hrFields().fields, file_provider: "p".repeat(51) } }, /at most 50/],
@@ -176,7 +200,7 @@ test("fields count against the 50 MB budget", async () => {
   const { c, sent } = await client();
   const r = await c.callTool({
     name: "datev_upload_file",
-    arguments: { operation_id: "accounting-documents.post_clients_client_id_documents", path_params: { "client-id": "455148-1" }, files: { file: pdf }, fields: { metadata: "x".repeat(51 * 1024 * 1024) } },
+    arguments: { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-1" }, files: { files: [pdf] }, fields: { metadata: "x".repeat(51 * 1024 * 1024) } },
   });
   assert.ok(isError(r));
   assert.match(text(r), /50 MB/);
@@ -196,4 +220,11 @@ test("hidden folders, key files and hard links are refused and nothing is sent",
     assert.ok(isError(r), p);
   }
   assert.equal(sent.length, 0);
+});
+
+test("the preview shows every header that will be sent, so nothing in the signed request is hidden from the user", async () => {
+  const { c } = await client();
+  const args = { operation_id: "traffiqx-invoice.uploadstructureddata", path_params: TQX, headers: { "X-App-Display-Name": "Kanzlei Test" }, files: { data: xml, view_component: view } };
+  const preview = JSON.parse(text(await c.callTool({ name: "datev_upload_file", arguments: args })));
+  assert.deepEqual(preview.headers, { "X-App-Display-Name": "Kanzlei Test" });
 });

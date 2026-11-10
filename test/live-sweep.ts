@@ -26,22 +26,38 @@ const done = REDO ? new Set<string>() : new Set(ledger.filter((e) => settled(e) 
 let usedToday = ledger.filter((e) => e.day === today && typeof e.status === "number").length;
 const write = (e: Entry) => {
   ledger.push(e);
-  appendFileSync(LEDGER, JSON.stringify(e) + "\n");
+  appendFileSync(LEDGER, JSON.stringify(e) + "\n", { mode: 0o600 });
 };
 
+// The live checks write test data. They run against the sandbox only, never against real client data.
+if (process.env.DATEV_ENV?.trim() && process.env.DATEV_ENV.trim() !== "sandbox") {
+  process.stderr.write(`The live checks run against the DATEV sandbox only, but DATEV_ENV is "${process.env.DATEV_ENV}". Nothing was sent.\n`);
+  process.exit(2);
+}
+const sandboxEnv = { ...(process.env as Record<string, string>), DATEV_ENV: "sandbox" };
 const launcher = process.env.DATEV_MCP_LAUNCHER;
 const transport = new StdioClientTransport(
-  launcher ? { command: launcher, args: [], env: process.env as Record<string, string> } : { command: process.execPath, args: ["dist/index.js"], env: process.env as Record<string, string> },
+  launcher ? { command: launcher, args: [], env: sandboxEnv } : { command: process.execPath, args: ["dist/index.js"], env: sandboxEnv },
 );
 const client = new Client({ name: "datev-mcp-sweep", version: "0" });
 await client.connect(transport, { timeout: 300_000 });
+// A launcher could still set production; the server says which environment it really runs in.
+{
+  const st = (await client.callTool({ name: "datev_connection_status", arguments: {} })) as { content: { text: string }[] };
+  const env = (JSON.parse(st.content[0]!.text) as { env?: string }).env;
+  if (env !== "sandbox") {
+    process.stderr.write(`The server runs against DATEV ${env}, not the sandbox. Stopped before any call.\n`);
+    await client.close();
+    process.exit(2);
+  }
+}
 
 const reads = OPERATIONS.filter((o) => o.method === "get" && o.servers.sandbox);
 const pathNames = (o: Operation) => [...o.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
 const KNOWN = "test/reports/live-known.json";
 // `${api}|${param}` -> value harvested from a live list response, kept across runs so later days can reach child operations.
 const known = new Map<string, string>(existsSync(KNOWN) ? Object.entries(JSON.parse(readFileSync(KNOWN, "utf8")) as Record<string, string>) : []);
-const saveKnown = () => writeFileSync(KNOWN, JSON.stringify(Object.fromEntries(known), null, 2));
+const saveKnown = () => writeFileSync(KNOWN, JSON.stringify(Object.fromEntries(known), null, 2), { mode: 0o600 }); // ids from DATEV, owner-only
 const norm = (s: string) => s.toLowerCase().replace(/[-_]/g, "");
 
 function fits(o: Operation, name: string, v: string): boolean {

@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `my-tax-mytax-income-tax-documents-health.health` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-mytax-income-tax-documents-health.health`?
 

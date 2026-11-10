@@ -96,17 +96,17 @@ function opQuestions(o: Op): QA[] {
     ? `Use ${code("datev_call")} with ${code(`operation_id: "${o.id}"`)}. The first call returns a preview and a confirmation code. Nothing is sent until the assistant calls again with ${code("confirm: true")} and that code.`
     : `Use ${code("datev_call")} with ${code(`operation_id: "${o.id}"`)} and the path and query values it needs.${headerNote}`;
   const callFull = o.write && !fileOnly ? call + headerNote : call;
-  const uploadWrite = `Yes. ${typed ? `${code("datev_upload_file")} and ${code(typed)} send it` : `${code("datev_upload_file")} sends it`} only after the preview and confirmation code, and it is never retried except after a 429.`;
+  const uploadWrite = `Yes. ${typed ? `${code("datev_upload_file")} and ${code(typed)} send it` : `${code("datev_upload_file")} sends it`} only after the preview and confirmation code, and it is never retried.`;
   const optional = o.scopes.filter((x) => x !== "openid");
   const scopes = o.scopes.length
-    ? `${o.scopes.map(code).join(" and ")}.${optional.length ? ` The server requests ${optional.length > 1 ? "them" : "it"} at login unless ${code("DATEV_SCOPES")} leaves ${optional.length > 1 ? "them" : "it"} out.` : ""}${o.scopes.includes("openid") ? ` ${code("openid")} is always requested.` : ""}`
+    ? `${o.scopes.map(code).join(" and ")}.${optional.length ? ` The server requests ${optional.length > 1 ? "them" : "it"} at login only when you choose this data service.` : ""}${o.scopes.includes("openid") ? ` ${code("openid")} is always requested.` : ""}`
     : "DATEV's spec names no scope for it. Access depends on the app's product subscription.";
   const live = ledger.get(o.id);
   const failing = !o.write && live !== undefined && typeof live.status === "number" && live.status >= 300;
   return [
     { q: `What is ${code(o.id)}?`, a: `An operation of the ${code(o.product)} product in the ${family(o.product)} area. It uses HTTP ${o.method.toUpperCase()} and ${kind}.${o.health ? " It is a health check that tells you whether the service is up." : ""}` },
     { q: `How do I call ${code(o.id)}?`, a: `${typed ? `The typed tool ${code(typed)} uses it for you and checks the answer. ` : ""}${callFull}` },
-    { q: `Does ${code(o.id)} change data in DATEV?`, a: o.write ? (multipart ? uploadWrite : fileOnly && !typed && !o.body!.required ? `Yes. ${code("datev_call")} can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried except after a 429.` : fileOnly && !typed ? `Yes, but ${code("datev_call")} cannot send it yet because it needs a file upload. No tool sends it today.` : o.id === "accounting-dataexchange.postaccountpostingsjob" ? `Not your bookings. It starts an export job on DATEV's side. ${code("datev_account_postings")} starts it directly without a preview, ${code("datev_call")} asks for a confirmation code first. It is never retried except after a 429.` : `Yes. Through ${fileOnly ? code(typed!) : `${code("datev_call")}${typed ? ` and ${code(typed)}` : ""}`} it goes through the preview and confirmation code, and it is never retried except after a 429.`) : "No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and network errors." },
+    { q: `Does ${code(o.id)} change data in DATEV?`, a: o.write ? (multipart ? uploadWrite : fileOnly && !typed && !o.body!.required ? `Yes. ${code("datev_call")} can call it without a file, with the preview and confirmation code, but cannot attach the file. It is never retried.` : fileOnly && !typed ? `Yes, but ${code("datev_call")} cannot send it yet because it needs a file upload. No tool sends it today.` : o.id === "accounting-dataexchange.postaccountpostingsjob" ? `Not your bookings. It starts an export job on DATEV's side. ${code("datev_account_postings")} starts it directly without a preview, ${code("datev_call")} asks for a confirmation code first. It is never retried.` : `Yes. Through ${fileOnly ? code(typed!) : `${code("datev_call")}${typed ? ` and ${code(typed)}` : ""}`} it goes through the preview and confirmation code, and it is never retried.`) : "No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and network errors." },
     { q: `Which scope does ${code(o.id)} need?`, a: scopes },
     { q: `What did ${code(o.id)} return in the DATEV sandbox?`, a: liveAnswer(o) },
     { q: `Is ${code(o.id)} covered by the offline tests?`, a: failedOps.has(o.id) ? `Not fully. Some scenarios failed for it in the run of ${evalDay}. See the eval report.` : `Yes. Every scenario that applies to it passed in the run of ${evalDay}, part of ${evalRun.total.toLocaleString("en")} scenarios over ${OPERATIONS.length} operations.` },
@@ -165,7 +165,7 @@ const CATEGORY: [RegExp, string][] = [
   [/^parse\.truncated/, "An answer cut at the size cap is marked as truncated."],
   [/^parse\./, "Answers in this format are read correctly, including NDJSON, plain text, empty bodies and German umlauts."],
   [/^retry\.exhausted/, "After the last retry the final status is returned, with three attempts for reads and one for writes."],
-  [/^retry\./, "Reads retry this status and succeed when DATEV recovers. Writes are not retried, except 429."],
+  [/^retry\./, "Reads retry this status and succeed when DATEV recovers. Writes are never retried."],
   [/^cap\./, "An endless answer stream is stopped at the cap instead of filling memory."],
   [/^write\./, "A write without confirmation returns a preview and sends nothing."],
   [/^prop\.ndjson/, "Property test: every generated list written as NDJSON reads back as the same list."],
@@ -189,13 +189,13 @@ const STATUSES: [number, string][] = [
   [204, "Success without a body."], [400, statusMeaning(400)], [401, statusMeaning(401)], [403, statusMeaning(403)], [404, statusMeaning(404)],
   [405, "The method is not allowed for that path. Check the operation id."], [406, "DATEV cannot answer in the requested format."], [409, "A conflict, for example the record changed or already exists."],
   [415, "The content type was not accepted. Check `content_type` or the file type."], [422, "DATEV understood the request but the content breaks its rules. The body explains which."],
-  [429, "DATEV's rate limit. Reads retry with Retry-After, writes are retried only for this status."], [500, statusMeaning(500)],
+  [429, "DATEV's rate limit. Reads retry with Retry-After, writes are never retried."], [500, statusMeaning(500)],
   [502, "Gateway error. Reads retry it."], [503, "Service unavailable. Reads retry it."], [504, "Gateway timeout. Reads retry it."],
 ];
 function statusQuestions(): QA[] {
   return STATUSES.flatMap(([n, m]) => [
     { q: `What does HTTP ${n} from DATEV mean?`, a: m },
-    { q: `Does the server retry HTTP ${n}?`, a: n === 429 ? "Yes, for reads and writes, as long as the wait fits the call budget." : [502, 503, 504].includes(n) ? "Yes, for reads only, up to three attempts within the call budget." : "No. The answer is returned as it is." },
+    { q: `Does the server retry HTTP ${n}?`, a: n === 429 ? "Yes, for reads only, as long as the wait fits the call budget. Writes are never retried." : [502, 503, 504].includes(n) ? "Yes, for reads only, up to three attempts within the call budget." : "No. The answer is returned as it is." },
   ]);
 }
 

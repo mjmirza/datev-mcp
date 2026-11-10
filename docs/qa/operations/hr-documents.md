@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-documents.getclients` need?
 
-`datev:hr:documents:upload`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:documents:upload`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-documents.getclients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `hr-documents.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.getclients`?
 
@@ -49,11 +49,11 @@ Use `datev_upload_file` with `operation_id: "hr-documents.uploaddocument"` and `
 
 ### Does `hr-documents.uploaddocument` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-documents.uploaddocument` need?
 
-`datev:hr:documents:upload`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:documents:upload`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-documents.uploaddocument` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-documents.uploaddocument` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.uploaddocument`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-documents.getclientbyconsultantclientnumber` need?
 
-`datev:hr:documents:upload`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:documents:upload`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-documents.getclientbyconsultantclientnumber` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 401 on 2026-11-07. The app is not subscribed to 
 
 ### Is `hr-documents.getclientbyconsultantclientnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.getclientbyconsultantclientnumber`?
 
@@ -113,11 +113,11 @@ Use `datev_upload_file` with `operation_id: "hr-documents.uploaddocumentbyconsul
 
 ### Does `hr-documents.uploaddocumentbyconsultantclientnumber` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `hr-documents.uploaddocumentbyconsultantclientnumber` need?
 
-`datev:hr:documents:upload`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:documents:upload`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-documents.uploaddocumentbyconsultantclientnumber` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `hr-documents.uploaddocumentbyconsultantclientnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-documents.uploaddocumentbyconsultantclientnumber`?
 

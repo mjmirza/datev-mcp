@@ -6,6 +6,7 @@ import { join } from "node:path";
 import fc from "fast-check";
 import { decodeBytes, encodeCp1252, validateExtf, writeBuchungsstapel, type BatchRow } from "@seamless-engineering/datev-extf";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { ElicitRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, parseJsonOrLines, type CallDeps, type CallInput } from "../../src/api/client.js";
@@ -16,6 +17,10 @@ import { registerGenericTools } from "../../src/tools/generic.js";
 import { registerUploadTools } from "../../src/tools/upload.js";
 import { matchAccounts, type LedgerAccount } from "../../src/tools/accounts.js";
 import { fiscalYearIds, jobPhase } from "../../src/tools/accounting.js";
+
+// The evals send through the real tools, which keep send records: never in the person's own folders.
+process.env.DATEV_MCP_HOME = mkdtempSync(join(tmpdir(), "datev-eval-home-"));
+process.env.DATEV_MCP_LOG_DIR = mkdtempSync(join(tmpdir(), "datev-eval-logs-"));
 
 interface Result { category: string; op: string; pass: boolean; detail?: string }
 const results: Result[] = [];
@@ -61,6 +66,9 @@ const sharesSegment = (op: Operation, name: string) => (op.path.split("/").find(
 
 // A value that satisfies the parameter's spec schema, so a valid call is actually valid.
 function sampleFor(op: Operation, name: string): string {
+  // eAU names the client by its numbers; the permission gate accepts only real ones.
+  if (name === "consultantNumber") return "1000";
+  if (name === "clientNumber") return "1";
   const s = paramSchema(op, name);
   if (s?.type === "integer") return String(s.minimum ?? 1);
   const pick = SAMPLE_CANDIDATES.find((c) => {
@@ -74,10 +82,13 @@ function sampleFor(op: Operation, name: string): string {
   return pick ?? "abc123";
 }
 
+const isServerHeader = (name: string) => name.toLowerCase() === "x-api-key";
+
 function validInput(op: Operation): CallInput {
   const pathParams = Object.fromEntries(pathNames(op).map((n) => [n, sampleFor(op, n)]));
   const query = Object.fromEntries(op.params.filter((p) => p.in === "query" && p.required).map((p) => [p.name, "1"]));
-  const headers = Object.fromEntries(op.params.filter((p) => p.in === "header" && p.required).map((p) => [p.name, sampleHeader(p.name)]));
+  // X-API-Key comes from the server's configuration, never from the caller.
+  const headers = Object.fromEntries(op.params.filter((p) => p.in === "header" && p.required && !isServerHeader(p.name)).map((p) => [p.name, sampleHeader(p.name)]));
   const input: CallInput = { pathParams, query, headers };
   if (op.body?.required) {
     const ct = op.body.contentTypes[0] ?? "application/json";
@@ -95,7 +106,16 @@ function mockDeps(respond: (n: number) => Response, extra: Partial<CallDeps> = {
     calls.push({ url: String(u), init });
     return respond(calls.length);
   };
-  const deps: CallDeps = { env: "sandbox", creds: { clientId: "cid", clientSecret: "SECRET" }, token: async () => "TOK", fetch, sleep: async () => {}, ...extra };
+  const deps: CallDeps = {
+    env: "sandbox",
+    creds: { clientId: "cid", clientSecret: "SECRET" },
+    token: async () => "TOK",
+    fetch,
+    sleep: async () => {},
+    serviceKeys: { "x-api-key": "SERVICEKEY" },
+    cooldowns: new Map(),
+    ...extra,
+  };
   return { deps, calls };
 }
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
@@ -172,10 +192,14 @@ function perOperation(op: Operation) {
     (v as URL).searchParams.get("q") === "a&b=c#d" && !(v as URL).searchParams.has("b") ? undefined : "query value split",
   );
 
-  for (const p of op.params.filter((x) => x.in === "header" && x.required)) {
+  for (const p of op.params.filter((x) => x.in === "header" && x.required && !isServerHeader(x.name))) {
     const h = { ...good.headers };
     delete h[p.name];
     expectThrow("header.missing-required", id, () => buildHeaders(op, { ...good, headers: h }), /required header/);
+  }
+  if (op.params.some((p) => p.in === "header" && isServerHeader(p.name))) {
+    expectThrow("header.service-key-from-caller", id, () => buildHeaders(op, { ...good, headers: { ...good.headers, "X-API-Key": "stolen" } }), /set by the server/);
+    expectThrow("header.service-key-missing", id, () => callOperation(op, good, mockDeps(() => json(200, {}), { serviceKeys: {} }).deps), /never passed through the assistant/);
   }
   RESERVED.forEach((r) => expectThrow("header.reserved", id, () => buildHeaders(op, { ...good, headers: { ...good.headers, [r]: "x" } }), /cannot be overridden/));
   ["a\r\nX-Evil: 1", "a\nb", "a\rb"].forEach((crlf) => expectThrow("header.crlf", id, () => buildHeaders(op, { ...good, headers: { ...good.headers, "X-Eval": crlf } }), /line break/));
@@ -188,6 +212,8 @@ function perOperation(op: Operation) {
       if (h["X-DATEV-Client-Id"] !== "cid") return "missing client id";
       if (op.clientSecretHeader !== (h["X-DATEV-Client-Secret"] === "SECRET")) return "client secret header mismatch";
       if (calls[0].init?.redirect !== "manual") return "redirects followed automatically, credentials could leave the DATEV host";
+      const wantsKey = op.params.some((p) => p.in === "header" && isServerHeader(p.name));
+      if (wantsKey !== (h["X-API-Key"] === "SERVICEKEY")) return "the service key is missing, or sent where the spec has no such header";
       return calls[0].init?.method === op.method.toUpperCase() ? undefined : "wrong method";
     });
   }
@@ -248,7 +274,7 @@ function perOperation(op: Operation) {
     const { deps, calls } = mockDeps((n) => (n < 3 ? json(status, {}, status === 429 ? { "retry-after": "0" } : {}) : json(200, [])));
     expectOk(`retry.${status}`, id, () => callOperation(op, good, deps), (v) => {
       const r = v as { status: number };
-      if (op.method === "get" || status === 429) return r.status === 200 && calls.length === 3 ? undefined : `status ${r.status}, calls ${calls.length}`;
+      if (op.method === "get") return r.status === 200 && calls.length === 3 ? undefined : `status ${r.status}, calls ${calls.length}`;
       return r.status === status && calls.length === 1 ? undefined : `write retried (${calls.length} calls)`;
     });
   });
@@ -265,7 +291,7 @@ function perOperation(op: Operation) {
       throw new TypeError("fetch failed");
     };
     const expected = op.method === "get" ? 3 : 1;
-    expectThrow("network.error", id, () => callOperation(op, good, mockDeps(() => json(200, {}), { fetch: failing }).deps), /did not answer/, () =>
+    expectThrow("network.error", id, () => callOperation(op, good, mockDeps(() => json(200, {}), { fetch: failing }).deps), op.method === "get" ? /did not answer/ : /broke off before it answered\. DATEV may already have applied/, () =>
       record("network.attempts", id, n === expected, `attempts ${n}, expected ${expected}`),
     );
   }
@@ -294,10 +320,21 @@ function perOperation(op: Operation) {
   record("search.recall-top50", id, hits.some((h) => h.id === id), "own summary did not find it");
 }
 
+// What DATEV answers to the reads before a transfer: the client with every data service, one fiscal year.
+const permissionRead = (url: string) =>
+  /\/fiscal-years$/.test(new URL(url).pathname)
+    ? json(200, [19920101])
+    : /\/document-types$/.test(new URL(url).pathname)
+      ? json(200, [{ name: "Rechnungseingang" }])
+      : /\/clients$/.test(new URL(url).pathname)
+      ? json(200, { clients: [{ client_guid: "3f2504e0-4f89-41d3-9a0c-0305e82c3301", consultant_number: 1000, client_number: 1, name: "Eval GmbH" }] })
+      : json(200, { name: "Eval GmbH", consultant_number: 1000, client_number: 1, services: ["Belegbilderservice", "Buchungsdatenservice", "Rechnungsdatenservice 1.0", "Datenservice Export Rechnungswesen"].map((name) => ({ name })) });
+
 async function writeConfirmGate() {
   const server = new McpServer({ name: "eval", version: "0" });
   let sent = 0;
-  const fetch: FetchLike = async () => (sent++, json(200, {}));
+  // DATEV's permission and fiscal year reads come before a preview; only a change counts as sent.
+  const fetch: FetchLike = async (u, init) => ((init?.method ?? "GET").toUpperCase() === "GET" ? permissionRead(String(u)) : (sent++, json(200, {})));
   registerGenericTools(server, () => ({ env: "sandbox", creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {} }));
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
@@ -332,16 +369,21 @@ async function uploadShapes() {
     writeFileSync(p, `eval file ${n} ${ext}`);
     return p;
   };
-  const ops = OPERATIONS.filter((o) => o.body?.contentTypes.some((t) => /^multipart\/form-data/i.test(t)));
+  // Single accounting documents go through datev_upload_document, which follows DATEV's document rules; the generic tool refuses them.
+  const routed = new Set(["accounting-documents.post_clients_client_id_documents", "accounting-documents.put_clients_client_id_documents_document_id"]);
+  const ops = OPERATIONS.filter((o) => o.body?.contentTypes.some((t) => /^multipart\/form-data/i.test(t)) && !routed.has(o.id));
   for (const op of ops) {
     const env = op.servers.sandbox ? "sandbox" : "production";
     const calls: { body: unknown }[] = [];
-    const fetch: FetchLike = async (_u, init) => (calls.push({ body: init?.body }), json(201, {}));
+    const fetch: FetchLike = async (u, init) => ((init?.method ?? "GET").toUpperCase() === "GET" ? permissionRead(String(u)) : (calls.push({ body: init?.body }), json(201, {})));
     const server = new McpServer({ name: "eval", version: "0" });
-    registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {} }));
+    registerUploadTools(server, () => ({ env, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch, sleep: async () => {}, serviceKeys: { "x-api-key": "SERVICEKEY" }, cooldowns: new Map() }));
     const [a, b] = InMemoryTransport.createLinkedPair();
     await server.connect(a);
-    const c = new Client({ name: "eval", version: "0" });
+    // The client can ask the person, and the person approves: production writes require that.
+    const c = new Client({ name: "eval", version: "0" }, { capabilities: { elicitation: { form: {} } } });
+    let asked = 0;
+    c.setRequestHandler(ElicitRequestSchema, async () => (asked++, { action: "accept" as const, content: { approve: true } }));
     await c.connect(b);
     const schema = flatPart(op.body?.schema as PartSchema);
     const props = Object.entries(schema.properties ?? {}).map(([n, s]) => [n, flatPart(s)] as const);
@@ -351,6 +393,8 @@ async function uploadShapes() {
       props.filter(([, s]) => (s.type === "array" ? s.items?.format : s.format) === "binary").map(([name, s]) => [name, s.type === "array" ? [fixture(extFor(name), n++), fixture(extFor(name), n++)] : fixture(extFor(name), n++)]),
     );
     const fields = Object.fromEntries(props.filter(([name]) => !(name in files) && (schema.required ?? []).includes(name)).map(([name, s]) => [name, sampleValue(s)]));
+    // A stapled document carries a document type of the client, as DATEV's document rules require.
+    if (op.id === "accounting-documents.put_clients_client_id_documents_stapled") fields.metadata = JSON.stringify({ document_type: "Rechnungseingang" });
     const g = validInput(op);
     const args = { operation_id: op.id, path_params: g.pathParams, query: g.query, headers: g.headers, files, fields };
     const preview = (await c.callTool({ name: "datev_upload_file", arguments: args })) as { content: { text: string }[]; isError?: boolean };
@@ -383,6 +427,7 @@ async function uploadShapes() {
       }
     }
     record("upload.parts-on-wire", op.id, problems.length === 0, problems.join(", "));
+    if (env === "production") record("upload.human-approval-asked", op.id, asked === 1, `asked ${asked} times`);
   }
 }
 

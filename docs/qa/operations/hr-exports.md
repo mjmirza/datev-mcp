@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getclients` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getclients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getclients`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getclientbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getclientbyclientid` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getclientbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getclientbyclientid`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.gettaxpaymentsbyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.gettaxpaymentsbyemployeeid` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.gettaxpaymentsbyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.gettaxpaymentsbyemployeeid`?
 
@@ -117,7 +117,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getsocialsecuritypaymentsbyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getsocialsecuritypaymentsbyemployeeid` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.getsocialsecuritypaymentsbyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getsocialsecuritypaymentsbyemployeeid`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getsalarytotalvaluesbyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getsalarytotalvaluesbyemployeeid` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.getsalarytotalvaluesbyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getsalarytotalvaluesbyemployeeid`?
 
@@ -181,7 +181,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getsalarypaymentsbyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getsalarypaymentsbyemployeeid` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.getsalarypaymentsbyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getsalarypaymentsbyemployeeid`?
 
@@ -213,7 +213,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getmasterdatabyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getmasterdatabyemployeeid` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.getmasterdatabyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getmasterdatabyemployeeid`?
 
@@ -245,7 +245,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getaccountingrecordsbyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getaccountingrecordsbyemployeeid` return in the DATEV sandbox?
 
@@ -253,7 +253,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.getaccountingrecordsbyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getaccountingrecordsbyemployeeid`?
 
@@ -277,7 +277,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getabsencesbyemployeeid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getabsencesbyemployeeid` return in the DATEV sandbox?
 
@@ -285,7 +285,7 @@ The live sweep skipped it: needs a real "employee-id" that no list call has retu
 
 ### Is `hr-exports.getabsencesbyemployeeid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getabsencesbyemployeeid`?
 
@@ -309,7 +309,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.gettaxpaymentslistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.gettaxpaymentslistbyclientid` return in the DATEV sandbox?
 
@@ -317,7 +317,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.gettaxpaymentslistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.gettaxpaymentslistbyclientid`?
 
@@ -341,7 +341,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getsocialsecuritypaymentslistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getsocialsecuritypaymentslistbyclientid` return in the DATEV sandbox?
 
@@ -349,7 +349,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getsocialsecuritypaymentslistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getsocialsecuritypaymentslistbyclientid`?
 
@@ -373,7 +373,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getsalarytotalvalueslistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getsalarytotalvalueslistbyclientid` return in the DATEV sandbox?
 
@@ -381,7 +381,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getsalarytotalvalueslistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getsalarytotalvalueslistbyclientid`?
 
@@ -405,7 +405,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getsalarypaymentslistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getsalarypaymentslistbyclientid` return in the DATEV sandbox?
 
@@ -413,7 +413,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getsalarypaymentslistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getsalarypaymentslistbyclientid`?
 
@@ -437,7 +437,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getmasterdatalistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getmasterdatalistbyclientid` return in the DATEV sandbox?
 
@@ -445,7 +445,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getmasterdatalistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getmasterdatalistbyclientid`?
 
@@ -469,7 +469,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getaccountingrecordslistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getaccountingrecordslistbyclientid` return in the DATEV sandbox?
 
@@ -477,7 +477,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getaccountingrecordslistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getaccountingrecordslistbyclientid`?
 
@@ -501,7 +501,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getabsenceslistbyclientid` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getabsenceslistbyclientid` return in the DATEV sandbox?
 
@@ -509,7 +509,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `hr-exports.getabsenceslistbyclientid` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getabsenceslistbyclientid`?
 
@@ -533,7 +533,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `hr-exports.getpersonnelnumberbycompanypersonnelnumber` need?
 
-`datev:hr:payrolldataexport`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:payrolldataexport`. The server requests it at login only when you choose this data service.
 
 ### What did `hr-exports.getpersonnelnumberbycompanypersonnelnumber` return in the DATEV sandbox?
 
@@ -541,7 +541,7 @@ The live sweep skipped it: needs a real "company-personnel-number" that no list 
 
 ### Is `hr-exports.getpersonnelnumberbycompanypersonnelnumber` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `hr-exports.getpersonnelnumberbycompanypersonnelnumber`?
 

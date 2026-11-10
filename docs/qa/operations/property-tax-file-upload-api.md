@@ -17,11 +17,11 @@ Use `datev_upload_file` with `operation_id: "property-tax-file-upload-api.upload
 
 ### Does `property-tax-file-upload-api.uploadfile` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `property-tax-file-upload-api.uploadfile` need?
 
-`datev:property-tax:files:upload`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:property-tax:files:upload`. The server requests it at login only when you choose this data service.
 
 ### What did `property-tax-file-upload-api.uploadfile` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `property-tax-file-upload-api.uploadfile` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `property-tax-file-upload-api.uploadfile`?
 

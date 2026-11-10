@@ -6,8 +6,8 @@ Ask your AI assistant about your DATEV bookkeeping, payroll and documents in pla
 ![License](https://img.shields.io/badge/license-source--available-lightgrey)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
-![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C462%20passing-green)
-![Tests](https://img.shields.io/badge/unit%20tests-101%20passing-green)
+![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C582%20passing-green)
+![Tests](https://img.shields.io/badge/unit%20tests-405%20passing-green)
 
 ## What this is, in plain words
 
@@ -21,8 +21,11 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 
 - **Answers without clicking.** Clients, fiscal years, sums and balances, account postings and the chart of accounts come straight from DATEV into the conversation.
 - **Nothing changes behind your back.** Every write that changes bookings, files or records returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client. The one exception is `datev_account_postings`, which starts DATEV's read-only postings export job directly.
-- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with thirteen focused tools for the everyday cases. Every operation that takes a file upload can be sent with `datev_upload_file`, after a preview.
+- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with 18 tools for the everyday cases and for calling any operation directly. Every operation that takes a file upload can be sent with `datev_upload_file`, after a preview.
 - **Your files stay yours.** The server refuses to send anything from hidden folders (where SSH keys and cloud logins live) or anything that looks like a key or credentials file.
+- **Your connection, under your control.** `status` shows who is connected and until when, `disconnect` revokes every token at DATEV before it deletes the local session, and a login that loses a data service's permission is ended for you.
+- **Client ids stay out of sight.** DATEV's technical client id is replaced by the client's name and numbers in previews, approvals, links and paging, so it never ends up in a conversation.
+- **English or German.** Set `DATEV_MCP_LANG=de` and the login page, `doctor`, previews, approvals and error messages speak German.
 - **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Rows the tools cannot read are counted in the answer (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is refused.
 
 ## From zero to your first answer
@@ -43,20 +46,23 @@ npm run build
 
 ### 2. Add your DATEV app credentials
 
-Copy the example settings file and fill in the client id and secret from your app in the DATEV developer portal.
+For production, inject the client id and secret from a password manager when the server starts, so the secret is never written to disk. For sandbox development a local settings file is fine.
 
 ```bash
 cp .env/.env.example .env/.env.local
-# edit .env/.env.local: DATEV_CLIENT_ID and DATEV_CLIENT_SECRET
+# edit .env/.env.local: DATEV_CLIENT_ID and DATEV_CLIENT_SECRET (sandbox only)
 ```
 
-Git ignores `.env/.env.local`. Every setting is explained in [.env/README.md](.env/README.md). A password manager that injects the two values at start is safer than a file, and either works. Never paste the secret into a chat.
+Git ignores `.env/.env.local`, but the file is plain text, so do not keep a production secret in it. Every setting is explained in [.env/README.md](.env/README.md). Never paste the secret into a chat.
 
 ### 3. Sign in once
 
 ```bash
-node --env-file=.env/.env.local dist/index.js login
+node --env-file=.env/.env.local dist/index.js services
+node --env-file=.env/.env.local dist/index.js login --services accounting-dataexchange,accounting-documents,accounting-extf-files
 ```
+
+Pick the data services you will use from the `services` list. DATEV allows only their scopes, so the server asks for nothing more.
 
 A browser window opens at DATEV's sandbox login. These are the four screens you will see.
 
@@ -72,9 +78,18 @@ A browser window opens at DATEV's sandbox login. These are the four screens you 
 
 ![DATEV consent page listing the requested permissions](docs/images/03-signin-consent.png)
 
-**3d. Done.** The browser shows a short confirmation and your terminal prints `Logged in to DATEV sandbox`. The session is saved on your machine with owner-only permissions.
+**3d. Done.** The browser shows a short confirmation page, in light or dark to match your system and in German with `DATEV_MCP_LANG=de`, and your terminal prints `Connected to DATEV sandbox as <your name>` with the date and time the connection stays valid. The session is saved encrypted on your machine. `dist/index.js status` shows the connection at any time, `dist/index.js disconnect` ends it.
 
 ![Login complete page](docs/images/04-signin-done.png)
+
+| Command | Does |
+|---|---|
+| `login --services a,b` | Connects to DATEV with the data services you choose |
+| `status` | Shows whether the connection is active, for whom and until when |
+| `disconnect` | Revokes every token at DATEV, then deletes the local session. `--local-only` skips the revoke |
+| `services` | Lists the data services you can choose |
+| `doctor` | Checks credentials, the session and live API access |
+| `compliance` | Shows how this installation meets DATEV's interface requirements |
 
 Working over SSH, or want a different browser? Set `DATEV_MCP_NO_BROWSER=1` and the command only prints the link.
 
@@ -129,36 +144,41 @@ These are real answers from the DATEV sandbox, unedited apart from shortening lo
 | Tool | What it does | Changes data |
 |---|---|---|
 | `datev_list_clients` | Lists the clients (Mandanten) your login can see | No |
-| `datev_list_fiscal_years` | Lists a client's fiscal years | No |
+| `datev_list_fiscal_years` | Lists a client's fiscal years, after checking the client switched on Datenservice Export Rechnungswesen | No |
 | `datev_sums_and_balances` | Summen- und Saldenliste, filterable by account prefix | No |
 | `datev_account_postings` | Posted bookings for a fiscal year, all pages, resumable | No |
 | `datev_find_accounts` | Searches the client's real chart of accounts (SKR03, SKR04 or custom) | No |
 | `datev_validate_extf` | Checks a DATEV EXTF booking file locally, before anything is sent | No |
 | `datev_write_extf_batch` | Builds a valid EXTF booking file from rows you describe, cost centres included | No, writes a local file |
-| `datev_upload_extf` | Imports an EXTF booking file into a client | Yes, preview first |
-| `datev_upload_document` | Uploads a receipt or invoice to the Belegbilderservice | Yes, preview first |
+| `datev_upload_extf` | Imports an EXTF booking file into a client with Buchungsdatenservice, waits for DATEV's import result, refuses to send the same file twice by accident | Yes, preview first |
+| `datev_extf_job` | Shows the result of an earlier EXTF import | No |
+| `datev_upload_document` | Uploads a receipt or invoice to Belegbilderservice or Buchungsdatenservice, with the client's own document types | Yes, preview first |
+| `datev_document_types` | Lists the document types (Belegtypen) a client accepts | No |
+| `datev_check_client` | Checks with consultant and client number that a data service may be used for a client | No |
 | `datev_upload_file` | Sends local files to any DATEV operation that takes a multipart upload | Yes, preview first |
 | `datev_search_operations` | Finds DATEV operations by words (health checks with `include_health`) | No |
 | `datev_describe_operation` | Shows the parameters an operation needs | No |
+| `datev_connection_status` | Shows whether the DATEV connection is active, for whom, and until when | No |
+| `datev_compliance` | Shows how this installation meets DATEV's interface requirements | No |
 | `datev_call` | Calls a DATEV operation by id, reads directly, writes with preview. Sends JSON or text. Files go through `datev_upload_file` | Writes need confirmation |
 
 ## How well it is tested
 
-Every number below comes from a real run on 2026-11-07. The method and how to reproduce each one is in [docs/VALIDATION.md](docs/VALIDATION.md).
+Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check and the live sandbox numbers are from 2026-11-07 and 2026-11-08. The method and how to reproduce each one is in [docs/VALIDATION.md](docs/VALIDATION.md).
 
 | Check | Result |
 |---|---|
-| Offline scenarios across all 209 operations | 28,496 of 28,496 passing |
-| Planted bugs the scenarios had to catch | 3 of 3 caught, 440 failing scenarios |
-| Unit and integration tests | 101 of 101 passing |
+| Offline scenarios across all 209 operations | 28,582 of 28,582 passing |
+| Planted bugs the scenarios had to catch | 5 of 5 caught |
+| Unit and integration tests | 405 of 405 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
-| Independent review by a second AI model (Codex), four passes | 46 of 48 findings fixed. Two known limits remain, listed in [SECURITY.md](docs/SECURITY.md) |
+| Adversarial review by two other AI models (Codex and Grok), 19 rounds | 136 of 141 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
 
 Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
 ## Safety in one paragraph
 
-Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. The login token request and `doctor` use fetch's default redirect handling. Logins use OAuth with PKCE and the session is stored on your machine with owner-only permissions. Writes need a preview-bound confirmation code. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
+Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. Token, revoke, userinfo and `doctor` calls refuse redirects too. Logins use OAuth with PKCE, DATEV's ID token is verified, and the session is stored encrypted with the key in your operating system's credential store. Writes need a preview-bound confirmation code, and in production you approve each one in the client. A write that DATEV answers with a server error is reported as possibly applied, never as safely refused. Disconnect revokes every token at DATEV, and a token DATEV does not confirm as revoked is kept on record and retried. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## For developers
 
@@ -175,8 +195,8 @@ Operation calls only go to the DATEV hosts named in DATEV's specs and never foll
 src/
   api/client.ts      builds, sends and reads every DATEV request
   auth/              OAuth login, token refresh, session file and its lock
-  tools/             the thirteen MCP tools
-  setup/             login and doctor commands
+  tools/             the 18 MCP tools
+  setup/             login, status, disconnect, doctor and compliance commands
 scripts/             spec download, operation index, endpoint audit
 test/unit/           unit and integration tests
 test/evals/run.ts    the offline scenario generator
@@ -191,6 +211,8 @@ docs/                setup, security, validation, compliance and more
 | `npm run eval` | The offline scenario run, writes a report to `test/reports/` |
 | `npm run test:live` | A short live check against the DATEV sandbox |
 | `npm run sweep` | The paced live crawl, resumes where it stopped |
+| `npm run qa` | Rebuilds the answered-questions catalogue in `docs/qa/` |
+| `npm run compliance` | Rebuilds the DATEV requirements checklist and its summary |
 
 ## Community
 
@@ -202,20 +224,39 @@ docs/                setup, security, validation, compliance and more
 
 ## Before you use real client data
 
-The sandbox may only hold test data. Using this with real clients needs DATEV's paid technical review (Technische Prüfung) for production access. Read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) before that step.
+The sandbox may only hold test data. Using this with real clients needs DATEV's paid technical review (Technische Prüfung) for production access. Read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) before that step. The full path from sandbox to production, with costs, meetings and agreements, is in [docs/PRODUCTION-APPROVAL.md](docs/PRODUCTION-APPROVAL.md).
+
+`datev-mcp compliance` shows, for your own installation, whether the app type, the technical log, the error rate and the refresh tokens are as DATEV requires, and how every DATEV interface requirement stands. Your AI client can show the same through the `datev_compliance` tool. Every requirement with its status and evidence is in [docs/COMPLIANCE-CHECKLIST.md](docs/COMPLIANCE-CHECKLIST.md), and every review finding with its fix and guarding test in [docs/REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md).
 
 ## More documentation
 
 - [Setup](docs/SETUP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [From sandbox to production approval](docs/PRODUCTION-APPROVAL.md)
+- [Putting a DATEV data service into operation](docs/DATA-SERVICES.md)
 - [Security](docs/SECURITY.md)
 - [Validation](docs/VALIDATION.md)
 - [Endpoint audit](docs/ENDPOINT-AUDIT.md)
 - [Compliance](docs/COMPLIANCE.md)
+- [DATEV requirements checklist](docs/COMPLIANCE-CHECKLIST.md)
+- [DATEV review readiness](docs/DATEV-REVIEW.md)
+- [Review ledger](docs/REVIEW-LEDGER.md)
 - [Accessibility](docs/ACCESSIBILITY.md)
 - [Questions and answers, short FAQ](docs/FAQ.md)
 - [Over 2,000 answered questions](docs/qa/README.md)
 - [Credits](docs/CREDITS.md)
 - [Changelog](CHANGELOG.md)
+
+## Want this in production, or built for your firm?
+
+This server is the open, inspectable part. Getting it approved by DATEV and fitted to how a firm actually works is where most of the effort goes. That work is offered as a paid service.
+
+- **DATEV approval, end to end.** Preparing both review meetings, the file-format review and the agreements, so the first appointment passes.
+- **Implementation for your workflow.** Mapping your bookings, documents and client processes onto DATEV's data services, with writes that a person approves.
+- **Custom integrations.** New tools, other DATEV products, or connecting DATEV to your CRM, ERP, n8n or Mastra automations.
+- **A commercial license** for business or client use of this server.
+
+Book a call or ask a question through **[next8n.com](https://next8n.com)**.
 
 ## License
 

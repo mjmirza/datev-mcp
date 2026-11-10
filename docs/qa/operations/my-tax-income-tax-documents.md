@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `my-tax-income-tax-documents.getclients` need?
 
-`datev:my-tax:documents`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:my-tax:documents`. The server requests it at login only when you choose this data service.
 
 ### What did `my-tax-income-tax-documents.getclients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 324 ms with 11 items.
 
 ### Is `my-tax-income-tax-documents.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getclients`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `my-tax-income-tax-documents.getclient` need?
 
-`datev:my-tax:documents`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:my-tax:documents`. The server requests it at login only when you choose this data service.
 
 ### What did `my-tax-income-tax-documents.getclient` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 376 ms.
 
 ### Is `my-tax-income-tax-documents.getclient` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getclient`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `my-tax-income-tax-documents.getincometaxyears` need?
 
-`datev:my-tax:documents`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:my-tax:documents`. The server requests it at login only when you choose this data service.
 
 ### What did `my-tax-income-tax-documents.getincometaxyears` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 57 ms.
 
 ### Is `my-tax-income-tax-documents.getincometaxyears` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getincometaxyears`?
 
@@ -113,11 +113,11 @@ Use `datev_call` with `operation_id: "my-tax-income-tax-documents.createincometa
 
 ### Does `my-tax-income-tax-documents.createincometaxyear` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `my-tax-income-tax-documents.createincometaxyear` need?
 
-`datev:my-tax:documents`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:my-tax:documents`. The server requests it at login only when you choose this data service.
 
 ### What did `my-tax-income-tax-documents.createincometaxyear` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `my-tax-income-tax-documents.createincometaxyear` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.createincometaxyear`?
 
@@ -149,7 +149,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `my-tax-income-tax-documents.getincometaxfolders` need?
 
-`datev:my-tax:documents`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:my-tax:documents`. The server requests it at login only when you choose this data service.
 
 ### What did `my-tax-income-tax-documents.getincometaxfolders` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ The live sweep skipped it: needs a real "tax-year" that no list call has returne
 
 ### Is `my-tax-income-tax-documents.getincometaxfolders` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.getincometaxfolders`?
 
@@ -177,11 +177,11 @@ Use `datev_upload_file` with `operation_id: "my-tax-income-tax-documents.saveinc
 
 ### Does `my-tax-income-tax-documents.saveincometaxdocument` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `my-tax-income-tax-documents.saveincometaxdocument` need?
 
-`datev:my-tax:documents`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:my-tax:documents`. The server requests it at login only when you choose this data service.
 
 ### What did `my-tax-income-tax-documents.saveincometaxdocument` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `my-tax-income-tax-documents.saveincometaxdocument` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `my-tax-income-tax-documents.saveincometaxdocument`?
 

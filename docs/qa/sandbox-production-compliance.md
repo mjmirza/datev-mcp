@@ -23,7 +23,7 @@ For request format, yes. For data and permissions, no. The sandbox only has test
 
 ### Why do some products return 500 with "Sandboxing policy error"?
 
-DATEV's sandbox gateway refuses that resource for your app. The request itself was fine. Ask DATEV to enable the product for the sandbox.
+DATEV's sandbox gateway refuses that resource for your app. The request itself was fine. The app owner raises it with DATEV through the developer portal's ticket system; people using the app are never sent to DATEV for it.
 
 ### Does it comply with GDPR?
 

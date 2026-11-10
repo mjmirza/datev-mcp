@@ -1,15 +1,19 @@
 import { createHash } from "node:crypto";
+import { humanApproval } from "./approval.js";
 import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, type CallDeps } from "../api/client.js";
+import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, MAY_BE_APPLIED, mediaMatches, problemFields, UncertainSendError, type CallDeps } from "../api/client.js";
+import { describeClient, gateCall, hideClientId, shownClient } from "../api/client-gate.js";
+import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { localize } from "../i18n.js";
 import type { Operation } from "../spec/types.js";
 import { getOperation } from "./catalog.js";
 import { checkConfirmToken, issueConfirmToken } from "./confirm.js";
-import { mimeFor } from "./documents.js";
+import { documentTypesToday, mimeFor } from "./documents.js";
 import { FileError, readLocalFile } from "./files.js";
+import { finishSend, reserveSend, sentBefore } from "./sent-ledger.js";
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 50 * 1024 * 1024;
@@ -123,10 +127,49 @@ function checkField(op: Operation, name: string, value: unknown, schema: Schema,
   }
 }
 
+/** The filing a stapled upload names, independent of key order and of the note, which changes no filing. */
+function filingOf(raw: unknown): [string, unknown][] {
+  let meta: unknown = raw;
+  if (typeof raw === "string") {
+    try {
+      meta = JSON.parse(raw);
+    } catch {
+      return [["raw", raw]];
+    }
+  }
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return [];
+  return Object.entries(meta as Record<string, unknown>)
+    .filter(([k]) => k !== "note")
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+async function checkStapled(clientId: string, raw: unknown, d: CallDeps): Promise<void> {
+  let meta: Record<string, unknown>;
+  try {
+    meta = typeof raw === "string" ? (JSON.parse(raw) as Record<string, unknown>) : ((raw ?? {}) as Record<string, unknown>);
+  } catch {
+    throw new UploadError("The metadata field is not valid JSON.");
+  }
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) throw new UploadError("The metadata field must be a JSON object.");
+  const levels = ["category", "folder", "register"].filter((k) => meta[k] !== undefined).length;
+  if (levels && levels !== 3) throw new UploadError("Buchungsdatenservice needs category, folder and register together.");
+  const service = levels ? "Buchungsdatenservice" : "Belegbilderservice";
+  if (!levels && typeof meta.document_type !== "string") throw new UploadError("Belegbilderservice needs a document_type in metadata. List them with datev_document_types.");
+  await requireClientService(clientId, [service], d);
+  if (typeof meta.document_type === "string") {
+    const types = await documentTypesToday(clientId, d);
+    if (!types.some((t) => t.name === meta.document_type))
+      throw new UploadError(`"${meta.document_type}" is not a document type of this client. Available: ${types.map((t) => t.name).join(", ") || "none"}.`);
+  }
+}
+
 function plan(operationId: string, files: Record<string, string | string[]>, fields: Record<string, unknown>) {
   const op = getOperation(operationId);
   if (!op) throw new UploadError(`Unknown operation "${operationId}". Use datev_search_operations first.`);
   if (op.id === "accounting-extf-files.importextffile") throw new UploadError("Use datev_upload_extf for EXTF files. It checks the file before sending it.");
+  // Single documents follow DATEV's document rules (service, document type, filing fields) only in datev_upload_document.
+  if (op.id === "accounting-documents.post_clients_client_id_documents" || op.id === "accounting-documents.put_clients_client_id_documents_document_id")
+    throw new UploadError("Use datev_upload_document for a single document. It checks the client's data service and document types first.");
   if (!op.body?.contentTypes.some((c) => c.split(";")[0].trim().toLowerCase() === "multipart/form-data"))
     throw new UploadError(`${op.id} does not take a file upload. Use datev_call for it.`);
   const { parts, required } = partsOf(op);
@@ -212,12 +255,13 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         headers: z.record(z.string(), z.string()).optional().describe("Header parameters the operation declares, e.g. X-API-Key"),
         files: z.record(z.string(), z.union([z.string(), z.array(z.string()).min(1).max(50)])).describe("Part name to absolute file path, or a list of paths"),
         fields: z.record(z.string(), z.union([z.string(), z.record(z.string(), z.unknown())])).optional().describe("Other parts, as text or a JSON object"),
+        resend: z.boolean().optional().describe("Stapled documents only: send files to this client again on purpose although they were sent before"),
         confirm: z.boolean().optional(),
         confirm_token: z.string().optional().describe("The token returned by the preview"),
       },
       annotations: { destructiveHint: true, openWorldHint: true },
     },
-    async ({ operation_id, path_params, query, headers, files, fields, confirm, confirm_token }, extra) => {
+    async ({ operation_id, path_params, query, headers, files, fields, resend, confirm, confirm_token }, extra) => {
       try {
         const f = fields ?? {};
         const { op, order } = plan(operation_id, files, f);
@@ -229,6 +273,15 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         const url = buildUrl(op, d.env, target);
         buildHeaders(op, target);
         const read = readAll(op, order, files, fieldBytes);
+        // Local checks first, then DATEV's permission reads.
+        const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
+        // Stapled documents follow the same rules as datev_upload_document: service, document type, filing fields.
+        const stapledClient = op.product === "accounting-documents" ? String(path_params?.["client-id"] ?? "") : undefined;
+        if (stapledClient !== undefined) await checkStapled(stapledClient, f.metadata, d);
+        // DATEV's stapled upload takes no document id, so it cannot recognise a repeat: the send record does.
+        const stapledKey = stapledClient !== undefined ? createHash("sha256").update(JSON.stringify([read.map((x) => x.sha256).sort(), filingOf(f.metadata)])).digest("hex") : undefined;
+        const earlier = stapledKey ? sentBefore("stapled", d.env, stapledClient!, stapledKey) : undefined;
+        if (earlier && resend !== true) return err(`These files were already sent to this client on ${earlier.at} (${earlier.name}, ${earlier.status}). DATEV cannot tell a repeat of a stapled upload apart, so it would keep two copies. To send them again on purpose, call with resend: true.`);
         const listed = read.map((x) => ({ part: x.part, file: x.path, sent_as: x.name, bytes: x.bytes.length, content_type: x.type }));
         const fingerprint = {
           tool: TOOL,
@@ -239,21 +292,39 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
           headers: headers ?? {},
           files: read.map((x) => ({ part: x.part, path: x.path, name: x.name, sha256: x.sha256, type: x.type })),
           fields: f,
+          ...(earlier ? { resend: true, earlier_at: earlier.at } : {}),
         };
         if (confirm !== true) {
           return ok({
             preview: true,
-            note: `Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`,
+            note: localize(`Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${client ? hideClientId(String(url), [client.client_id, client.guid]) : url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`),
             operation: op.id,
+            ...(client ? { client: shownClient(client) } : {}),
             files: listed,
             fields: f,
+            ...(headers && Object.keys(headers).length ? { headers } : {}),
             confirm_token: issueConfirmToken(fingerprint),
           });
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const r = await callOperation(op, { ...target, rawBody: buildForm(order, read, f) }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env };
+        const shownUrl = client ? hideClientId(String(url), [client.client_id, client.guid]) : String(url);
+        const summary = [client ? `Client: ${describeClient(client)}` : "", ...[`${op.method.toUpperCase()} ${op.id}`, shownUrl, ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].filter(Boolean)].filter(Boolean).join("\n");
+        const denied = await humanApproval(server, d.env, summary);
+        if (denied) return err(denied);
+        const held = stapledKey ? await reserveSend("stapled", d.env, stapledClient!, stapledKey, read.map((x) => x.name).join(", "), earlier ? { seen: earlier.at } : false) : undefined;
+        if (held && "blocked" in held) return err(`These files are being sent or were just sent to this client (${held.blocked.at}, ${held.blocked.status}). Nothing was sent again.`);
+        const finish = (status: "refused" | "uncertain" | "sent") => (held ? finishSend("stapled", d.env, stapledClient!, stapledKey!, held.reservation, { status }).catch(() => undefined) : Promise.resolve());
+        let r;
+        try {
+          r = await callOperation(op, { ...target, rawBody: buildForm(order, read, f) }, d);
+        } catch (e) {
+          await finish(e instanceof UncertainSendError ? "uncertain" : "refused");
+          throw e;
+        }
+        // Only a clear 4xx means DATEV did not take the files; a 5xx, 408 or redirect may hide a stored upload.
+        await finish(r.status >= 200 && r.status < 300 ? "sent" : r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429 ? "refused" : "uncertain");
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}), ...(r.status >= 500 || r.status === 408 ? { note: localize(MAY_BE_APPLIED) } : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));

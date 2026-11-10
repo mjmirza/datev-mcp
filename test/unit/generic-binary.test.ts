@@ -61,9 +61,19 @@ test("the upload tools say when DATEV's answer was cut at the size cap", async (
   const { registerDocumentTools } = await import("../../src/tools/documents.js");
   const { registerExtfTools } = await import("../../src/tools/extf.js");
   const { writeLocalFile } = await import("../../src/tools/files.js");
-  const big: FetchLike = async () => new Response("x".repeat(200), { status: 201, headers: { "content-type": "text/plain" } });
+  // DATEV answers the permission and document-type checks normally; only the upload answer is cut.
+  const big: FetchLike = async (u, init) => {
+    const url = String(u);
+    const method = (init?.method ?? "GET").toUpperCase();
+    if (method === "GET" && url.endsWith("/clients/455148-1"))
+      return new Response(JSON.stringify({ name: "Test GmbH", services: [{ name: "Belegbilderservice" }, { name: "Buchungsdatenservice" }] }), { headers: { "content-type": "application/json" } });
+    if (method === "GET" && url.endsWith("/document-types")) return new Response(JSON.stringify([{ name: "Rechnungseingang" }]), { headers: { "content-type": "application/json" } });
+    if (method === "GET" && url.includes("/extf-files/jobs/J1")) return new Response(JSON.stringify({ id: "J1", result: "succeeded" }), { headers: { "content-type": "application/json" } });
+    const location = url.endsWith("/extf-files/import") ? { location: "/clients/455148-1/extf-files/jobs/J1", "retry-after": "1" } : {};
+    return new Response("x".repeat(200), { status: 201, headers: { "content-type": "text/plain", ...location } });
+  };
   const server = new McpServer({ name: "t", version: "0" });
-  const deps = () => ({ env: "sandbox" as const, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: big, maxBodyChars: 50 });
+  const deps = () => ({ env: "sandbox" as const, creds: { clientId: "c", clientSecret: "s" }, token: async () => "T", fetch: big, maxBodyChars: 50, sleep: async () => undefined });
   registerDocumentTools(server, deps);
   registerExtfTools(server, deps);
   const [a, b] = InMemoryTransport.createLinkedPair();
@@ -72,7 +82,7 @@ test("the upload tools say when DATEV's answer was cut at the size cap", async (
   await c.connect(b);
   const dir = mkdtempSync(join(tmpdir(), "datev-trunc-"));
   const pdfPath = writeLocalFile(join(dir, "beleg.pdf"), PDF, false);
-  const docArgs = { client_id: "455148-1", file_path: pdfPath };
+  const docArgs = { client_id: "455148-1", file_path: pdfPath, document_type: "Rechnungseingang" };
   const docPreview = JSON.parse(text(await c.callTool({ name: "datev_upload_document", arguments: docArgs })));
   const doc = JSON.parse(text(await c.callTool({ name: "datev_upload_document", arguments: { ...docArgs, confirm: true, confirm_token: docPreview.confirm_token } })));
   assert.equal(doc.uploaded, true);

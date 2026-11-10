@@ -1,15 +1,15 @@
 <!-- freshness: 14d -->
 # Validation
 
-What was checked, how, the numbers from the last run, and how to repeat each check yourself. Every number here comes from a real run on 2026-11-07. Nothing is estimated.
+What was checked, how, the numbers from the last run, and how to repeat each check yourself. Type check, tests and scenarios were re-run on 2026-11-09. The planted bug and live sandbox numbers are from 2026-11-07 and 2026-11-08, as dated below. Nothing is estimated.
 
 ## The five layers
 
 | Layer | What it proves | Command | Last result |
 |---|---|---|---|
 | Type check | The code is consistent, strict mode | `npm run typecheck` | Clean |
-| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 141 of 141 passing |
-| Offline scenario run | Every one of the 209 operations against 62 scenario categories, with a fake DATEV | `npm run eval` | 28,496 of 28,496 passing |
+| Unit and integration tests | Each behavior, including failure paths, through the real MCP protocol where it matters | `npm test` | 158 of 158 passing |
+| Offline scenario run | Every one of the 209 operations against 65 scenario categories, with a fake DATEV | `npm run eval` | 28,586 of 28,586 passing |
 | Planted bugs | The scenarios catch real defects | see below | 5 of 5 bugs caught |
 | Live DATEV sandbox | The server works against the real DATEV gateway | `npm run test:live`, `npm run sweep` | 71 read operations reached, 38 returned data |
 
@@ -26,7 +26,7 @@ On top of that, a second AI model reviewed the code four times, described under 
 | Query and headers | 6 | Required values are enforced, arrays repeat correctly, injected `&` or line breaks cannot split a value, server headers cannot be overridden |
 | Wire request | 1 | The exact URL, body bytes and content type that leave the machine match the request, and no credential is in the URL |
 | Auth | 1 | Bearer token, client id, client secret only where DATEV requires it, redirects never followed for operation calls |
-| Retries and network | 7 | Reads retry 429, 502, 503, 504 and network errors up to three attempts. Writes retry only 429 |
+| Retries and network | 7 | Reads retry 429, 502, 503, 504 and network errors up to three attempts. Writes are never retried |
 | Status codes | 10 | 400 to 500 come back as the real status, never retried, never hidden |
 | Parsing | 10 | JSON, single and multi-line NDJSON, invalid JSON, plain text, empty bodies and truncation are each read correctly |
 | Limits | 4 | Endless answers stop at the cap, binaries stay byte-exact, a cancelled call sends nothing, retries never run past the time budget |

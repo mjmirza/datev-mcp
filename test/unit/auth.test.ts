@@ -1,3 +1,4 @@
+process.env.DATEV_MCP_SESSION_KEY ??= "11".repeat(32); // tests never touch the real credential store
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, statSync, writeFileSync, readdirSync } from "node:fs";
@@ -129,8 +130,18 @@ test("session asks for login when DATEV rejects the refresh token, and when noth
   store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
   const s = new Session(store, ENDPOINTS.sandbox, creds, { fetch: async () => json(400, { error: "invalid_grant" }), now: () => 10_000_000 });
   await assert.rejects(s.accessToken(), NeedsLoginError);
-  // Kept on purpose: another process may have saved a newer session, and the next login overwrites it.
-  assert.equal(store.read()?.tokens.refreshToken, "R1");
+  // The session file is kept (another process may have saved a newer one), but the rejected token is dropped,
+  // so it is never sent to DATEV again.
+  assert.equal(store.read()?.clientId, "cid");
+  assert.equal(store.read()?.tokens.refreshToken, undefined);
+  // A newer session another process saved meanwhile is never touched.
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "OLD", refreshToken: "R1", expiresAt: 0, obtainedAt: 0 } });
+  const racing = new Session(store, ENDPOINTS.sandbox, creds, {
+    fetch: async () => (store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "NEWER", refreshToken: "R2", expiresAt: 20_000_000, obtainedAt: 0 } }), json(400, { error: "invalid_grant" })),
+    now: () => 10_000_000,
+  });
+  assert.equal(await racing.accessToken(), "NEWER");
+  assert.equal(store.read()?.tokens.refreshToken, "R2");
 });
 
 test("session keeps the saved tokens on a network failure (no silent logout)", async () => {

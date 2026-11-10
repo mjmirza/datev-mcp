@@ -17,11 +17,11 @@ Use `datev_call` with `operation_id: "eau-api.createeaurequest"`. The first call
 
 ### Does `eau-api.createeaurequest` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `eau-api.createeaurequest` need?
 
-`datev:hr:eau`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:eau`. The server requests it at login only when you choose this data service.
 
 ### What did `eau-api.createeaurequest` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `eau-api.createeaurequest` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.createeaurequest`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `eau-api.getfeedbacks` need?
 
-`datev:hr:eau`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:eau`. The server requests it at login only when you choose this data service.
 
 ### What did `eau-api.getfeedbacks` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The live sweep skipped it: needs a real "personnelNumber" that no list call has 
 
 ### Is `eau-api.getfeedbacks` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.getfeedbacks`?
 
@@ -81,11 +81,11 @@ Use `datev_call` with `operation_id: "eau-api.canceleaurequest"`. The first call
 
 ### Does `eau-api.canceleaurequest` change data in DATEV?
 
-Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried except after a 429.
+Yes. Through `datev_call` it goes through the preview and confirmation code, and it is never retried.
 
 ### Which scope does `eau-api.canceleaurequest` need?
 
-`datev:hr:eau`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:eau`. The server requests it at login only when you choose this data service.
 
 ### What did `eau-api.canceleaurequest` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `eau-api.canceleaurequest` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.canceleaurequest`?
 
@@ -117,7 +117,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `eau-api.getclients` need?
 
-`datev:hr:eau`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:hr:eau`. The server requests it at login only when you choose this data service.
 
 ### What did `eau-api.getclients` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 141 ms.
 
 ### Is `eau-api.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `eau-api.getclients`?
 

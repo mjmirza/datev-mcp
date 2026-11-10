@@ -1,13 +1,20 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { callOperation, CallError, type CallDeps, type CallInput } from "../api/client.js";
+import { callOperation, CallError, problemText, type CallDeps, type CallInput } from "../api/client.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { getOperation } from "./catalog.js";
+import { dataexchangeGuard, fiscalYearIds } from "../api/dataexchange-guard.js";
+
+export { fiscalYearIds };
 import { localize } from "../i18n.js";
 
 const ok = (v: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(v, null, 2) }] });
 const err = (m: string) => ({ content: [{ type: "text" as const, text: localize(m) }], isError: true });
 const UNCAPPED = Number.MAX_SAFE_INTEGER;
+
+// Data minimisation: what an assistant needs to answer a booking question, without VAT ids, links or EU details.
+const BASIC_POSTING = ["date", "accountNumber", "contraAccountNumber", "amountDebit", "amountCredit", "currencyCode", "postingDescription", "documentField1", "taxRate", "kost1CostCenterId", "kost2CostCenterId", "accountingSequenceId"];
+const basicPosting = (x: Record<string, unknown>) => Object.fromEntries(BASIC_POSTING.filter((k) => Object.hasOwn(x, k)).map((k) => [k, x[k]]));
 
 function errorText(e: unknown): string {
   if (e instanceof CallError || e instanceof NeedsLoginError) return e.message;
@@ -22,7 +29,7 @@ async function call(id: string, input: CallInput, deps: CallDeps, maxBodyChars?:
   if (left !== undefined && left <= 0) throw new CallError(`Ran out of time before ${id} could run`);
   const r = await callOperation(op, input, { ...deps, ...(maxBodyChars ? { maxBodyChars } : {}), ...(left !== undefined ? { deadlineMs: left } : {}) });
   // Anything but 2xx is a failure here, a redirect included: a typed tool must never turn it into an empty answer.
-  if (r.status < 200 || r.status >= 300) throw new CallError(`DATEV returned HTTP ${r.status} for ${id}: ${JSON.stringify(r.body).slice(0, 300)}`);
+  if (r.status < 200 || r.status >= 300) throw new CallError(`DATEV returned HTTP ${r.status} for ${id}: ${problemText(r.status, r.body)}`);
   if (r.bytes) throw new CallError(`DATEV answered ${id} with a binary file (${r.contentType ?? "unknown type"}) instead of data`);
   if (r.truncated) throw new CallError(`DATEV's answer for ${id} was larger than this tool can read safely; narrow the request`);
   return r;
@@ -77,18 +84,7 @@ export function jobIdFrom(body: unknown, location?: string): string | undefined 
   return location?.split("/").filter(Boolean).pop();
 }
 
-// DATEV sends fiscal years as bare ids (one per NDJSON line); accept objects with an id as well.
-export function fiscalYearIds(body: unknown): string[] {
-  const items = Array.isArray(body) ? body : body === undefined || body === null || body === "" ? [] : [body];
-  return items.map((x, i) => {
-    const id = x && typeof x === "object" ? (x as Record<string, unknown>).id : x;
-    // DATEV fiscal year ids are dates as eight digits, e.g. 20230701.
-    if ((typeof id !== "string" && typeof id !== "number") || !/^(199[2-9]|20[0-9][0-9])[0-9]{4}$/.test(String(id)))
-      throw new CallError(`DATEV sent something that is not a fiscal year id (entry ${i + 1}: ${JSON.stringify(x).slice(0, 150)})`);
-    return String(id);
-  });
-}
-
+// CODE_DELETE_OK: fiscalYearIds moved unchanged to src/api/dataexchange-guard.ts and is re-exported above.
 const accountRaw = (row: Record<string, unknown>): unknown => row.accountNumber ?? row.account_number ?? row.account ?? row.generalLedgerAccount;
 const accountOf = (row: Record<string, unknown>): string => {
   const v = accountRaw(row);
@@ -125,8 +121,16 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
             break;
           }
         }
-        const clients = all.map((c) => ({ id: c.id, name: c.name, number: c.client_number, services: Array.isArray(c.services) ? (c.services as { name?: string }[]).map((s) => s.name) : undefined }));
-        return ok(complete ? clients : { complete: false, note: "More than 5000 clients; only the first 5000 are listed.", clients });
+        // DATEV: the technical id is for API calls only and is not shown to the user. People know a client by name and numbers.
+        const clients = all.map((c) => ({
+          name: c.name,
+          consultant_number: c.consultant_number,
+          client_number: c.client_number,
+          data_services: Array.isArray(c.services) ? (c.services as { name?: string }[]).map((s) => s.name) : undefined,
+          technical_id: c.id,
+        }));
+        const note = "Show the user name, consultant number and client number. technical_id is only for the client_id argument of other tools; DATEV asks apps not to display it.";
+        return ok(complete ? { note, clients } : { complete: false, note: `More than 5000 clients; only the first 5000 are listed. ${note}`, clients });
       } catch (e) {
         return err(errorText(e));
       }
@@ -143,8 +147,8 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     },
     async ({ client_id }, extra) => {
       try {
-        const body = (await call("accounting-dataexchange.getfiscalyears", { pathParams: { clientId: client_id } }, deps(extra.signal))).body;
-        return ok(fiscalYearIds(body).map((id) => ({ id })));
+        const g = await dataexchangeGuard(client_id, undefined, deps(extra.signal));
+        return ok(g.fiscal_years.map((id) => ({ id })));
       } catch (e) {
         return err(errorText(e));
       }
@@ -166,10 +170,13 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     },
     async ({ client_id, fiscal_year_id, account_prefix, limit }, extra) => {
       try {
-        const r = await call("accounting-dataexchange.getsumsandbalances", { pathParams: { clientId: client_id, fiscalYearId: fiscal_year_id } }, deps(extra.signal), UNCAPPED);
+        const d = deps(extra.signal);
+        const deadline = Date.now() + 50_000;
+        const g = await dataexchangeGuard(client_id, fiscal_year_id, d, deadline);
+        const r = await call("accounting-dataexchange.getsumsandbalances", { pathParams: { clientId: client_id, fiscalYearId: fiscal_year_id } }, d, UNCAPPED, deadline);
         const all = rowsOf(r.body, "accounting-dataexchange.getsumsandbalances", hasAccountNumber, "an account with a number");
         const rows = account_prefix ? all.filter((x) => accountOf(x).startsWith(account_prefix)) : all;
-        return ok({ total_accounts: all.length, matches: rows.length, rows: rows.slice(0, limit ?? 50) });
+        return ok({ fiscal_year: g.settings, total_accounts: all.length, matches: rows.length, rows: rows.slice(0, limit ?? 50) });
       } catch (e) {
         return err(errorText(e));
       }
@@ -181,7 +188,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
     {
       title: "Account postings (Kontobuchungen)",
       description:
-        "Fetch the posted bookings of a client's fiscal year from DATEV, optionally for one account. DATEV prepares these asynchronously, so this waits for the export job (up to max_wait_seconds) and reads every page it can in that time. If the job is not ready, call again with the returned job_id to continue the same job instead of starting a new one.",
+        "Fetch the posted bookings of a client's fiscal year from DATEV, optionally for one account. This starts an export job at DATEV (DATEV keeps it up to 12 hours; it changes no bookings), waits for it up to max_wait_seconds and reads every page it can in that time. The whole journal is read, because DATEV has no account filter; only matching rows are returned, with a basic set of fields unless fields is \"all\". If the job is not ready, call again with the returned job_id to continue the same job instead of starting a new one.",
       inputSchema: {
         client_id: z.string(),
         fiscal_year_id: z.string(),
@@ -190,15 +197,18 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         job_id: z.string().optional().describe("Continue an export job returned by an earlier call"),
         from_page: z.number().int().min(1).optional().describe("First page to read, for continuing a partial read"),
         max_wait_seconds: z.number().int().min(5).max(50).optional().describe("Max 50: MCP clients usually cancel a call after 60 seconds"),
+        fields: z.enum(["basic", "all"]).optional().describe("basic (default): account, contra account, date, amounts, text, document number, tax rate, cost centres. all: every field DATEV sends"),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      // Not read-only: it creates an export job at DATEV. It changes no business data, so it needs no preview.
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     },
-    async ({ client_id, fiscal_year_id, account, limit, job_id, from_page, max_wait_seconds }, extra) => {
+    async ({ client_id, fiscal_year_id, account, limit, job_id, from_page, max_wait_seconds, fields }, extra) => {
       try {
         const d = deps(extra.signal);
         const ids = { clientId: client_id, fiscalYearId: fiscal_year_id };
         // One budget for the whole call, polling and page reads included, so the tool answers before the MCP client gives up.
         const deadline = Date.now() + (max_wait_seconds ?? 45) * 1000;
+        const g = await dataexchangeGuard(client_id, fiscal_year_id, d, deadline);
         let jobId = job_id;
         if (!jobId) {
           const started = await call("accounting-dataexchange.postaccountpostingsjob", { pathParams: ids }, d, undefined, deadline);
@@ -252,7 +262,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
             if (!hasAccountNumber(x)) withoutAccount++;
             if (account && !accountOf(x).startsWith(account)) continue;
             matches++;
-            if (rows.length < keep) rows.push(x);
+            if (rows.length < keep) rows.push(fields === "all" ? x : basicPosting(x));
           }
           pageNo++;
         }
@@ -260,6 +270,7 @@ export function registerAccountingTools(server: McpServer, deps: (signal?: Abort
         return ok({
           ready: true,
           job_id: job,
+          fiscal_year: g.settings,
           complete: done,
           pages_read: pageNo > first ? `${first}-${pageNo - 1} of ${pages ?? "unknown"}` : "none",
           postings_read: read,

@@ -111,11 +111,11 @@ No. The answer is returned as it is.
 
 ### What does HTTP 429 from DATEV mean?
 
-DATEV's rate limit. Reads retry with Retry-After, writes are retried only for this status.
+DATEV's rate limit. Reads retry with Retry-After, writes are never retried.
 
 ### Does the server retry HTTP 429?
 
-Yes, for reads and writes, as long as the wait fits the call budget.
+Yes, for reads only, as long as the wait fits the call budget. Writes are never retried.
 
 ### What does HTTP 500 from DATEV mean?
 

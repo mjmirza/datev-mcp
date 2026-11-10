@@ -27,7 +27,7 @@ DATEV's rate limit. Reads retry by themselves, honoring Retry-After. Wait and tr
 
 ### I get HTTP 500 "Sandboxing policy error". What does it mean?
 
-DATEV's sandbox gateway refuses that resource for your app. Ask DATEV to enable the product.
+DATEV's sandbox gateway refuses that resource for your app. The app owner raises it with DATEV through the developer portal's ticket system; people using the app are never sent to DATEV for it.
 
 ### I get 502, 503 or 504.
 

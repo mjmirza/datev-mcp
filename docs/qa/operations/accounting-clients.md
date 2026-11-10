@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-clients.getclients` need?
 
-`datev:accounting:clients`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:accounting:clients`. The server requests it at login only when you choose this data service.
 
 ### What did `accounting-clients.getclients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 304 ms with 4 items.
 
 ### Is `accounting-clients.getclients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-clients.getclients`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-clients.getclient` need?
 
-`datev:accounting:clients`. The server requests it at login unless `DATEV_SCOPES` leaves it out.
+`datev:accounting:clients`. The server requests it at login only when you choose this data service.
 
 ### What did `accounting-clients.getclient` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 200 on 2026-11-07 in 309 ms.
 
 ### Is `accounting-clients.getclient` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-clients.getclient`?
 

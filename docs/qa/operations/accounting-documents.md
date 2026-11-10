@@ -21,7 +21,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-documents.get_clients` need?
 
-`accounting:clients:read` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:clients:read` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.get_clients` return in the DATEV sandbox?
 
@@ -29,7 +29,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients`?
 
@@ -53,7 +53,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-documents.get_clients_client_id` need?
 
-`accounting:clients:read` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:clients:read` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.get_clients_client_id` return in the DATEV sandbox?
 
@@ -61,7 +61,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id`?
 
@@ -85,7 +85,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-documents.get_clients_client_id_document_types` need?
 
-`accounting:documents` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:documents` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.get_clients_client_id_document_types` return in the DATEV sandbox?
 
@@ -93,7 +93,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id_document_types` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id_document_types`?
 
@@ -117,7 +117,7 @@ No. It only reads, so it runs directly and is retried on 429, 502, 503, 504 and 
 
 ### Which scope does `accounting-documents.get_clients_client_id_duo_version` need?
 
-`accounting:clients:read` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:clients:read` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.get_clients_client_id_duo_version` return in the DATEV sandbox?
 
@@ -125,7 +125,7 @@ The DATEV sandbox answered HTTP 400 on 2026-11-07. DATEV rejected the request. T
 
 ### Is `accounting-documents.get_clients_client_id_duo_version` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.get_clients_client_id_duo_version`?
 
@@ -145,11 +145,11 @@ The typed tool `datev_upload_document` uses it for you and checks the answer. Us
 
 ### Does `accounting-documents.post_clients_client_id_documents` change data in DATEV?
 
-Yes. `datev_upload_file` and `datev_upload_document` send it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` and `datev_upload_document` send it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `accounting-documents.post_clients_client_id_documents` need?
 
-`accounting:documents` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:documents` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.post_clients_client_id_documents` return in the DATEV sandbox?
 
@@ -157,7 +157,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.post_clients_client_id_documents` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.post_clients_client_id_documents`?
 
@@ -177,11 +177,11 @@ Use `datev_upload_file` with `operation_id: "accounting-documents.put_clients_cl
 
 ### Does `accounting-documents.put_clients_client_id_documents_document_id` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `accounting-documents.put_clients_client_id_documents_document_id` need?
 
-`accounting:documents` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:documents` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.put_clients_client_id_documents_document_id` return in the DATEV sandbox?
 
@@ -189,7 +189,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.put_clients_client_id_documents_document_id` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.put_clients_client_id_documents_document_id`?
 
@@ -209,11 +209,11 @@ Use `datev_upload_file` with `operation_id: "accounting-documents.put_clients_cl
 
 ### Does `accounting-documents.put_clients_client_id_documents_stapled` change data in DATEV?
 
-Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried except after a 429.
+Yes. `datev_upload_file` sends it only after the preview and confirmation code, and it is never retried.
 
 ### Which scope does `accounting-documents.put_clients_client_id_documents_stapled` need?
 
-`accounting:documents` and `openid`. The server requests it at login unless `DATEV_SCOPES` leaves it out. `openid` is always requested.
+`accounting:documents` and `openid`. The server requests it at login only when you choose this data service. `openid` is always requested.
 
 ### What did `accounting-documents.put_clients_client_id_documents_stapled` return in the DATEV sandbox?
 
@@ -221,7 +221,7 @@ It was not called live, because it changes data. The offline scenarios check tha
 
 ### Is `accounting-documents.put_clients_client_id_documents_stapled` covered by the offline tests?
 
-Yes. Every scenario that applies to it passed in the run of 2026-11-08, part of 28,496 scenarios over 209 operations.
+Yes. Every scenario that applies to it passed in the run of 2026-11-10, part of 28,582 scenarios over 209 operations.
 
 ### How do I see the parameters of `accounting-documents.put_clients_client_id_documents_stapled`?
 
