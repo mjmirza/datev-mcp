@@ -133,6 +133,25 @@ test("revocation posts the token with Basic auth, refuses redirects, and fails l
   await assert.rejects(revokeToken(ep.revoke, "RT", "refresh_token", creds, { fetch: async () => new Response(null, { status: 400 }) }), /refused to revoke/);
 });
 
+test("disconnect never reports success when a usable token was not revoked, and revokes pending tokens too", async () => {
+  const store = new TokenStore("sandbox", tmp(), envKeyStore());
+  const live = { accessToken: "AT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() };
+  const hint = (i?: RequestInit) => new URLSearchParams(String(i?.body)).get("token_type_hint");
+  // Only an access token is left, and DATEV refuses to revoke it: the session must stay.
+  store.write({ env: "sandbox", clientId: "cid", tokens: live });
+  const refused = await disconnect(cfg, { store, httpLog: () => {}, fetch: async () => new Response(null, { status: 500 }) });
+  assert.equal(refused.removed, false);
+  assert.ok(store.read(), "kept, the access token still works at DATEV");
+  // A pending token from an earlier login is revoked with the current one.
+  store.write({ env: "sandbox", clientId: "cid", tokens: { ...live, refreshToken: "RT" }, pendingRevoke: ["OLD"] });
+  const sent: string[] = [];
+  const ok = await disconnect(cfg, { store, httpLog: () => {}, fetch: async (_u, i) => (sent.push(`${hint(i)}:${new URLSearchParams(String(i?.body)).get("token")}`), new Response(null, { status: 200 })) });
+  assert.equal(ok.revoked, true);
+  assert.deepEqual(sent.sort(), ["access_token:AT", "refresh_token:OLD", "refresh_token:RT"]);
+  // With no session at all, the person is still pointed at DATEV's connected-apps page.
+  assert.match((await disconnect(cfg, { store, httpLog: () => {} })).message, /apps\.datev\.de\/tokrevui/);
+});
+
 test("disconnect revokes at DATEV and deletes the session; if DATEV is unreachable it keeps the session and says so", async () => {
   const dir = tmp();
   const store = new TokenStore("sandbox", dir, envKeyStore());

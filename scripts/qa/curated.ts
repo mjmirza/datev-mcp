@@ -41,7 +41,7 @@ export const CURATED: Section[] = [
     ["How do I log in on a server without a browser?", "Set `DATEV_MCP_NO_BROWSER=1`. The command prints the sign-in link and you open it in any browser that can reach the machine's localhost."],
     ["Which scopes are requested?", "By default every scope the operation index knows. Set `DATEV_SCOPES` to a space separated list to request fewer."],
     ["Why can the server not tell me which scopes I got?", "DATEV does not return the granted scopes in its token answer. A missing product only shows up as a 401 or 403 on first use."],
-    ["Can I log out?", "Delete the session file in `~/.config/datev-mcp/`. The next call asks you to log in."],
+    ["Can I log out?", "Run `datev-mcp disconnect`. It revokes the connection at DATEV and then deletes the local session. Deleting the session file alone leaves the connection valid at DATEV, so never do that. Connected apps are also listed at https://apps.datev.de/tokrevui."],
     ["Does it support production?", "Yes, with `DATEV_ENV=production`, after DATEV has approved your app for production."],
     ["Are sandbox and production sessions kept apart?", "Yes. Each environment has its own session file, and confirmation codes include the environment."],
     ["What does `doctor` check about the login?", "That a session is saved, that it yields a valid access token (refreshing it only if it is due), and that DATEV's userinfo and clients endpoints answer."],

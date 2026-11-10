@@ -42,6 +42,7 @@ const FIXED: Record<string, string> = {
     "Dieser Schreibvorgang in die DATEV-Produktion braucht Ihre Freigabe im Client, aber dieser MCP-Client kann Sie nicht fragen (keine Unterstützung für Rückfragen). Es wurde nichts gesendet. Nutzen Sie einen Client, der das kann.",
   "You did not approve this write. Nothing was sent.": "Sie haben diesen Schreibvorgang nicht freigegeben. Es wurde nichts gesendet.",
   "There is no saved DATEV connection.": "Es gibt keine gespeicherte DATEV-Verbindung.",
+  "There is no saved DATEV connection. Connected apps are listed at https://apps.datev.de/tokrevui.": "Es gibt keine gespeicherte DATEV-Verbindung. Verbundene Anwendungen sehen Sie unter https://apps.datev.de/tokrevui.",
   "DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.":
     "DATEV hat für diese Anmeldung kein ID-Token geliefert, daher kann sie nicht geprüft werden. Es wurde nichts gespeichert.",
   "DATEV's userinfo names a different user than the ID token. Nothing was saved.":

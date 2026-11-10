@@ -59,7 +59,7 @@ DATEV does not return the granted scopes in its token answer. A missing product 
 
 ### Can I log out?
 
-Delete the session file in `~/.config/datev-mcp/`. The next call asks you to log in.
+Run `datev-mcp disconnect`. It revokes the connection at DATEV and then deletes the local session. Deleting the session file alone leaves the connection valid at DATEV, so never do that. Connected apps are also listed at https://apps.datev.de/tokrevui.
 
 ### Does it support production?
 
