@@ -40,7 +40,7 @@ Facts and prices come from DATEV's developer documentation, as recorded in [COMP
 
 - Keep the error rate below 10 percent, counted as requests answered with 4xx or 5xx divided by all requests. `datev-mcp compliance` shows your current rate from the HTTP log.
 - Offer first-level support for the DATEV interface to your users. Only send them to DATEV when you cannot help yourself.
-- Call DATEV only when a user asked for it, by hand or by a rule they set. No round-the-clock polling. datev-mcp only calls DATEV when a tool is used.
+- Call DATEV only when a user asked for it, by hand or by a rule they set. No round-the-clock polling. datev-mcp calls DATEV when a tool is used, plus one start-up retry of a token revoke DATEV did not confirm.
 - Address the APIs by their DNS names, never by IP address.
 
 ## Need help with the review

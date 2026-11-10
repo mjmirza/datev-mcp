@@ -48,7 +48,7 @@ flowchart LR
 Writes never go out on the AI's word alone.
 
 1. The tool first returns a preview of exactly what would be sent, with the client shown by name and numbers.
-2. A person approves that preview in the AI client. Without approval nothing is sent.
+2. Against DATEV production, a person approves that preview in the AI client, which asks through MCP elicitation. A client that cannot ask is refused and nothing is sent. In the sandbox, when the client cannot ask, the preview's confirm code approves the write, unless `DATEV_MCP_CONFIRM=human` is set.
 3. The write is sent. For EXTF booking batches a sent ledger records each batch, so the same bookings are not sent to DATEV twice by accident.
 4. When DATEV answers with a server error or a timeout, the answer says the change may already be applied and should be checked in DATEV before sending again.
 
@@ -56,14 +56,14 @@ Writes never go out on the AI's word alone.
 
 - `datev-mcp login` opens DATEV's login in the browser. DATEV sends the person back to a small page on `127.0.0.1`, which is only reachable from this computer.
 - In production a local app with a `localhost` redirect must be registered at DATEV as a Public client, which has no client secret. The few APIs that require the client secret are then refused with a clear message, because DATEV offers them to Confidential clients only.
-- Access and refresh tokens are kept in one file, encrypted with a random 256-bit key. The key lives in the operating system's credential store, not next to the file.
+- Access and refresh tokens are kept in one file, encrypted with a random 256-bit key. On macOS and Linux the key lives in the operating system's credential store. On Windows it is a DPAPI-protected file next to the session, which only the same Windows user on the same computer can decrypt.
 - The scopes the person picked at login decide which tools work. Refused permissions end only the login they belong to.
 - `datev-mcp disconnect` revokes the tokens at DATEV and deletes them locally. A revoke that DATEV does not confirm is kept on a retry list until the token expires.
 
 ## What is deliberately not here
 
-- No background polling. DATEV is called only when a tool is used.
-- No storage of client data. Answers pass through to the AI client and are not kept.
+- No background polling. DATEV is called when a tool is used, and once at start-up to retry revoking a token DATEV did not confirm before.
+- No database of client data. Answers pass through to the AI client. The one thing kept is the technical HTTP log DATEV requires, at least 14 days, in an owner-only folder on this computer. It holds request bodies and the answer body of failed requests and job status calls, which can contain client data.
 - No DATEV specifications, descriptions or logos in this repository. See [TRADEMARKS.md](TRADEMARKS.md).
 
 ## Where to read more
