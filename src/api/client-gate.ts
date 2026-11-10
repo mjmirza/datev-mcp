@@ -30,7 +30,11 @@ export function describeClient(c: Pick<CheckedClient, "name" | "consultant_numbe
 
 /** A URL for a person: DATEV's technical client id becomes {client} in path, query and fragment. Every other byte stays as sent. */
 export function hideClientId(url: string, ids: (string | undefined)[]): string {
-  const plainIds = [...new Set(ids.filter((x): x is string => !!x))];
+  // Passes insert a private-use mark absent from the URL, never "{client}", so an id inside it cannot loop.
+  let code = 0xe000;
+  while (code < 0xf8ff && url.includes(String.fromCharCode(code))) code++;
+  const MARK = String.fromCharCode(code);
+  const plainIds = [...new Set(ids.filter((x): x is string => !!x && !x.includes(MARK)))];
   if (!plainIds.length) return url;
   // Scheme, userinfo, host and port are never rewritten; a host never holds "%", so an escaped slash starts the path.
   const authority = /^(?:[A-Za-z][A-Za-z0-9+.-]*:)?\/\/(?:[^/?#]*@)?[^/?#@%]*/.exec(url)?.[0] ?? "";
@@ -61,7 +65,7 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
     let at = 0;
     for (const [from, to] of hits) {
       if (to <= at) continue;
-      if (from >= at) out += rest.slice(at, from) + "{client}";
+      if (from >= at) out += rest.slice(at, from) + MARK;
       at = to;
     }
     return out + rest.slice(at);
@@ -69,7 +73,7 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
   // Hiding one id can change how a neighbouring escape decodes, so repeat until nothing changes.
   let rest = url.slice(authority.length);
   for (let next = hideOnce(rest); next !== rest; next = hideOnce(rest)) rest = next;
-  return authority + rest;
+  return authority + rest.replaceAll(MARK, "{client}");
 }
 
 /** Query or header values for a person: each string or number, also in a list, has the client id hidden like a URL. */
