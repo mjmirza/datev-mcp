@@ -33,7 +33,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F14 | HIGH | Docs claim write retries, redirects followed, nothing saved on a failed check | R1-9, R2-30 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F15 | HIGH | German mode leaves login, services, doctor, previews and approvals in English | R1-10, R2-21 | open | | |
 | F16 | HIGH | A quarantined corrupt session file stays in plaintext | R1-11 | open | | |
-| F17 | HIGH | Login completes without the full user name DATEV requires | R1-12, R2-13 | open | | |
+| F17 | HIGH | Login completes without the full user name DATEV requires | R1-12, R2-13 | fixed | 15dcb51 | a login without the full user name saves nothing |
 | F18 | MEDIUM | `azp` checked only for multiple audiences, `at_hash` never | R1-13, R2-23 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F19 | MEDIUM | Client secret not trimmed | R1-14 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
 | F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | open | | decision pending, see rule 5 |
@@ -46,17 +46,17 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F27 | BLOCKER | JWKS (signing key) requests not in the HTTP log | R2-2 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F28 | BLOCKER | Quick start keeps the client secret in a plaintext file while docs claim it is stored encrypted | R2-3 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
 | F29 | BLOCKER | Token, userinfo and revoke errors drop DATEV's help link | R2-5 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
-| F30 | HIGH | Tokens issued before the identity check are abandoned, not revoked, when a later login step fails | R2-6 | open | | |
+| F30 | HIGH | Tokens issued before the identity check are abandoned, not revoked, when a later login step fails | R2-6 | fixed | 15dcb51 | a login without the full user name saves nothing |
 | F31 | HIGH | A body that breaks off is thrown before the call is logged | R2-7 | fixed | 6a099df | a write whose answer breaks off is still logged |
 | F32 | HIGH | A retried GET error answer is logged without its body | R2-9 | fixed | 6a099df | a write whose answer breaks off is still logged |
 | F33 | HIGH | Request bodies kept only as a hash | R2-10 | open | | decided with F20 |
-| F34 | HIGH | Status reports ACTIVE without checking userinfo's shape and that `sub` matches the saved identity | R2-14 | open | | |
+| F34 | HIGH | Status reports ACTIVE without checking userinfo's shape and that `sub` matches the saved identity | R2-14 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
 | F35 | HIGH | Choosing accounting services silently adds the accounting-clients scope | R2-16 | open | | |
 | F36 | HIGH | Upload approval does not show the destination client, query and resolved URL | R2-18 | open | | |
 | F37 | HIGH | Uploads do not check the client list and the service before sending | R2-20 | open | | |
 | F38 | MEDIUM | A `null` token answer crashes before it is logged | R2-22 | fixed | 3edd7c4 | token, userinfo and revoke errors keep DATEV's help link |
 | F39 | MEDIUM | Session key creation not serialised across environments | R2-24 | open | | |
-| F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | open | | |
+| F40 | MEDIUM | Status shows an invented 11-hour validity when no expiry is stored | R2-26 | fixed | 15dcb51 | the status is ACTIVE only for a valid userinfo answer about the same person |
 | F41 | MEDIUM | `doctor` calls accounting-clients even when that service is not connected | R2-27 | open | | |
 | F42 | MEDIUM | Setup walkthrough grants too few scopes for its own example questions | R2-29 | open | | |
 | F43 | BLOCKER | The login uses a localhost redirect with a client secret (Confidential client), which DATEV blocks in production since 01.03.2026 | R3 DATEV requirements AUTH-13, REDIR-01 | fixed | 8a3374d | a DATEV Public client signs in with PKCE and client_id alone |
