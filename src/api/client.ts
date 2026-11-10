@@ -313,10 +313,10 @@ const join = (parts: Uint8Array[]): Uint8Array => {
   return out;
 };
 
-// A cut error answer still carries DATEV's title and help link further on, so the rest is scanned for them.
-// The scan reads at most this much more and keeps only a short window, so a hostile body cannot stall it.
-const ERROR_SCAN_BYTES = 8 * 1024 * 1024;
-const SCAN_WINDOW = 4096;
+// A cut JSON error answer still carries DATEV's title and help link further on, so the rest is scanned for them.
+// It is scanned in batches up to the hard limit, through one decoder, so no field is skipped and the cost stays linear.
+const SCAN_BATCH = 64 * 1024;
+const SCAN_OVERLAP = 4096;
 const PROBLEM_KEYS = ["title", "type", "detail", "help_url", "error", "error_description", "error_uri", "request_id", "requestId"];
 
 function scanFields(text: string, found: Record<string, unknown>): void {
@@ -332,6 +332,20 @@ function scanFields(text: string, found: Record<string, unknown>): void {
   }
 }
 
+const SCAN_IDLE_MS = 2000;
+
+async function idleRead(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<Awaited<ReturnType<ReadableStreamDefaultReader<Uint8Array>["read"]>> | "idle"> {
+  let timer: NodeJS.Timeout | undefined;
+  const idle = new Promise<"idle">((r) => {
+    timer = setTimeout(() => r("idle"), SCAN_IDLE_MS);
+  });
+  try {
+    return await Promise.race([reader.read(), idle]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function readCapped(res: Response, cap: number, scan = false): Promise<{ bytes: Uint8Array; overflow: boolean; fields?: Record<string, unknown> }> {
   if (!res.body) return { bytes: new Uint8Array(), overflow: false };
   const reader = res.body.getReader();
@@ -341,35 +355,53 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
   const fields: Record<string, unknown> = {};
   const decoder = new TextDecoder("utf-8");
   let carry = "";
-  let scanned = 0;
+  let pending: Uint8Array[] = [];
+  let pendingSize = 0;
+  let read = 0;
+  const flush = (last: boolean) => {
+    const window = carry + decoder.decode(join(pending), { stream: !last });
+    scanFields(window, fields);
+    carry = window.slice(-SCAN_OVERLAP);
+    pending = [];
+    pendingSize = 0;
+  };
+  const queue = (chunk: Uint8Array) => {
+    // Never past the hard limit, whatever size the chunks come in.
+    const room = HARD_MAX_BYTES - read;
+    const take = chunk.length > room ? chunk.subarray(0, room) : chunk;
+    read += take.length;
+    pending.push(take);
+    pendingSize += take.length;
+    if (pendingSize >= SCAN_BATCH) flush(false);
+  };
   for (;;) {
-    const { done, value } = await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
-    if (done) break;
+    // Past the cap only the error fields are wanted, so an answer that goes quiet is not waited for.
+    const next = overflow ? await idleRead(reader) : await reader.read(); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
+    if (next === "idle" || next.done) break;
+    const { value } = next;
     if (overflow) {
-      scanned += value.length;
-      const window = carry + decoder.decode(value, { stream: true });
-      scanFields(window, fields);
-      carry = window.slice(-SCAN_WINDOW);
-      if (scanned >= ERROR_SCAN_BYTES || PROBLEM_KEYS.slice(0, 2).every((k) => fields[k] !== undefined)) break;
+      queue(value);
+      if (read >= HARD_MAX_BYTES) break;
       continue;
     }
     if (size + value.length > cap) {
-      const rest = value.subarray(cap - size);
       parts.push(value.subarray(0, cap - size));
-      size = cap;
       overflow = true;
       if (!scan) break;
-      // The head is scanned too, through the same window, so a field cut at the cap is still found.
-      const head = new TextDecoder("utf-8").decode(join(parts).subarray(Math.max(0, cap - SCAN_WINDOW)));
-      const window = head + decoder.decode(rest, { stream: true });
-      scanned = rest.length;
-      scanFields(window, fields);
-      carry = window.slice(-SCAN_WINDOW);
+      // The decoder starts just before the cap, so a character or field cut there is read whole.
+      const head = join(parts);
+      read = cap;
+      queue(head.subarray(Math.max(0, cap - SCAN_OVERLAP)));
+      read = cap;
+      queue(value.subarray(cap - size));
+      size = cap;
+      if (read >= HARD_MAX_BYTES) break;
       continue;
     }
     parts.push(value);
     size += value.length;
   }
+  if (overflow && scan) flush(true);
   if (overflow) await reader.cancel().catch(() => undefined); // BESTPRACTICE_OK: stop the download once done
   return { bytes: join(parts), overflow, ...(overflow && scan ? { fields } : {}) };
 }

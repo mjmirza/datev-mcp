@@ -13,11 +13,14 @@ export class NeedsLoginError extends Error {
 }
 
 const SKEW_MS = 60_000;
+const RETRY_EVERY_MS = 30_000;
 
 // Hands out a valid access token. Refreshes at most once per expiry, across concurrent
 // callers in this process (shared promise) and across processes (store lock + re-read).
 export class Session {
   private inflight?: Promise<string>;
+  private retrying?: Promise<unknown>;
+  private lastRetry = -Infinity;
 
   constructor(
     private readonly store: TokenStore,
@@ -35,8 +38,15 @@ export class Session {
     if (!s) throw new NeedsLoginError("no saved session");
     if (s.clientId !== this.creds.clientId) throw new NeedsLoginError("saved session belongs to a different DATEV app");
     if (s.ended) {
-      // Each refused call retries the revokes DATEV has not confirmed, so they never wait for a status run.
-      void revokePending(this.store, this.endpoints, this.creds, { fetch: this.opts.fetch, log: this.opts.log && tokenLog(this.opts.log) }).catch(() => undefined);
+      // A refused call retries the revokes DATEV has not confirmed: one at a time, at most every 30 seconds.
+      if (!this.retrying && this.now() - this.lastRetry >= RETRY_EVERY_MS) {
+        this.lastRetry = this.now();
+        this.retrying = revokePending(this.store, this.endpoints, this.creds, { fetch: this.opts.fetch, log: this.opts.log && tokenLog(this.opts.log) })
+          .catch(() => undefined)
+          .finally(() => {
+            this.retrying = undefined;
+          });
+      }
       throw new NeedsLoginError("the connection was ended here and is not used again; DATEV has not confirmed every revoke yet");
     }
     if (s.tokens.expiresAt - SKEW_MS > this.now()) return s.tokens.accessToken;

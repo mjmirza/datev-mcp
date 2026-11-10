@@ -33,9 +33,27 @@ export function hideClientId(url: string, ids: (string | undefined)[]): string {
   const hidden = new Set(ids.filter((x): x is string => !!x).flatMap((id) => [id, encodeURIComponent(id)]));
   const q = url.indexOf("?");
   const path = q < 0 ? url : url.slice(0, q);
-  // In the query an id stands on its own between separators, also inside a nested address like next=/clients/id.
-  let query = q < 0 ? "" : url.slice(q);
-  for (const id of hidden) query = query.split(new RegExp(`(?<![A-Za-z0-9_-])${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_-])`)).join("{client}");
+  // In the query an id stands on its own between separators, also percent-encoded or inside a nested address.
+  const ownWord = (id: string) => new RegExp(`(?<![A-Za-z0-9_-])${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-z0-9_-])`, "g");
+  const decode = (v: string) => {
+    try {
+      return decodeURIComponent(v.replace(/\+/g, " "));
+    } catch {
+      return v;
+    }
+  };
+  const plainIds = [...hidden].filter((id) => !id.includes("%"));
+  const query = q < 0
+    ? ""
+    : `?${url
+        .slice(q + 1)
+        .split("&")
+        .map((pair) => pair.split("=").map((part) => {
+          const plain = decode(part);
+          const swapped = plainIds.reduce((acc: string, id: string) => acc.replace(ownWord(id), "\u0000"), plain);
+          return swapped === plain ? part : encodeURIComponent(swapped).replace(/%00/g, "{client}");
+        }).join("="))
+        .join("&")}`;
   return path.split("/").map((seg) => (hidden.has(seg) ? "{client}" : seg)).join("/") + query;
 }
 

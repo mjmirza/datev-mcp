@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Operation } from "../spec/types.js";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
@@ -15,6 +16,17 @@ const fail = (message: string) => ({ ...text(localize(message)), isError: true }
 
 const INLINE_BINARY_MAX = 256 * 1024;
 const scalar = z.union([z.string(), z.number(), z.boolean()]);
+
+/** Client ids in a call's own path parameters, for an operation the client gate does not check. */
+function clientIdsOf(op: Operation, pp: Record<string, string | number>): string[] {
+  const declared = op.params.filter((p) => p.in === "path").map((p) => p.name);
+  const value = (re: RegExp) => declared.filter((n) => re.test(n) && pp[n] !== undefined).map((n) => String(pp[n]));
+  const ids = value(/^client[-_]?(id|guid)$/i);
+  const consultant = value(/^consultant[-_]?number$/i)[0];
+  const number = value(/^client[-_]?number$/i)[0];
+  if (consultant && number) ids.push(`${consultant}-${number}`);
+  return ids;
+}
 
 export function registerGenericTools(server: McpServer, deps: (signal?: AbortSignal) => CallDeps): void {
   server.registerTool(
@@ -85,6 +97,8 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.product === "accounting-dataexchange" && pp.clientId !== undefined)
           await dataexchangeGuard(String(pp.clientId), pp.fiscalYearId === undefined ? undefined : String(pp.fiscalYearId), d);
         const client = await gateCall(op, path_params, query as Record<string, unknown> | undefined, d);
+        // The ids that name a client in this call's address: the checked client, or the declared path parameters that name one.
+        const ids = client ? [client.client_id, client.guid] : clientIdsOf(op, pp);
         if (op.write && confirm !== true) {
           const url = buildUrl(op, d.env, input);
           const sentHeaders = buildHeaders(op, input);
@@ -92,7 +106,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
             preview: true,
             note: localize(`This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`),
             method: op.method.toUpperCase(),
-            url: client ? hideClientId(url.toString(), [client.client_id, client.guid]) : url.toString(),
+            url: hideClientId(url.toString(), ids),
             ...(client ? { client: shownClient(client) } : {}),
             // Every header the caller set, because some decide where DATEV delivers the result (Target-System, Notify-Url).
             ...(Object.keys(sentHeaders).length ? { headers: sentHeaders } : {}),
@@ -103,7 +117,6 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
-          const ids = client ? [client.client_id, client.guid] : [];
           const summary = [client && `Client: ${describeClient(client)}`, `${op.method.toUpperCase()} ${op.id}`, hideClientId(buildUrl(op, d.env, input).toString(), ids), path_params && `ids: ${JSON.stringify(hideClientParams(path_params, ids))}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
           const denied = await humanApproval(server, d.env, summary);
           if (denied) return fail(denied);
@@ -111,9 +124,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         const { bytes, ...r } = await callOperation(op, input, d);
         const out: Record<string, unknown> = { ...r, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         // The answer names the client by its name, never by the technical id in the addresses DATEV used.
-        // An operation the client gate does not check, like the client list itself, still hides the id it was given.
-        const ids = client ? [client.client_id, client.guid] : Object.entries(pp).filter(([k]) => /client/i.test(k)).map(([, v]) => String(v));
-        if (ids.length) {
+        if (ids.some(Boolean)) {
           out.url = hideClientId(r.url, ids);
           if (r.location) out.location = hideClientId(r.location, ids);
           if (r.paging?.link) out.paging = { ...r.paging, link: hideClientId(r.paging.link, ids) };

@@ -872,3 +872,135 @@ test("an empty stored service list falls back to the scopes DATEV granted", () =
   const hr = selectServices("hr-files").scopes.join(" ");
   assert.ok(servicesOfSession({ services: [], tokens: { scope: hr } })!.includes("hr-files"));
 });
+
+// Guards for the Codex check of 2026-11-10 (ledger R11).
+
+const errorFields = async (chunks: Iterable<Uint8Array>, contentType = "application/json") =>
+  (await callOperation(getOperation("accounting-clients.getclients")!, {}, readDeps(async () => streamed(403, contentType, chunks)))).body as Record<string, unknown>;
+const enc = new TextEncoder();
+
+test("a permission refusal far larger than the permission check's read limit keeps the title and link at its end", async () => {
+  let ended = 0;
+  function* body() {
+    yield enc.encode(`{"detail":"`);
+    const block = new Uint8Array(1024 * 1024).fill(120);
+    for (let n = 0; n < 20; n++) yield block;
+    yield enc.encode(`","type":"https://help.datev.de/late","title":"LATE TITLE"}`);
+  }
+  const deps: CallDeps = { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => streamed(403, "application/json", body()), sleep: async () => undefined, onMissingPermission: async () => (ended++, "") };
+  await assert.rejects(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps), (e: Error) => e.message.includes("LATE TITLE") && e.message.includes("https://help.datev.de/late"));
+  assert.equal(ended, 1);
+});
+
+test("the error scan costs the same per byte however small the pieces are", async () => {
+  function* body() {
+    yield enc.encode(`{"detail":"`);
+    const one = enc.encode("x");
+    for (let n = 0; n < 600_000; n++) yield one;
+    yield enc.encode(`","title":"T"}`);
+  }
+  const started = Date.now();
+  assert.equal((await errorFields(body())).title, "T");
+  assert.ok(Date.now() - started < 5000, `took ${Date.now() - started} ms`);
+});
+
+test("the error scan keeps a help link and request id that come after the title", async () => {
+  function* body() {
+    yield enc.encode(`{"detail":"${"x".repeat(5000)}","title":"T","type":"about:blank"`);
+    yield enc.encode(" ".repeat(10));
+    yield enc.encode(`,"help_url":"https://help.datev.de/after","request_id":"R-9"}`);
+  }
+  const f = await errorFields(body());
+  assert.equal(f.help_url, "https://help.datev.de/after");
+  assert.equal(f.request_id, "R-9");
+});
+
+test("a character cut at the read limit is read whole", async () => {
+  const bytes = enc.encode(`{"detail":"${"x".repeat(5000)}","title":"Prüfung"}`);
+  const at = bytes.indexOf(0xc3);
+  function* body() {
+    yield bytes.subarray(0, at + 1);
+    yield bytes.subarray(at + 1);
+  }
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, { ...readDeps(async () => streamed(403, "application/json", body())), maxBodyChars: Math.floor((at + 1 - 4) / 4) });
+  assert.equal((r.body as Record<string, unknown>).title, "Prüfung");
+});
+
+test("an error answer that goes quiet past the read limit is not waited for", async () => {
+  const head = enc.encode(`{"detail":"${"x".repeat(5000)}","title":"Quiet"`);
+  const res = new Response(new ReadableStream<Uint8Array>({ start(c) { c.enqueue(head); } }), { status: 403, headers: { "content-type": "application/json" } });
+  const started = Date.now();
+  const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, readDeps(async () => res));
+  assert.ok(Date.now() - started < 6000, `took ${Date.now() - started} ms`);
+  assert.equal((r.body as Record<string, unknown>).title, "Quiet");
+});
+
+test("ending a connection also revokes an earlier login's access token, and keeps it when DATEV does not confirm", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const later = Date.now() + 9e5;
+  for (const run of [(store: TokenStore, f: FetchLike) => disconnect(cfg, { store, fetch: f, httpLog: () => {} }), (store: TokenStore, f: FetchLike) => endForMissingPermission(cfg, { store, fetch: f, httpLog: () => {} })]) {
+    for (const confirm of [true, false]) {
+      const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r11-old-")), envKeyStore());
+      store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "NEW-AT", refreshToken: "NEW-RT", expiresAt: later, obtainedAt: Date.now() }, pendingAccessRevoke: [{ token: "OLD-AT", expiresAt: later }] });
+      const sent: string[] = [];
+      const f: FetchLike = async (_u, init) => {
+        const token = String(new URLSearchParams(String(init?.body)).get("token"));
+        sent.push(token);
+        return token === "OLD-AT" && !confirm ? Promise.reject(new TypeError("socket hang up")) : new Response("", { status: 200 });
+      };
+      await run(store, f);
+      assert.ok(sent.includes("OLD-AT"), sent.join(","));
+      if (confirm) assert.equal(store.read(), undefined);
+      else assert.deepEqual(store.read()!.pendingAccessRevoke, [{ token: "OLD-AT", expiresAt: later }]);
+    }
+  }
+});
+
+test("a second disconnect still revokes an access token DATEV did not confirm the first time", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r11-2nd-")), envKeyStore());
+  const later = Date.now() + 9e5;
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: later, obtainedAt: Date.now() } });
+  const hints: string[] = [];
+  const fail: FetchLike = async (_u, init) => (new URLSearchParams(String(init?.body)).get("token_type_hint") === "access_token" ? Promise.reject(new TypeError("socket hang up")) : new Response("", { status: 200 }));
+  await disconnect(cfg, { store, fetch: fail, httpLog: () => {} });
+  const ok: FetchLike = async (_u, init) => (hints.push(String(new URLSearchParams(String(init?.body)).get("token_type_hint"))), new Response("", { status: 200 }));
+  const r = await disconnect(cfg, { store, fetch: ok, httpLog: () => {} });
+  assert.deepEqual(hints, ["access_token"]);
+  assert.equal(r.removed, true);
+});
+
+test("many refused calls on an ended connection send one revoke, not one each", async () => {
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r11-storm-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", ended: true, tokens: { accessToken: "AT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  let revokes = 0;
+  const s = new Session(store, ENDPOINTS.sandbox, { clientId: "cid" }, { fetch: async () => (revokes++, Promise.reject(new TypeError("down"))) });
+  await Promise.all(Array.from({ length: 30 }, () => s.accessToken().catch(() => undefined)));
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(revokes, 1);
+});
+
+test("an expired access token waiting for its revoke is dropped from the record", async () => {
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r11-exp-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() }, pendingAccessRevoke: [{ token: "OLD", expiresAt: Date.now() - 1 }] });
+  await revokePending(store, ENDPOINTS.sandbox, { clientId: "cid" }, { fetch: async () => new Response("", { status: 200 }) });
+  assert.equal(store.read()!.pendingAccessRevoke, undefined);
+});
+
+test("only a declared client path parameter is hidden, also as a consultant and client number pair and when percent-encoded", async () => {
+  const h = await harness(() => json(200, {}, { location: "/jobs/J1?next=%2Fclients%2F455148-1%2Fjobs&client-id=455148%2D1" }));
+  const r1 = await h.call("datev_call", { operation_id: "accounting-clients.getclient", path_params: { "client-id": "455148-1", unusedClientId: "J1" } });
+  const o1 = JSON.parse(r1.text);
+  assert.match(o1.location, /\/jobs\/J1/, "an undeclared parameter hides nothing");
+  assert.ok(!decodeURIComponent(o1.location).includes("455148-1"), o1.location);
+  const r2 = await h.call("datev_call", { operation_id: "eau-api.getclients", path_params: { consultantNumber: "455148", clientNumber: "1" } });
+  assert.ok(!JSON.parse(r2.text).url.includes("455148-1"), JSON.parse(r2.text).url);
+});
+
+test("a damaged entry deep in a send record's history counts as damaged", async () => {
+  const home = mkdtempSync(join(tmpdir(), "datev-r11-deep-"));
+  const { sentBefore } = await import("../../src/tools/sent-ledger.js");
+  const good = (at: string, previous?: unknown) => ({ at, name: "x", status: "uncertain", ...(previous ? { previous } : {}) });
+  writeFileSync(join(home, "sent-sandbox.json"), JSON.stringify({ extf: { "455148-1": { abc: good("2026-11-03T00:00:00Z", good("2026-11-02T00:00:00Z", { at: "2026-11-01T00:00:00Z", name: "x", status: ["sent"] })) } } }));
+  assert.throws(() => sentBefore("extf", "sandbox", "455148-1", "abc", { DATEV_MCP_HOME: home }), /damaged/);
+});
