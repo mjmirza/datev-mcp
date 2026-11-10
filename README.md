@@ -6,8 +6,8 @@ Ask your AI assistant about your DATEV bookkeeping, payroll and documents in pla
 ![License](https://img.shields.io/badge/license-source--available-lightgrey)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
-![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C462%20passing-green)
-![Tests](https://img.shields.io/badge/unit%20tests-101%20passing-green)
+![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C582%20passing-green)
+![Tests](https://img.shields.io/badge/unit%20tests-346%20passing-green)
 
 ## What this is, in plain words
 
@@ -21,8 +21,11 @@ It is built for tax advisors, bookkeepers, and the developers who build tools fo
 
 - **Answers without clicking.** Clients, fiscal years, sums and balances, account postings and the chart of accounts come straight from DATEV into the conversation.
 - **Nothing changes behind your back.** Every write that changes bookings, files or records returns a preview first. The real call only runs with a one-time confirmation code that matches that exact preview, so the assistant cannot quietly swap the file or the target client. The one exception is `datev_account_postings`, which starts DATEV's read-only postings export job directly.
-- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with thirteen focused tools for the everyday cases. Every operation that takes a file upload can be sent with `datev_upload_file`, after a preview.
+- **Every DATEV operation, not a hand-picked few.** All 209 operations across 23 DATEV API specifications are indexed and can be searched and described (health checks only on request), with 18 tools for the everyday cases and for calling any operation directly. Every operation that takes a file upload can be sent with `datev_upload_file`, after a preview.
 - **Your files stay yours.** The server refuses to send anything from hidden folders (where SSH keys and cloud logins live) or anything that looks like a key or credentials file.
+- **Your connection, under your control.** `status` shows who is connected and until when, `disconnect` revokes every token at DATEV before it deletes the local session, and a login that loses a data service's permission is ended for you.
+- **Client ids stay out of sight.** DATEV's technical client id is replaced by the client's name and numbers in previews, approvals, links and paging, so it never ends up in a conversation.
+- **English or German.** Set `DATEV_MCP_LANG=de` and the login page, `doctor`, previews, approvals and error messages speak German.
 - **Honest answers.** If DATEV returns an error, an incomplete page or an answer shape the accounting tools do not understand, you get told instead of a fake empty list. Rows the tools cannot read are counted in the answer (`skipped_rows`, `rows_without_account`), and a chart of accounts with no readable row is refused.
 
 ## From zero to your first answer
@@ -75,9 +78,18 @@ A browser window opens at DATEV's sandbox login. These are the four screens you 
 
 ![DATEV consent page listing the requested permissions](docs/images/03-signin-consent.png)
 
-**3d. Done.** The browser shows a short confirmation and your terminal prints `Connected to DATEV sandbox as <your name>` with the date and time the connection stays valid. The session is saved encrypted on your machine. `dist/index.js status` shows the connection at any time, `dist/index.js disconnect` ends it.
+**3d. Done.** The browser shows a short confirmation page, in light or dark to match your system and in German with `DATEV_MCP_LANG=de`, and your terminal prints `Connected to DATEV sandbox as <your name>` with the date and time the connection stays valid. The session is saved encrypted on your machine. `dist/index.js status` shows the connection at any time, `dist/index.js disconnect` ends it.
 
 ![Login complete page](docs/images/04-signin-done.png)
+
+| Command | Does |
+|---|---|
+| `login --services a,b` | Connects to DATEV with the data services you choose |
+| `status` | Shows whether the connection is active, for whom and until when |
+| `disconnect` | Revokes every token at DATEV, then deletes the local session. `--local-only` skips the revoke |
+| `services` | Lists the data services you can choose |
+| `doctor` | Checks credentials, the session and live API access |
+| `compliance` | Shows how this installation meets DATEV's interface requirements |
 
 Working over SSH, or want a different browser? Set `DATEV_MCP_NO_BROWSER=1` and the command only prints the link.
 
@@ -158,15 +170,15 @@ Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check
 |---|---|
 | Offline scenarios across all 209 operations | 28,582 of 28,582 passing |
 | Planted bugs the scenarios had to catch | 5 of 5 caught |
-| Unit and integration tests | 326 of 326 passing |
+| Unit and integration tests | 346 of 346 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
-| Independent review by a second AI model (Codex), four passes | 46 of 48 findings fixed. Two known limits remain, listed in [SECURITY.md](docs/SECURITY.md) |
+| Adversarial review by two other AI models (Codex and Grok), 14 rounds | 118 of 123 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
 
 Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
 ## Safety in one paragraph
 
-Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. Token, revoke, userinfo and `doctor` calls refuse redirects too. Logins use OAuth with PKCE, DATEV's ID token is verified, and the session is stored encrypted with the key in your operating system's credential store. Writes need a preview-bound confirmation code, and in production you approve each one in the client. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
+Operation calls only go to the DATEV hosts named in DATEV's specs and never follow a redirect, so your credentials cannot be forwarded elsewhere by them. Token, revoke, userinfo and `doctor` calls refuse redirects too. Logins use OAuth with PKCE, DATEV's ID token is verified, and the session is stored encrypted with the key in your operating system's credential store. Writes need a preview-bound confirmation code, and in production you approve each one in the client. A write that DATEV answers with a server error is reported as possibly applied, never as safely refused. Disconnect revokes every token at DATEV, and a token DATEV does not confirm as revoked is kept on record and retried. Calls have a time budget, can be cancelled by your AI client, and stop reading an answer once it grows too large. The full threat model is in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## For developers
 
@@ -183,8 +195,8 @@ Operation calls only go to the DATEV hosts named in DATEV's specs and never foll
 src/
   api/client.ts      builds, sends and reads every DATEV request
   auth/              OAuth login, token refresh, session file and its lock
-  tools/             the thirteen MCP tools
-  setup/             login and doctor commands
+  tools/             the 18 MCP tools
+  setup/             login, status, disconnect, doctor and compliance commands
 scripts/             spec download, operation index, endpoint audit
 test/unit/           unit and integration tests
 test/evals/run.ts    the offline scenario generator
@@ -199,6 +211,8 @@ docs/                setup, security, validation, compliance and more
 | `npm run eval` | The offline scenario run, writes a report to `test/reports/` |
 | `npm run test:live` | A short live check against the DATEV sandbox |
 | `npm run sweep` | The paced live crawl, resumes where it stopped |
+| `npm run qa` | Rebuilds the answered-questions catalogue in `docs/qa/` |
+| `npm run compliance` | Rebuilds the DATEV requirements checklist and its summary |
 
 ## Community
 
