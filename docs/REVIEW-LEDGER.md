@@ -115,6 +115,18 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F96 | MEDIUM | An error answer that went quiet past the read limit was waited for indefinitely | R11 | fixed | 881f64b | an error answer that goes quiet past the read limit is not waited for |
 | F97 | LOW | An undeclared client path parameter was hidden as if it were the client id | R11 | fixed | 881f64b | only a declared client path parameter is hidden, also as a consultant and client number pair and when percent-encoded |
 | F98 | LOW | An expired access token waiting for its revoke was never dropped from the record | R11 | fixed | 881f64b | an expired access token waiting for its revoke is dropped from the record |
+| F99 | HIGH | An error answer still dribbling past the read limit ran into the overall timeout and lost DATEV's refusal | R12 | fixed | 803cbc8 | a refused write whose error answer keeps dribbling past the read limit is reported as refused, quickly |
+| F100 | MEDIUM | An error answer that broke off past the read limit lost its status and was retried | R12 | fixed | 803cbc8 | an error answer that breaks off past the read limit keeps its status and title |
+| F101 | LOW | A numeric request id in an error answer was not kept | R12 | fixed | 803cbc8 | the error scan keeps a numeric request id, also one cut at a scan batch edge |
+| F102 | LOW | A nested title in an error answer can win over the top-level one | R12 | rejected | - | The scan reads a window of a cut answer, so it cannot know nesting without a full JSON lexer across batches. The nested title is still DATEV's own text, so nothing is invented or lost. |
+| F103 | HIGH | Master client ids and combined consultant and client numbers were shown in answer links | R12 | fixed | 5b75d34 | every declared path parameter that names a client is read as a client id, an unrelated one is not |
+| F104 | MEDIUM | An upper-case GUID, or an id before a dot, semicolon or comma, was shown | R12 | fixed | 5b75d34 | a GUID is hidden whatever its case, and an id before a dot, semicolon or comma is hidden too |
+| F105 | LOW | Hiding an id re-encoded the rest of a query and missed the fragment | R12 | fixed | 5b75d34 | hiding an id in a query or fragment keeps every other byte as sent |
+| F106 | LOW | A client id percent-encoded twice was shown | R12 | fixed | 284c0d6 | a client id encoded twice in a query is hidden too, and other bytes stay as sent |
+| F107 | MEDIUM | A late refusal of an older access token ended a newer login | R12 | fixed | ab8850d | a late 403 from an older access token never ends a newer login saved meanwhile |
+| F108 | MEDIUM | A new login over an active one left the old access token live and unrecorded | R12 | fixed | ab8850d | a new login over an active one revokes the old unexpired access token too |
+| F109 | LOW | An ended connection kept saying a revoke was open after DATEV confirmed all of them | R12 | fixed | ab8850d | once DATEV confirmed every revoke, an ended connection no longer claims a revoke is still open |
+| F110 | LOW | A disconnect of another app registration's session hid the tokens it could not revoke | R12 | fixed | ab8850d | a disconnect of a session from another app registration says which tokens could not be revoked here |
 
 ## Evidence for rejected and disputed findings
 
