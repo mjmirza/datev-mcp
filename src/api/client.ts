@@ -394,7 +394,7 @@ async function readCapped(res: Response, cap: number, scan = false): Promise<{ b
       } catch {
         break; // a break past the cap keeps the head and the fields found so far
       }
-    } else if (size >= cap) {
+    } else if (scan && size >= cap) {
       // A head exactly at the cap that then goes quiet counts as cut off, not as a stall.
       next = await idleRead(reader, SCAN_IDLE_MS); // BESTPRACTICE_OK: a stream is read chunk by chunk in order
       if (next === "idle") overflow = true;

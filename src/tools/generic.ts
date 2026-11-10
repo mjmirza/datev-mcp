@@ -142,6 +142,8 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
           out.note = op.write
             ? `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. DATEV may already have applied this change, so check in DATEV before sending it again.`
             : `DATEV answered HTTP ${r.status} (a redirect), which this server does not follow. Nothing was read.`;
+        // A server error on a write proves nothing: DATEV may still have applied it.
+        if (op.write && (r.status >= 500 || r.status === 408)) out.note = "DATEV may already have applied this change, so check in DATEV before sending it again.";
         // Binary answers are kept byte-exact: saved to a file, or returned as base64 when small.
         if (bytes && (r.status < 300 || r.status >= 400)) {
           if (save_to && r.status < 300 && !r.truncated) out.saved_to = writeLocalFile(save_to, bytes, overwrite === true);

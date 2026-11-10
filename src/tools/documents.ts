@@ -196,7 +196,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
         const denied = await humanApproval(server, d.env, `Upload ${file.name} (${file.bytes.length} bytes${document_type ? `, ${document_type}` : ""}) to ${SERVICE[svc]} of ${who}\n${hideClientId(destination, [client_id])}`);
         if (denied) return err(denied);
         const r = await callOperation(op, { pathParams: { "client-id": client_id, "document-id": documentId }, rawBody: buildDocumentForm(file, metadata) }, d);
-        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, document_id: documentId, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
+        const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, document_id: documentId, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}), ...(r.status >= 500 || r.status === 408 ? { note: "DATEV may already have applied this change, so check in DATEV before sending it again." } : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {
         return err(errorText(e));
