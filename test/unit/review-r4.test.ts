@@ -15,10 +15,12 @@ import { ENDPOINTS } from "../../src/auth/endpoints.js";
 import { envKeyStore, loadOrCreateKey, type KeyStore } from "../../src/auth/session-key.js";
 import { Session } from "../../src/auth/session.js";
 import { revokePending } from "../../src/auth/pending-revoke.js";
-import { selectServices, servicesForScopes, serviceList } from "../../src/auth/services.js";
+import { selectServices, servicesForScopes, servicesOfSession, serviceList } from "../../src/auth/services.js";
 import { localize, localizeApproval } from "../../src/i18n.js";
 import { TokenStore } from "../../src/auth/token-store.js";
-import { endForMissingPermission } from "../../src/setup/disconnect.js";
+import { disconnect, endForMissingPermission } from "../../src/setup/disconnect.js";
+import { connectionStatus } from "../../src/setup/status.js";
+import { doctor } from "../../src/setup/doctor.js";
 import { documentGuid, registerDocumentTools } from "../../src/tools/documents.js";
 import { registerExtfTools } from "../../src/tools/extf.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
@@ -546,22 +548,24 @@ test("a permission refusal keeps DATEV's help link and title", async () => {
 });
 
 test("the session key of a per-user credential store is created under one lock for every home folder", () => {
-  const home = mkdtempSync(join(tmpdir(), "datev-r7-home-"));
-  let lockedPerUser = false;
+  const lockHome = mkdtempSync(join(tmpdir(), "datev-r7-userlock-"));
+  const lock = join(lockHome, "key-lock");
   let kept: Buffer | undefined;
-  const uid = typeof process.getuid === "function" ? process.getuid() : "";
-  const store: KeyStore = {
-    name: "test keychain",
-    perUser: true,
-    get: () => kept,
-    set: (k) => {
-      lockedPerUser = existsSync(join(tmpdir(), `datev-mcp-key-${uid}`, "session-key.lock"));
-      kept = k;
-    },
-  };
-  loadOrCreateKey(store, home);
-  assert.ok(lockedPerUser, "the lock is per user, outside the home folder");
-  assert.equal(existsSync(join(home, "session-key.lock")), false);
+  const seen: boolean[] = [];
+  const store: KeyStore = { name: "test keychain", userLock: () => lock, get: () => kept, set: (k) => (seen.push(existsSync(join(lock, "session-key.lock"))), (kept = k)) };
+  const before = process.env.TMPDIR;
+  try {
+    // Two processes of one user may differ in TMPDIR and DATEV_MCP_HOME; the lock must not.
+    for (const t of [mkdtempSync(join(tmpdir(), "datev-r8-a-")), mkdtempSync(join(tmpdir(), "datev-r8-b-"))]) {
+      process.env.TMPDIR = t;
+      kept = undefined;
+      loadOrCreateKey(store, mkdtempSync(join(tmpdir(), "datev-r7-home-")));
+    }
+  } finally {
+    if (before === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = before;
+  }
+  assert.deepEqual(seen, [true, true], "both creations ran under the same per-user lock");
 });
 
 test("an EXTF file DATEV accepted returns its job id even when asking for the result fails", async () => {
@@ -606,7 +610,8 @@ test("the income tax health check stays reachable when its service was chosen", 
 });
 
 test("German approvals translate the client labels, never the client's name", () => {
-  assert.equal(localizeApproval("Client: Best client 123 GmbH, consultant 455148, client 1", "de"), "Mandant: Best client 123 GmbH, Berater 455148, Mandant 1");
+  assert.equal(localizeApproval("Client: Best client 123 GmbH (consultant 455148, client 1)", "de"), "Mandant: Best client 123 GmbH (Berater 455148, Mandant 1)");
+  assert.equal(localizeApproval("Client: ACME, client 123", "de"), "Mandant: ACME, client 123", "a name DATEV sent without numbers stays as it is");
 });
 
 test("a send record keeps the accepted import but does not grow with every resend", async () => {
@@ -629,4 +634,90 @@ test("a client access refusal from the client gate reads fully in German", async
   assert.match(r.text, /Access to client 455148-1 could not be confirmed/);
   const de = localize(r.text, "de");
   assert.doesNotMatch(de, /Access to client|Please check|Nothing was sent|could not be confirmed/, de);
+});
+
+// Guards for the Codex check of 2026-11-10 (ledger R8).
+
+test("a saved expert login without a service list is bounded by the services its scopes cover", async () => {
+  const hr = selectServices("hr-files").scopes;
+  const covered = servicesOfSession({ scopes: hr })!;
+  let sent = 0;
+  const op = getOperation("cashregister.gettenants")!;
+  await assert.rejects(callOperation(op, {}, { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", sleep: async () => undefined, chosenServices: new Set(covered), fetch: async () => (sent++, json(200, [])) }), /not part of the connected data services/);
+  assert.equal(sent, 0);
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r8-doc-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", scopes: hr, tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  const urls: string[] = [];
+  await doctor({ env: "sandbox", endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid", clientSecret: "s" } }, { store, fetch: async (u) => (urls.push(String(u)), json(200, { sub: "u" })), httpLog: () => {} });
+  assert.ok(!urls.some((u) => u.endsWith("/clients")), urls.join(" "));
+});
+
+test("a partial expert scope set keeps the health check of the service it touches", async () => {
+  assert.ok(servicesForScopes(["openid", "datev:master-data:master-clients:read"]).includes("master-data-master-clients"));
+});
+
+test("previews and approvals hide the technical client id but never other values that look like it", async () => {
+  const h = await harness((s) => (s.method === "GET" ? json(200, client(["Rechnungsdatenservice 1.0"])) : json(201, {})));
+  const args = { operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs", path_params: { "client-id": "455148-1" }, body: { note: "455148-1", job_type: "x" } };
+  const preview = await h.call("datev_call", args);
+  assert.ok(!JSON.parse(preview.text).url.includes("455148-1"), "the preview URL hides the technical id");
+  assert.ok(!JSON.stringify(JSON.parse(preview.text).client).includes("455148-1"));
+  assert.match(preview.text, /"note":"455148-1"|"note": "455148-1"/, "a body value equal to the id is shown as it is");
+});
+
+test("a permission refusal keeps DATEV's title as well as its link, also for a very long answer", async () => {
+  let ended = 0;
+  const long = { type: "https://help.datev.de/403-y", title: "Forbidden title", detail: "x".repeat(110_000) };
+  const deps: CallDeps = { env: "sandbox", creds: { clientId: "c" }, token: async () => "T", fetch: async () => json(403, long), sleep: async () => undefined, onMissingPermission: async () => (ended++, "") };
+  await assert.rejects(requireClientService("455148-1", ["Datenservice Export Rechnungswesen"], deps), (e: Error) => e.message.includes("https://help.datev.de/403-y") && e.message.includes("Forbidden title"));
+  assert.equal(ended, 1, "a long 403 still ends the connection, as a missing permission");
+});
+
+test("a disconnect whose revoke answer is lost never uses the refresh token again", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r8-d-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: 0, obtainedAt: 0 } });
+  const r = await disconnect(cfg, { store, fetch: async () => Promise.reject(new TypeError("socket hang up")), httpLog: () => {} });
+  assert.equal(r.removed, false);
+  const tokenCalls: string[] = [];
+  await assert.rejects(new Session(store, ENDPOINTS.sandbox, cfg.creds, { fetch: async (u) => (tokenCalls.push(String(u)), json(200, {})) }).accessToken(), /connection was ended/);
+  assert.deepEqual(tokenCalls, [], "the refresh token is never sent to /token again");
+  assert.deepEqual(store.read()!.pendingRevoke, ["RT"]);
+});
+
+test("an access token still open after the refresh token was revoked keeps being retried by the status", async () => {
+  const cfg = { env: "sandbox" as const, endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid" } };
+  const store = new TokenStore("sandbox", mkdtempSync(join(tmpdir(), "datev-r8-s-")), envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", ended: true, tokens: { accessToken: "AT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  const hints: string[] = [];
+  const f: FetchLike = async (u, init) => (String(u) === ENDPOINTS.sandbox.revoke ? (hints.push(String(new URLSearchParams(String(init?.body)).get("token_type_hint"))), new Response("", { status: 200 })) : json(401, {}));
+  await connectionStatus(cfg, { store, fetch: f, httpLog: () => {} });
+  assert.deepEqual(hints, ["access_token"], "no refresh token is queued, the access token is still revoked");
+  assert.equal(store.read()!.tokens.expiresAt, 0);
+});
+
+test("lost answers and the EXTF result note read in German", async () => {
+  const stapledPdf = join(dir, "stapled-r8.pdf");
+  writeFileSync(stapledPdf, "%PDF-1.4 r8 lost");
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? Promise.reject(new TypeError("socket hang up")) : json(200, client(["Belegbilderservice"]))));
+  const lost = await h.confirmed("datev_upload_file", { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-2" }, files: { files: [stapledPdf] }, fields: { metadata: { document_type: "Rechnungseingang" } } });
+  assert.match(localize(lost.text, "de"), /^DATEV hat nicht geantwortet: /);
+  const note = "DATEV accepted the file, but asking for the result stopped (DATEV did not answer: socket hang up). Check with datev_extf_job (client_id 455148-1, job_id J9). Do not send the file again.";
+  assert.doesNotMatch(localize(note, "de"), /accepted|Check with|Do not send|did not answer/);
+});
+
+test("a stapled upload answered 429 counts as possibly stored, not as refused", async () => {
+  const stapledPdf = join(dir, "stapled-r8-429.pdf");
+  writeFileSync(stapledPdf, "%PDF-1.4 r8 429");
+  const h = await harness((s) => (s.path.endsWith("/document-types") ? json(200, [{ name: "Rechnungseingang" }]) : s.method === "PUT" ? json(429, { title: "slow down" }) : json(200, client(["Belegbilderservice"]))));
+  const base = { operation_id: "accounting-documents.put_clients_client_id_documents_stapled", path_params: { "client-id": "455148-3" }, files: { files: [stapledPdf] }, fields: { metadata: { document_type: "Rechnungseingang" } } };
+  await h.confirmed("datev_upload_file", base);
+  assert.match((await h.call("datev_upload_file", base)).text, /already sent to this client/);
+});
+
+test("a send record with a damaged earlier entry counts as damaged", async () => {
+  const home = mkdtempSync(join(tmpdir(), "datev-r8-home-"));
+  writeFileSync(join(home, "sent-sandbox.json"), JSON.stringify({ extf: { "455148-1": { abc: { at: "2026-11-10T00:00:00Z", name: "x", status: "uncertain", previous: { status: "sent" } } } } }));
+  const { sentBefore } = await import("../../src/tools/sent-ledger.js");
+  assert.throws(() => sentBefore("extf", "sandbox", "455148-1", "abc", { DATEV_MCP_HOME: home }), /damaged/);
 });

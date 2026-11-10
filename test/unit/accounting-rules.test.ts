@@ -169,7 +169,7 @@ test("documents use only the client's document types and the field rules of the 
   );
   assert.match(
     preview.destination,
-    /\/clients\/455148-1\/documents\/[0-9a-f-]{36}$/,
+    /\/clients\/\{client\}\/documents\/[0-9a-f-]{36}$/,
   );
 });
 

@@ -127,8 +127,8 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
     (m) => `${m[1]} braucht den Header ${m[2]}. Setzen Sie ${m[3]} in der Umgebung des Servers; er wird nie über den Assistenten weitergegeben.`,
   ],
   [
-    /^The connection was NOT removed: ([\s\S]*)\. Try again, or remove it at (\S+) and then run "datev-mcp disconnect --local-only"\.$/,
-    (m) => `Die Verbindung wurde NICHT entfernt: ${m[1]}. Versuchen Sie es erneut oder entfernen Sie sie unter ${m[2]} und führen Sie danach "datev-mcp disconnect --local-only" aus.`,
+    /^The connection was NOT removed: ([\s\S]*)\. It is no longer used here and is revoked again on the next call\. Try again, or remove it at (\S+) and then run "datev-mcp disconnect --local-only"\.$/,
+    (m) => `Die Verbindung wurde NICHT entfernt: ${m[1]}. Sie wird hier nicht mehr genutzt und beim nächsten Aufruf erneut widerrufen. Versuchen Sie es erneut oder entfernen Sie sie unter ${m[2]} und führen Sie danach "datev-mcp disconnect --local-only" aus.`,
   ],
   [
     /^DATEV refused to revoke the (refresh|access) token \(HTTP (\d{3})\)$/,
@@ -219,9 +219,11 @@ const CHECK_NAMES: Record<string, string> = {
   "accounting-clients API": "accounting-clients-API",
 };
 
-// Only the labels describeClient appends are translated: ", consultant N" and ", client N" at the end.
-// The name before them is DATEV's text and is never rewritten.
-const who = (s: string) => s.replace(/(^|, )consultant (\d+)(?=(?:, client \d+)?$)/, "$1Berater $2").replace(/(^|, )client (\d+)$/, "$1Mandant $2");
+// Only the final bracket describeClient appends is translated. The name before it is DATEV's text.
+const who = (s: string) =>
+  s
+    .replace(/^unnamed client/, "Mandant ohne Namen")
+    .replace(/ \((consultant \d+)?(, )?(client \d+)?\)$/, (all: string) => all.replace("consultant ", "Berater ").replace("client ", "Mandant "));
 
 // Single sentences the safety refusals are built from. A message no whole-message pattern matches is
 // translated sentence by sentence, so a new combination of known sentences still reaches the person in German.
@@ -238,6 +240,16 @@ const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^DATEV may already have applied this change, so check in DATEV before sending it again\.$/, () => "DATEV hat diese Änderung möglicherweise schon übernommen. Prüfen Sie das in DATEV, bevor Sie sie erneut senden."],
   [/^DATEV answered HTTP (\d{3}) \(a redirect\), which this server does not follow\.$/, (m) => `DATEV antwortete mit HTTP ${m[1]} (einer Weiterleitung), der dieser Server nicht folgt.`],
   [/^Nothing was read\.$/, () => "Es wurde nichts gelesen."],
+  [/^The call was cancelled before DATEV was asked\.?$/, () => "Der Aufruf wurde abgebrochen, bevor DATEV gefragt wurde."],
+  [/^The call was cancelled\.?$/, () => "Der Aufruf wurde abgebrochen."],
+  [/^DATEV did not answer: ([\s\S]*)$/, (m) => `DATEV hat nicht geantwortet: ${m[1]}`],
+  [/^DATEV's answer broke off: ([\s\S]*)$/, (m) => `Die Antwort von DATEV brach ab: ${m[1]}`],
+  [/^Ran out of time while waiting for DATEV to answer\.$/, () => "Die Zeit beim Warten auf die Antwort von DATEV ist abgelaufen."],
+  [/^Ran out of time while reading DATEV's answer\.$/, () => "Die Zeit beim Lesen der Antwort von DATEV ist abgelaufen."],
+  [/^Try again, or narrow the request\.$/, () => "Versuchen Sie es erneut oder grenzen Sie die Anfrage ein."],
+  [/^DATEV accepted the file, but asking for the result stopped \(([\s\S]*)\)\.$/, (m) => `DATEV hat die Datei angenommen, aber die Abfrage des Ergebnisses brach ab (${localize(m[1]!, "de")}).`],
+  [/^Check with datev_extf_job \(client_id (\S+), job_id (\S+)\)\.$/, (m) => `Prüfen Sie das Ergebnis mit datev_extf_job (client_id ${m[1]}, job_id ${m[2]}).`],
+  [/^Do not send the file again\.$/, () => "Senden Sie die Datei nicht erneut."],
   [/^Nothing was sent again\.$/, () => "Es wurde nichts erneut gesendet."],
   [/^Nothing was requested\.$/, () => "Es wurde nichts angefordert."],
   [/^Try again later\.$/, () => "Versuchen Sie es später erneut."],

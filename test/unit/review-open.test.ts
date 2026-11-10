@@ -119,7 +119,7 @@ test("a write's approval dialog names the client by name and numbers, not only t
   const args = { operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs", path_params: { "client-id": "455148-1" }, body: { job_type: "x" } };
   const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
   await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
-  assert.match(asked, /Client: Muster GmbH, consultant 455148, client 1/);
+  assert.match(asked, /Client: Muster GmbH \(consultant 455148, client 1\)/);
   assert.ok(!asked.includes("455148-1"), "DATEV's technical client id is not shown to the person");
 });
 
@@ -179,7 +179,7 @@ test("German mode puts doctor, previews and approval dialogs in German", async (
     const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
     assert.match(prev.note, /^Dieses POST ändert Daten in DATEV sandbox\. Es wurde nichts gesendet\./);
     await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
-    assert.match(asked, /Mandant: Muster GmbH, Berater 455148, Mandant 1/);
+    assert.match(asked, /Mandant: Muster GmbH \(Berater 455148, Mandant 1\)/);
     assert.match(asked, /Inhalt: /);
   } finally {
     if (before === undefined) delete process.env.DATEV_MCP_LANG;
@@ -190,14 +190,14 @@ test("German mode puts doctor, previews and approval dialogs in German", async (
 test("every preview note and approval line the upload, document and EXTF tools write has a German version", async () => {
   const { localize, localizeApproval } = await import("../../src/i18n.js");
   const notes = [
-    "Nothing was sent. This uploads beleg.pdf (12 bytes, application/pdf) to Belegbilderservice Rechnungswesen of Muster GmbH, consultant 455148, client 1 in DATEV sandbox. Ask the user, then call again with confirm: true and this confirm_token.",
-    "Nothing was sent. This imports 3 rows into Buchungsdatenservice of Muster GmbH, consultant 455148, client 1 in DATEV sandbox, AGAIN although it was sent before. Ask the user, then call again with confirm: true and this confirm_token.",
+    "Nothing was sent. This uploads beleg.pdf (12 bytes, application/pdf) to Belegbilderservice Rechnungswesen of Muster GmbH (consultant 455148, client 1) in DATEV sandbox. Ask the user, then call again with confirm: true and this confirm_token.",
+    "Nothing was sent. This imports 3 rows into Buchungsdatenservice of Muster GmbH (consultant 455148, client 1) in DATEV sandbox, AGAIN although it was sent before. Ask the user, then call again with confirm: true and this confirm_token.",
     "Nothing was sent. This sends 2 file(s) to POST https://x.example/v1/files in DATEV sandbox. Ask the user, then call again with confirm: true and this confirm_token.",
   ];
   for (const n of notes) assert.notEqual(localize(n, "de"), n, n.slice(0, 60));
-  const lines = ["Upload beleg.pdf (12 bytes, Rechnungseingang) to Belegbilderservice Rechnungswesen of Muster GmbH, consultant 455148, client 1", "Import 3 booking rows from extf.csv into Buchungsdatenservice of Muster GmbH (sent again)", "file file: beleg.pdf (12 bytes, application/pdf)", "fields: {}"];
+  const lines = ["Upload beleg.pdf (12 bytes, Rechnungseingang) to Belegbilderservice Rechnungswesen of Muster GmbH (consultant 455148, client 1)", "Import 3 booking rows from extf.csv into Buchungsdatenservice of Muster GmbH (sent again)", "file file: beleg.pdf (12 bytes, application/pdf)", "fields: {}"];
   for (const l of lines) assert.notEqual(localizeApproval(l, "de"), l, l);
-  assert.match(localizeApproval(lines[0]!, "de"), /von Muster GmbH, Berater 455148, Mandant 1$/);
+  assert.match(localizeApproval(lines[0]!, "de"), /von Muster GmbH \(Berater 455148, Mandant 1\)$/);
 });
 
 test("every DATEV requirement proof names a test that exists", () => {

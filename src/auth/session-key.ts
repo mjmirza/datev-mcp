@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { tmpdir, userInfo } from "node:os";
+import { userInfo } from "node:os";
 import { dirname, join } from "node:path";
 
 // DATEV classes access and refresh tokens as "highest protection need" and requires them to be encrypted.
@@ -9,8 +9,8 @@ import { dirname, join } from "node:path";
 
 export interface KeyStore {
   readonly name: string;
-  /** One key for every DATEV_MCP_HOME of this user (the OS credential store), so its creation is locked per user. */
-  readonly perUser?: boolean;
+  /** For a store shared by every DATEV_MCP_HOME of this user (the OS credential store): where its creation is locked. */
+  readonly userLock?: () => string;
   get(): Buffer | undefined;
   set(key: Buffer): void;
 }
@@ -39,9 +39,12 @@ export const envKeyStore = (env: NodeJS.ProcessEnv = process.env): KeyStore => (
 });
 
 // macOS Keychain. The key is written through "security -i", which reads the command from stdin, so it never shows in the process list.
+// The home folder from the user database, not HOME or TMPDIR, so every process of this user finds the same lock.
+const userLock = () => join(userInfo().homedir, ".config", "datev-mcp", "key-lock");
+
 const macKeychain: KeyStore = {
   name: "macOS Keychain",
-  perUser: true,
+  userLock,
   get() {
     try {
       return parseKey(run("security", ["find-generic-password", "-s", SERVICE, "-a", ACCOUNT, "-w"]), "the macOS Keychain");
@@ -57,7 +60,7 @@ const macKeychain: KeyStore = {
 // Linux Secret Service (GNOME Keyring, KWallet) via secret-tool, which reads the secret from stdin.
 const secretService: KeyStore = {
   name: "Secret Service (secret-tool)",
-  perUser: true,
+  userLock,
   get() {
     try {
       return parseKey(run("secret-tool", ["lookup", "service", SERVICE, "account", ACCOUNT]), "the Secret Service");
@@ -168,6 +171,6 @@ export function loadOrCreateKey(store: KeyStore, dir?: string): Buffer {
     return key;
   };
   // A per-user store is shared by every home directory, so the lock must be too, never inside one home.
-  const lockDir = store.perUser ? join(tmpdir(), `datev-mcp-key-${typeof process.getuid === "function" ? process.getuid() : userInfo().username}`) : dir;
+  const lockDir = store.userLock ? store.userLock() : dir;
   return lockDir ? withKeyLock(lockDir, create) : create();
 }

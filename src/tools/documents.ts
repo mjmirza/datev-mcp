@@ -184,7 +184,7 @@ export function registerDocumentTools(server: McpServer, deps: (signal?: AbortSi
             note: localize(`Nothing was sent. This uploads ${file.name} (${file.bytes.length} bytes, ${contentType}) to ${SERVICE[svc]} of ${who} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`),
             client: { name: client.name, consultant_number: client.consultant_number, client_number: client.client_number },
             service: SERVICE[svc],
-            destination,
+            destination: hideClientId(destination, [client_id]),
             file: file.path,
             content_type: contentType,
             metadata,

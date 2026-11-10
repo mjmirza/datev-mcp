@@ -23,16 +23,28 @@ export const SETUP_LINK = "http://go.datev.de/datenservices-einrichten";
 
 /** How a person recognises the client: its name and numbers, never the technical id alone. */
 export function describeClient(c: Pick<CheckedClient, "name" | "consultant_number" | "client_number"> & { client_id?: string }): string {
-  const parts = [c.name, c.consultant_number !== undefined && `consultant ${c.consultant_number}`, c.client_number !== undefined && `client ${c.client_number}`].filter(Boolean);
-  return parts.length ? parts.join(", ") : `client ${c.client_id ?? "unknown"}`;
+  // The numbers sit in one final bracket, so a translation never has to guess what belongs to the name.
+  const nums = [c.consultant_number !== undefined && `consultant ${c.consultant_number}`, c.client_number !== undefined && `client ${c.client_number}`].filter(Boolean);
+  return `${c.name ?? "unnamed client"}${nums.length ? ` (${nums.join(", ")})` : ""}`;
 }
 
-/** A URL or text for a person: DATEV's technical client id becomes {client}, the client is named on its own line. */
-export function hideClientId(text: string, ids: (string | undefined)[]): string {
-  let out = text;
-  for (const id of ids) if (id) out = out.split(encodeURIComponent(id)).join("{client}").split(id).join("{client}");
-  return out;
+/** A URL for a person: a path segment that is DATEV's technical client id becomes {client}. Nothing else changes. */
+export function hideClientId(url: string, ids: (string | undefined)[]): string {
+  const hidden = new Set(ids.filter((x): x is string => !!x).flatMap((id) => [id, encodeURIComponent(id)]));
+  const q = url.indexOf("?");
+  const path = q < 0 ? url : url.slice(0, q);
+  return path.split("/").map((seg) => (hidden.has(seg) ? "{client}" : seg)).join("/") + (q < 0 ? "" : url.slice(q));
 }
+
+/** Path ids for a person: the client's technical id is replaced, every other id is shown as sent. */
+export function hideClientParams(params: Record<string, unknown> | undefined, ids: (string | undefined)[]): Record<string, unknown> | undefined {
+  if (!params) return params;
+  const hidden = new Set(ids.filter(Boolean).map(String));
+  return Object.fromEntries(Object.entries(params).map(([k, v]) => [k, hidden.has(String(v)) ? "{client}" : v]));
+}
+
+/** The client as a person sees it in a preview: name and numbers, never the technical id. */
+export const shownClient = (c: CheckedClient) => ({ name: c.name, consultant_number: c.consultant_number, client_number: c.client_number });
 
 export interface CheckedClient {
   client_id: string;

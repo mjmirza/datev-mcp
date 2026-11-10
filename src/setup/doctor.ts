@@ -1,3 +1,4 @@
+import { servicesOfSession } from "../auth/services.js";
 import { clip, iso, keepResponseBody, redactHeaders, writeHttpLog, type HttpLogEntry } from "../api/http-log.js";
 import { Session } from "../auth/session.js";
 import type { FetchLike } from "../auth/token-client.js";
@@ -77,7 +78,8 @@ export async function doctor(cfg: Config, opts: DoctorOpts = {}): Promise<Check[
   const clients = ops.find((o) => o.product === "accounting-clients" && o.path === "/clients" && o.method === "get");
   const base = clients && (cfg.env === "sandbox" ? clients.servers.sandbox : clients.servers.production);
   // Only probe a service the login chose. Sessions from before service selection carry no list and are probed.
-  if (base && s.services && !s.services.includes("accounting-clients")) {
+  const covered = servicesOfSession(s);
+  if (base && covered && !covered.includes("accounting-clients")) {
     checks.push({ name: "accounting-clients API", ok: true, detail: "not connected (no accounting service chosen at login), not checked" });
   } else if (base) {
     try {

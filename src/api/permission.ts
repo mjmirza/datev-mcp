@@ -29,9 +29,10 @@ export async function requireClientService(
   const op = getOperation("accounting-clients.getclient");
   if (!op) throw new CallError("The accounting-clients operation index is missing. Run npm run specs.");
   // The check reads the whole answer whatever the caller's display limit; a cut answer proves nothing.
-  const checkDeps = { ...deps, maxBodyChars: Math.max(deps.maxBodyChars ?? 0, 100_000), ...(deadline ? { deadlineMs: Math.max(1000, deadline - Date.now()) } : {}) };
+  const checkDeps = { ...deps, maxBodyChars: Math.max(deps.maxBodyChars ?? 0, 2_000_000), ...(deadline ? { deadlineMs: Math.max(1000, deadline - Date.now()) } : {}) };
   const r = await callOperation(op, { pathParams: { "client-id": clientId } }, checkDeps);
-  if (r.truncated) throw new CallError("DATEV's client answer was cut off, so the data service permission could not be checked. Nothing was sent.");
+  // A 403 decides by its status alone; any other cut answer proves nothing.
+  if (r.truncated && r.status !== 403) throw new CallError("DATEV's client answer was cut off, so the data service permission could not be checked. Nothing was sent.");
   const body = r.body && typeof r.body === "object" && !Array.isArray(r.body) ? (r.body as Record<string, unknown>) : undefined;
   const services = Array.isArray(body?.services) ? (body.services as { name?: unknown }[]).map((s) => (typeof s.name === "string" ? s.name : "")).filter(Boolean) : [];
   // Only a 403 or a 200 without the service says the permission is missing. Any other answer (a server error,

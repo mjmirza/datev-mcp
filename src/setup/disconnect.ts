@@ -29,23 +29,25 @@ export async function disconnect(
       const notRemoved = (why: string) => ({
         revoked: false,
         removed: false,
-        message: `The connection was NOT removed: ${why}. Try again, or remove it at ${REVOKE_UI} and then run "datev-mcp disconnect --local-only".`,
+        message: `The connection was NOT removed: ${why}. It is no longer used here and is revoked again on the next call. Try again, or remove it at ${REVOKE_UI} and then run "datev-mcp disconnect --local-only".`,
       });
       // Every refresh token this app still holds, the current one and any an earlier login could not revoke.
       const refresh = [...new Set([...(s.pendingRevoke ?? []), ...(s.tokens.refreshToken ? [s.tokens.refreshToken] : [])])];
-      const results = await Promise.allSettled(refresh.map((t) => revokeToken(cfg.endpoints.revoke, t, "refresh_token", cfg.creds, callOpts)));
-      const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
-      if (failed) return notRemoved((failed.reason as Error).message);
       const accessLive = s.tokens.expiresAt > Date.now();
-      if (accessLive) {
-        try {
-          await revokeToken(cfg.endpoints.revoke, s.tokens.accessToken, "access_token", cfg.creds, callOpts);
-        } catch (e) {
-          // With no refresh token left, the access token is the only way in: it must be revoked before the session goes.
-          if (!refresh.length) return notRemoved((e as Error).message);
-          accessNote = ` DATEV did not confirm the access token revocation (${(e as Error).message}); it can no longer be renewed and expires at ${new Date(s.tokens.expiresAt).toISOString().slice(11, 16)} UTC.`;
-        }
+      const [results, accessError] = await Promise.all([
+        Promise.allSettled(refresh.map((t) => revokeToken(cfg.endpoints.revoke, t, "refresh_token", cfg.creds, callOpts))),
+        accessLive ? revokeToken(cfg.endpoints.revoke, s.tokens.accessToken, "access_token", cfg.creds, callOpts).then(() => undefined, (e: Error) => e) : Promise.resolve(undefined),
+      ]);
+      const left = refresh.filter((_, i) => results[i]!.status === "rejected");
+      const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+      // The access token must be confirmed when it is the only way in, or when the connection was ended earlier.
+      const accessMustGo = accessError && (!refresh.length || s.ended);
+      if (failed || accessMustGo) {
+        // A lost answer may hide a revoke that worked: no token is used again, and what DATEV did not confirm is retried.
+        store.write({ ...s, ended: true, pendingRevoke: left, tokens: { ...s.tokens, refreshToken: undefined, expiresAt: accessError ? s.tokens.expiresAt : 0 } });
+        return notRemoved(((failed?.reason as Error | undefined) ?? accessError!).message);
       }
+      if (accessError) accessNote = ` DATEV did not confirm the access token revocation (${accessError.message}); it can no longer be renewed and expires at ${new Date(s.tokens.expiresAt).toISOString().slice(11, 16)} UTC.`;
     }
     store.clear();
     const revoked = !opts.localOnly && sameApp;

@@ -225,7 +225,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
             preview: true,
             note: localize(`Nothing was sent. This imports ${summary.rows} rows into Buchungsdatenservice of ${who} in DATEV ${d.env}${earlier ? ", AGAIN although it was sent before" : ""}. Ask the user, then call again with confirm: true and this confirm_token.`),
             client: { name: client.name, consultant_number: client.consultant_number, client_number: client.client_number },
-            destination: buildUrl(op, d.env, { pathParams: { "client-id": client_id } }).toString(),
+            destination: hideClientId(buildUrl(op, d.env, { pathParams: { "client-id": client_id } }).toString(), [client_id]),
             file: file.path,
             header: summary.header,
             warnings: summary.warnings,
@@ -252,7 +252,8 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         if (r.status < 200 || r.status >= 300) {
           // Only a clear 4xx is DATEV refusing the file. A 5xx, a 408 timeout or a redirect says nothing about
           // whether DATEV took it, so the send stays uncertain and the file is never sent again by accident.
-          await finish(r.status >= 400 && r.status < 500 && r.status !== 408 ? { status: "refused" } : { status: "uncertain" });
+          // 429 is no proof either: a write is never retried for it, because it may have been applied.
+          await finish(r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429 ? { status: "refused" } : { status: "uncertain" });
           const out = { uploaded: false, status: r.status, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
           return { ...ok(out), isError: true };
         }
@@ -280,7 +281,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
           await finish({ status: "sent", job_id: jobId, result: state.result }).catch(() => undefined);
           return jobAnswer(client_id, jobId, state.result, state.job, d.env, { uploaded: true, truncated: r.truncated, ...(recorded ? { record: recorded } : {}) });
         } catch (e) {
-          return { ...ok({ uploaded: true, imported: false, job_id: jobId, env: d.env, note: `DATEV accepted the file, but asking for the result stopped (${errorText(e)}). Check with datev_extf_job (client_id ${client_id}, job_id ${jobId}). Do not send the file again.` }), isError: true };
+          return { ...ok({ uploaded: true, imported: false, job_id: jobId, env: d.env, note: localize(`DATEV accepted the file, but asking for the result stopped (${errorText(e)}). Check with datev_extf_job (client_id ${client_id}, job_id ${jobId}). Do not send the file again.`) }), isError: true };
         }
       } catch (e) {
         return err(errorText(e));

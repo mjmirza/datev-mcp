@@ -1,3 +1,4 @@
+import { servicesOfSession } from "./auth/services.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { revokePending } from "./auth/pending-revoke.js";
@@ -22,7 +23,7 @@ const VERSION = "0.0.1";
 
 function chosenServices(store: TokenStore): ReadonlySet<string> | undefined {
   try {
-    const s = store.read()?.services;
+    const s = servicesOfSession(store.read());
     return s ? new Set(s) : undefined;
   } catch {
     return undefined; // the token lookup reports the real problem

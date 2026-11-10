@@ -120,7 +120,7 @@ test("every message added for the DATEV review comes out fully German", async ()
     "DATEV asked to pause requests to this service until 12:30:00 UTC. Try again after that.",
     'accounting-documents:list needs the scope datev:accounting:documents, which is not part of the connected data services. Run "datev-mcp login --services ..." with the data service it belongs to.',
     "smarttransfer:post needs the x-api-key header. Set DATEV_SMARTTRANSFER_API_KEY in the server's environment; it is never passed through the assistant.",
-    'The connection was NOT removed: DATEV refused to revoke the refresh token (HTTP 500). Try again, or remove it at https://apps.datev.de/tokrevui and then run "datev-mcp disconnect --local-only".',
+    'The connection was NOT removed: DATEV refused to revoke the refresh token (HTTP 500). It is no longer used here and is revoked again on the next call. Try again, or remove it at https://apps.datev.de/tokrevui and then run "datev-mcp disconnect --local-only".',
     "DATEV refused to revoke the access token (HTTP 400)",
     "The DATEV session is encrypted, but its key is missing from the macOS Keychain. Log in again.",
     'DATEV returned HTTP 400 for the chart of accounts: Bad request. Help: https://help.datev.de/x (request id r-1)',

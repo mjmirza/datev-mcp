@@ -2,7 +2,7 @@ import { z } from "zod";
 import { humanApproval } from "./approval.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, HARD_MAX_BYTES, problemFields, type CallDeps } from "../api/client.js";
-import { describeClient, gateCall, hideClientId } from "../api/client-gate.js";
+import { describeClient, gateCall, hideClientId, hideClientParams, shownClient } from "../api/client-gate.js";
 import { dataexchangeGuard } from "../api/dataexchange-guard.js";
 import { assertShareable, expandPath, FileError, writeLocalFile } from "./files.js";
 import { NeedsLoginError } from "../auth/session.js";
@@ -92,8 +92,8 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
             preview: true,
             note: localize(`This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`),
             method: op.method.toUpperCase(),
-            url: url.toString(),
-            ...(client ? { client } : {}),
+            url: client ? hideClientId(url.toString(), [client.client_id, client.guid]) : url.toString(),
+            ...(client ? { client: shownClient(client) } : {}),
             // Every header the caller set, because some decide where DATEV delivers the result (Target-System, Notify-Url).
             ...(Object.keys(sentHeaders).length ? { headers: sentHeaders } : {}),
             body,
@@ -103,8 +103,8 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
         if (op.write) {
           const refused = checkConfirmToken(confirm_token, fingerprint);
           if (refused) return fail(refused);
-          const shown = (t: string) => (client ? hideClientId(t, [client.client_id, client.guid]) : t);
-          const summary = [client && `Client: ${describeClient(client)}`, shown([`${op.method.toUpperCase()} ${op.id}`, buildUrl(op, d.env, input).toString(), path_params && `ids: ${JSON.stringify(path_params)}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n"))].filter(Boolean).join("\n");
+          const ids = client ? [client.client_id, client.guid] : [];
+          const summary = [client && `Client: ${describeClient(client)}`, `${op.method.toUpperCase()} ${op.id}`, hideClientId(buildUrl(op, d.env, input).toString(), ids), path_params && `ids: ${JSON.stringify(hideClientParams(path_params, ids))}`, query && `query: ${JSON.stringify(query)}`, headers && `headers: ${JSON.stringify(headers)}`, body !== undefined && `body: ${JSON.stringify(body).slice(0, 1500)}`].filter(Boolean).join("\n");
           const denied = await humanApproval(server, d.env, summary);
           if (denied) return fail(denied);
         }

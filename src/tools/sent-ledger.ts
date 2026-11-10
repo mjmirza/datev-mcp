@@ -45,8 +45,12 @@ function load(env: string, vars: NodeJS.ProcessEnv): Ledger {
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 // Every level must be an object and every entry carry a name and a status, or the record is treated as damaged.
+const STATUSES = new Set(["sending", "uncertain", "sent"]);
+// An entry, and every earlier entry behind it, needs a time, a name and a known status.
+const isEntry = (e: unknown, depth = 0): boolean =>
+  depth < 8 && isObject(e) && typeof e.at === "string" && typeof e.name === "string" && STATUSES.has(String(e.status)) && (e.previous === undefined || isEntry(e.previous, depth + 1));
 const isLedger = (v: unknown): v is Ledger =>
-  isObject(v) && Object.values(v).every((byClient) => isObject(byClient) && Object.values(byClient).every((byHash) => isObject(byHash) && Object.values(byHash).every((e) => isObject(e) && typeof e.name === "string" && typeof e.status === "string")));
+  isObject(v) && Object.values(v).every((byClient) => isObject(byClient) && Object.values(byClient).every((byHash) => isObject(byHash) && Object.values(byHash).every((e) => isEntry(e))));
 
 function save(env: string, all: Ledger, vars: NodeJS.ProcessEnv): void {
   mkdirSync(storeDir(vars), { recursive: true, mode: 0o700 });

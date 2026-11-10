@@ -4,7 +4,7 @@ import { extname } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { buildHeaders, buildUrl, callOperation, CallError, checkAgainstSchema, mediaMatches, problemFields, UncertainSendError, type CallDeps } from "../api/client.js";
-import { describeClient, gateCall, hideClientId } from "../api/client-gate.js";
+import { describeClient, gateCall, hideClientId, shownClient } from "../api/client-gate.js";
 import { requireClientService } from "../api/permission.js";
 import { NeedsLoginError } from "../auth/session.js";
 import { localize } from "../i18n.js";
@@ -297,9 +297,9 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         if (confirm !== true) {
           return ok({
             preview: true,
-            note: localize(`Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`),
+            note: localize(`Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${client ? hideClientId(String(url), [client.client_id, client.guid]) : url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`),
             operation: op.id,
-            ...(client ? { client } : {}),
+            ...(client ? { client: shownClient(client) } : {}),
             files: listed,
             fields: f,
             ...(headers && Object.keys(headers).length ? { headers } : {}),
@@ -308,8 +308,8 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         }
         const refused = checkConfirmToken(confirm_token, fingerprint);
         if (refused) return err(refused);
-        const shown = (t: string) => (client ? hideClientId(t, [client.client_id, client.guid]) : t);
-        const summary = [client ? `Client: ${describeClient(client)}` : "", ...[`${op.method.toUpperCase()} ${op.id}`, String(url), ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].map(shown)].filter(Boolean).join("\n");
+        const shownUrl = client ? hideClientId(String(url), [client.client_id, client.guid]) : String(url);
+        const summary = [client ? `Client: ${describeClient(client)}` : "", ...[`${op.method.toUpperCase()} ${op.id}`, shownUrl, ...read.map((x) => `file ${x.part}: ${x.name} (${x.bytes.length} bytes, ${x.type})`), Object.keys(f).length ? `fields: ${JSON.stringify(f).slice(0, 1000)}` : "", headers && Object.keys(headers).length ? `headers: ${JSON.stringify(headers)}` : ""].filter(Boolean)].filter(Boolean).join("\n");
         const denied = await humanApproval(server, d.env, summary);
         if (denied) return err(denied);
         const held = stapledKey ? await reserveSend("stapled", d.env, stapledClient!, stapledKey, read.map((x) => x.name).join(", "), earlier ? { seen: earlier.at } : false) : undefined;
@@ -323,7 +323,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
           throw e;
         }
         // Only a clear 4xx means DATEV did not take the files; a 5xx, 408 or redirect may hide a stored upload.
-        await finish(r.status >= 200 && r.status < 300 ? "sent" : r.status >= 400 && r.status < 500 && r.status !== 408 ? "refused" : "uncertain");
+        await finish(r.status >= 200 && r.status < 300 ? "sent" : r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 429 ? "refused" : "uncertain");
         const out = { uploaded: r.status >= 200 && r.status < 300, status: r.status, location: r.location, body: r.body, truncated: r.truncated, env: d.env, ...(r.status >= 400 ? problemFields(r.status, r.body, op.id) : {}) };
         return out.uploaded ? ok(out) : { ...ok(out), isError: true };
       } catch (e) {

@@ -53,15 +53,20 @@ export function selectServices(list: string): { services: string[]; scopes: stri
   return { services: [...services].sort(), scopes: [...scopes].sort(), added: [...services].filter((p) => !asked.includes(p)) };
 }
 
-/** For an expert scope list: the services whose scopes it holds in full. A service without scopes needs --services. */
+/** For an expert scope list: the services it holds any scope of. A service without scopes needs --services.
+ *  Each operation's own scopes are still checked, so this only bounds what has no scope of its own. */
 export function servicesForScopes(scopes: string[]): string[] {
   const have = new Set(scopes);
   return Object.keys(SERVICES)
-    .filter((p) => {
-      const need = scopesOf(p);
-      return need.length > 0 && need.every((sc) => have.has(sc));
-    })
+    .filter((p) => scopesOf(p).some((sc) => have.has(sc)))
     .sort();
+}
+
+/** The services a saved login covers: as chosen, or derived from its scopes for an expert login. */
+export function servicesOfSession(s: { services?: string[]; scopes?: string[] } | undefined): string[] | undefined {
+  if (!s) return undefined;
+  if (s.services) return s.services;
+  return s.scopes ? servicesForScopes(s.scopes) : undefined;
 }
 
 export function serviceList(): string {
