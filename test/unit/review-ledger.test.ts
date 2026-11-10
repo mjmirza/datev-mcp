@@ -14,7 +14,7 @@ const testText = readdirSync(join(root, "test", "unit"))
 
 const rows = ledger
   .split("\n")
-  .filter((l) => /^\| F\d{2} \|/.test(l))
+  .filter((l) => /^\| F\d{2,} \|/.test(l))
   .map((l) => {
     const c = l.split("|").map((x) => x.trim());
     return { id: c[1]!, status: c[5]!, fix: c[6]!, guard: c[7]! };
