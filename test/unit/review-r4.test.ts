@@ -895,8 +895,9 @@ test("a permission refusal far larger than the permission check's read limit kee
 test("the error scan costs the same per byte however small the pieces are", async () => {
   function* body() {
     yield enc.encode(`{"detail":"`);
-    const one = enc.encode("x");
-    for (let n = 0; n < 600_000; n++) yield one;
+    // Escaped quotes, so every rescan has to stop at each one instead of skipping ahead.
+    const one = enc.encode('\\"');
+    for (let n = 0; n < 300_000; n++) yield one;
     yield enc.encode(`","title":"T"}`);
   }
   const started = Date.now();
@@ -924,6 +925,18 @@ test("a character cut at the read limit is read whole", async () => {
   }
   const r = await callOperation(getOperation("accounting-clients.getclients")!, {}, { ...readDeps(async () => streamed(403, "application/json", body())), maxBodyChars: Math.floor((at + 1 - 4) / 4) });
   assert.equal((r.body as Record<string, unknown>).title, "Prüfung");
+});
+
+test("a character cut between two scan batches is read whole", async () => {
+  // The 64 KB scan batch ends after byte 65535, where the title's first ü starts.
+  const pre = `{"detail":"${"x".repeat(65_535 - 22)}","title":"`;
+  const bytes = enc.encode(`${pre}üü"}`);
+  assert.equal(bytes[65_535], 0xc3);
+  function* body() {
+    yield bytes.subarray(0, 4005);
+    for (let i = 4005; i < bytes.length; i++) yield bytes.subarray(i, i + 1);
+  }
+  assert.equal((await errorFields(body())).title, "üü");
 });
 
 test("an error answer that goes quiet past the read limit is not waited for", async () => {

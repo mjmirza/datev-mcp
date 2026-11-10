@@ -158,7 +158,7 @@ Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check
 |---|---|
 | Offline scenarios across all 209 operations | 28,582 of 28,582 passing |
 | Planted bugs the scenarios had to catch | 5 of 5 caught |
-| Unit and integration tests | 293 of 293 passing |
+| Unit and integration tests | 294 of 294 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
 | Independent review by a second AI model (Codex), four passes | 46 of 48 findings fixed. Two known limits remain, listed in [SECURITY.md](docs/SECURITY.md) |
 
