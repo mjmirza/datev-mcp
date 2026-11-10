@@ -402,6 +402,8 @@ test("login checks the ID token, saves the name and chosen services, and revokes
   assert.ok(revoked.some((b) => b.includes("token=OLD-RT")), "only one valid refresh token at DATEV");
   assert.ok(out.some((l) => l.includes("Max Muster")));
   assert.ok(out.some((l) => l.startsWith("Added accounting:clients")), "the added client list service is named, never added silently (F35)");
+  const { localize } = await import("../../src/i18n.js");
+  for (const l of out) assert.notEqual(localize(l, "de"), l, `every login line has a German version (F15): ${l.slice(0, 60)}`);
 });
 
 test("a login without the full user name saves nothing and revokes the tokens DATEV just issued", async () => {

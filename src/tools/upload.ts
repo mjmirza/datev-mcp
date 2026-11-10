@@ -273,7 +273,7 @@ export function registerUploadTools(server: McpServer, deps: (signal?: AbortSign
         if (confirm !== true) {
           return ok({
             preview: true,
-            note: `Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`,
+            note: localize(`Nothing was sent. This sends ${read.length} file(s) to ${op.method.toUpperCase()} ${url} in DATEV ${d.env}. Ask the user, then call again with confirm: true and this confirm_token.`),
             operation: op.id,
             ...(client ? { client } : {}),
             files: listed,

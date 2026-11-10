@@ -90,7 +90,7 @@ export function registerGenericTools(server: McpServer, deps: (signal?: AbortSig
           const sentHeaders = buildHeaders(op, input);
           return text({
             preview: true,
-            note: `This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`,
+            note: localize(`This ${op.method.toUpperCase()} changes data in DATEV ${d.env}. Nothing was sent. Show this to the user and call again with confirm: true and the confirm_token once they agree.`),
             method: op.method.toUpperCase(),
             url: url.toString(),
             ...(client ? { client } : {}),

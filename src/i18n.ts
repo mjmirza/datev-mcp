@@ -154,7 +154,101 @@ const PATTERNS: [RegExp, (m: RegExpMatchArray) => string][] = [
     /^Choose the DATEV data services to connect: "([^"]+)"\. DATEV allows only the scopes of the services you use\. ([\s\S]*)$/,
     (m) => `Wählen Sie die DATEV-Datenservices, die verbunden werden sollen, zum Beispiel "${m[1]}". DATEV erlaubt nur die Scopes der Services, die Sie nutzen. ${servicesTail(m[2])}`,
   ],
+  // The lines datev-mcp login prints.
+  [/^WARNING: ([\s\S]*)$/, (m) => `WARNUNG: ${localize(m[1]!, "de")}`],
+  [
+    /^DATEV blocks Confidential apps with a localhost redirect in production since 01\.03\.2026\. Ask DATEV to switch this app to a Public client and remove DATEV_CLIENT_SECRET\.$/,
+    () => "DATEV sperrt seit dem 01.03.2026 Confidential Apps mit localhost-Weiterleitung in der Produktion. Lassen Sie die App bei DATEV auf einen Public Client umstellen und entfernen Sie DATEV_CLIENT_SECRET.",
+  ],
+  [/^Connecting these DATEV data services: ([\s\S]*)\.$/, (m) => `Diese DATEV-Datenservices werden verbunden: ${m[1]}.`],
+  [
+    /^Added ([\s\S]*), because DATEV requires checking the client list before any accounting data service\.$/,
+    (m) => `${m[1]} wurde ergänzt, weil DATEV vor jedem Datenservice im Rechnungswesen die Prüfung der Mandantenliste verlangt.`,
+  ],
+  [
+    /^Opening the DATEV (\S+) login in your browser\. If nothing opens, visit:\n\n {2}(\S+)\n$/,
+    (m) => `Die DATEV-Anmeldung (${m[1]}) wird im Browser geöffnet. Wenn sich nichts öffnet, rufen Sie diese Adresse auf:\n\n  ${m[2]}\n`,
+  ],
+  [/^The refresh token of the previous login was revoked at DATEV\.$/, () => "Das Refresh-Token der vorherigen Anmeldung wurde bei DATEV widerrufen."],
+  [
+    /^(\d+) earlier refresh token\(s\) could not be revoked yet\. Every "datev-mcp status" and server start retries\. To end it now, remove the old connection at (\S+)\.$/,
+    (m) => `${m[1]} frühere(s) Refresh-Token konnte(n) noch nicht widerrufen werden. Jedes "datev-mcp status" und jeder Serverstart versucht es erneut. Um es sofort zu beenden, entfernen Sie die alte Verbindung unter ${m[2]}.`,
+  ],
+  [
+    /^Connected to DATEV (\S+) as ([\s\S]+)\. The connection is valid until (\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})\.$/,
+    (m) => `Mit DATEV ${m[1]} verbunden als ${m[2]}. Die Verbindung gilt bis ${m[3]}.`,
+  ],
+  [
+    /^Session saved encrypted to (.+)\. "datev-mcp status" shows the connection, "datev-mcp disconnect" ends it\.$/,
+    (m) => `Sitzung verschlüsselt gespeichert unter ${m[1]}. "datev-mcp status" zeigt die Verbindung, "datev-mcp disconnect" beendet sie.`,
+  ],
+  // Preview notes of the write tools. confirm and confirm_token are parameter names and stay.
+  [
+    /^This (\S+) changes data in DATEV (\S+)\. Nothing was sent\. Show this to the user and call again with confirm: true and the confirm_token once they agree\.$/,
+    (m) => `Dieses ${m[1]} ändert Daten in DATEV ${m[2]}. Es wurde nichts gesendet. Zeigen Sie dies dem Benutzer und rufen Sie nach seiner Zustimmung erneut mit confirm: true und dem confirm_token auf.`,
+  ],
+  [
+    /^Nothing was sent\. This uploads (.+) \((\d+) bytes, ([^)]*)\) to (.+?) of (.*) in DATEV (\S+)\. Ask the user, then call again with confirm: true and this confirm_token\.$/,
+    (m) => `Es wurde nichts gesendet. Dies lädt ${m[1]} (${m[2]} Bytes, ${m[3]}) in ${m[4]} von ${who(m[5]!)} in DATEV ${m[6]} hoch. Fragen Sie den Benutzer und rufen Sie dann erneut mit confirm: true und diesem confirm_token auf.`,
+  ],
+  [
+    /^Nothing was sent\. This imports (\d+) rows into Buchungsdatenservice of (.*) in DATEV (\S+)(, AGAIN although it was sent before)?\. Ask the user, then call again with confirm: true and this confirm_token\.$/,
+    (m) => `Es wurde nichts gesendet. Dies überträgt ${m[1]} Zeilen in den Buchungsdatenservice von ${who(m[2]!)} in DATEV ${m[3]}${m[4] ? ", ERNEUT, obwohl die Datei schon gesendet wurde" : ""}. Fragen Sie den Benutzer und rufen Sie dann erneut mit confirm: true und diesem confirm_token auf.`,
+  ],
+  [
+    /^Nothing was sent\. This sends (\d+) file\(s\) to (\S+) (\S+) in DATEV (\S+)\. Ask the user, then call again with confirm: true and this confirm_token\.$/,
+    (m) => `Es wurde nichts gesendet. Dies sendet ${m[1]} Datei(en) an ${m[2]} ${m[3]} in DATEV ${m[4]}. Fragen Sie den Benutzer und rufen Sie dann erneut mit confirm: true und diesem confirm_token auf.`,
+  ],
+  // The details datev-mcp doctor prints.
+  [/^client id (\S+), env (\S+)$/, (m) => `Client-ID ${m[1]}, Umgebung ${m[2]}`],
+  [/^(\d+) operations$/, (m) => `${m[1]} Operationen`],
+  [/^none, run "datev-mcp login"$/, () => 'keine, führen Sie "datev-mcp login" aus'],
+  [/^valid \(refreshed if needed\)$/, () => "gültig (bei Bedarf erneuert)"],
+  [/^HTTP (\d{3}), (\d+) clients$/, (m) => `HTTP ${m[1]}, ${m[2]} Mandanten`],
+  [/^not connected \(no accounting service chosen at login\), not checked$/, () => "nicht verbunden (bei der Anmeldung kein Datenservice im Rechnungswesen gewählt), nicht geprüft"],
 ];
+
+const CHECK_NAMES: Record<string, string> = {
+  credentials: "Zugangsdaten",
+  "operation index": "Operationsindex",
+  "saved session": "gespeicherte Sitzung",
+  "access token": "Zugriffstoken",
+  userinfo: "Benutzerinformationen",
+  "accounting-clients API": "accounting-clients-API",
+};
+
+const who = (s: string) => s.replace(/\bconsultant (\d+)/g, "Berater $1").replace(/\bclient (\d+)/g, "Mandant $1");
+
+// The summary lines of an approval dialog. Methods, operation ids and URLs stay as they are.
+const APPROVAL: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/^Client: (.*)$/, (m) => `Mandant: ${who(m[1]!)}`],
+  [/^Upload (.+) \((\d+) bytes(?:, ([^)]*))?\) to (.+?) of (.*)$/, (m) => `${m[1]} (${m[2]} Bytes${m[3] ? `, ${m[3]}` : ""}) hochladen in ${m[4]} von ${who(m[5]!)}`],
+  [/^Import (\d+) booking rows from (.+) into Buchungsdatenservice of (.*?)( \(sent again\))?$/, (m) => `${m[1]} Buchungszeilen aus ${m[2]} in den Buchungsdatenservice von ${who(m[3]!)} übertragen${m[4] ? " (erneut gesendet)" : ""}`],
+  [/^file (\S+): (.+) \((\d+) bytes, ([^)]*)\)$/, (m) => `Datei ${m[1]}: ${m[2]} (${m[3]} Bytes, ${m[4]})`],
+  [/^(ids|query|headers|fields|body): ([\s\S]*)$/, (m) => `${{ ids: "IDs", query: "Abfrage", headers: "Header", fields: "Felder", body: "Inhalt" }[m[1]!]}: ${m[2]}`],
+];
+
+/** An approval summary in the chosen language, line by line. */
+export function localizeApproval(summary: string, lang: MessageLang = messageLang()): string {
+  if (lang === "en") return summary;
+  return summary
+    .split("\n")
+    .map((line) => {
+      for (const [re, to] of APPROVAL) {
+        const m = line.match(re);
+        if (m) return to(m);
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+/** One doctor line, in the chosen language. */
+export function doctorLine(c: { ok: boolean; name: string; detail: string }, lang: MessageLang = messageLang()): string {
+  const name = lang === "de" ? (CHECK_NAMES[c.name] ?? c.name) : c.name;
+  const status = lang === "de" ? (c.ok ? "OK    " : "FEHLER") : c.ok ? "OK  " : "FAIL";
+  return `${status} ${name.padEnd(24)} ${localize(c.detail, lang)}`;
+}
 
 function servicesTail(tail: string): string {
   return tail.replace(/^Available, as --services a,b,c: /, "Verfügbar, als --services a,b,c: ");

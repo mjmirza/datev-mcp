@@ -2,7 +2,7 @@
 import { writeHttpLog } from "./api/http-log.js";
 import { serviceList } from "./auth/services.js";
 import { loadConfig } from "./config.js";
-import { localize, messageLang } from "./i18n.js";
+import { doctorLine, localize, messageLang } from "./i18n.js";
 import { disconnect } from "./setup/disconnect.js";
 import { complianceView, renderCompliance } from "./setup/compliance.js";
 import { doctor } from "./setup/doctor.js";
@@ -29,7 +29,7 @@ async function main(argv: string[]): Promise<number> {
   const cmd = argv[0];
   const lang = messageLang();
   if (cmd === "login" || cmd === "setup" || cmd === "connect") {
-    await login(loadConfig(), { services: flag(argv, "--services") });
+    await login(loadConfig(), { services: flag(argv, "--services"), log: (s) => process.stderr.write(`${localize(s, lang)}\n`) });
     return 0;
   }
   if (cmd === "status") {
@@ -58,7 +58,7 @@ async function main(argv: string[]): Promise<number> {
   }
   if (cmd === "doctor") {
     const checks = await doctor(loadConfig());
-    for (const c of checks) process.stdout.write(`${c.ok ? "OK  " : "FAIL"} ${c.name.padEnd(24)} ${c.detail}\n`);
+    for (const c of checks) process.stdout.write(`${doctorLine(c, lang)}\n`);
     return checks.every((c) => c.ok) ? 0 : 1;
   }
   if (!cmd || cmd === "serve") {

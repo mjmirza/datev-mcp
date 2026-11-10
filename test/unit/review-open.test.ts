@@ -15,7 +15,7 @@ import { TokenStore } from "../../src/auth/token-store.js";
 import { doctor } from "../../src/setup/doctor.js";
 import { registerGenericTools } from "../../src/tools/generic.js";
 
-// Guards for ledger rows that were open before R6 (F12, F16, F22, F23, F24, F39, F41, F42).
+// Guards for ledger rows that were open before R6 (F12, F15, F16, F22, F23, F24, F39, F41, F42).
 process.env.DATEV_MCP_SESSION_KEY ??= "33".repeat(32);
 
 test("a corrupt plain text session is kept only as an encrypted copy", () => {
@@ -145,4 +145,56 @@ test("an operation with no scope of its own is refused unless its service was ch
   assert.match(r.content[0]!.text, /belongs to cashregister, which is not part of the connected data services/);
   assert.equal(sent, 0, "nothing reached DATEV");
   assert.match(localize(r.content[0]!.text, "de"), /gehört zu cashregister/);
+});
+
+test("German mode puts doctor, previews and approval dialogs in German", async () => {
+  const { doctorLine } = await import("../../src/i18n.js");
+  const dir = mkdtempSync(join(tmpdir(), "datev-open-"));
+  const store = new TokenStore("sandbox", dir, envKeyStore());
+  store.write({ env: "sandbox", clientId: "cid", services: ["accounting-clients"], scopes: ["openid"], tokens: { accessToken: "AT", refreshToken: "RT", expiresAt: Date.now() + 9e5, obtainedAt: Date.now() } });
+  const doc: FetchLike = async (u) => new Response(String(u).endsWith("/clients") ? "[]" : JSON.stringify({ sub: "u1" }), { headers: { "content-type": "application/json" } });
+  const checks = await doctor({ env: "sandbox", endpoints: ENDPOINTS.sandbox, creds: { clientId: "cid", clientSecret: "s" } }, { store, fetch: doc, httpLog: () => {} });
+  for (const c of checks) if (c.name !== "saved session") assert.notEqual(doctorLine(c, "de"), doctorLine(c, "en"), c.name);
+
+  const before = process.env.DATEV_MCP_LANG;
+  process.env.DATEV_MCP_LANG = "de";
+  try {
+    clearClientGate();
+    const f: FetchLike = async (u, init) => {
+      const path = new URL(String(u)).pathname;
+      if ((init?.method ?? "GET").toUpperCase() === "GET" && /\/clients\/[^/]+$/.test(path))
+        return new Response(JSON.stringify({ id: "455148-1", name: "Muster GmbH", consultant_number: 455148, client_number: 1, services: [{ name: "Rechnungsdatenservice 1.0" }] }), { headers: { "content-type": "application/json" } });
+      return new Response("{}", { status: 201, headers: { "content-type": "application/json" } });
+    };
+    const server = new McpServer({ name: "t", version: "0" });
+    registerGenericTools(server, () => ({ env: "sandbox" as const, creds: { clientId: "c" }, token: async () => "T", fetch: f, sleep: async () => undefined }));
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const c = new Client({ name: "t", version: "0" }, { capabilities: { elicitation: { form: {} } } });
+    let asked = "";
+    c.setRequestHandler(ElicitRequestSchema, async (req) => ((asked = String(req.params.message)), { action: "accept", content: { approve: true } }));
+    await c.connect(b);
+    const args = { operation_id: "accounting-dxso-jobs.post_clients_client_id_dxso_jobs", path_params: { "client-id": "455148-1" }, body: { job_type: "x" } };
+    const prev = JSON.parse(((await c.callTool({ name: "datev_call", arguments: args })) as { content: { text: string }[] }).content[0]!.text);
+    assert.match(prev.note, /^Dieses POST ändert Daten in DATEV sandbox\. Es wurde nichts gesendet\./);
+    await c.callTool({ name: "datev_call", arguments: { ...args, confirm: true, confirm_token: prev.confirm_token } });
+    assert.match(asked, /Mandant: Muster GmbH, Berater 455148, Mandant 1/);
+    assert.match(asked, /Inhalt: /);
+  } finally {
+    if (before === undefined) delete process.env.DATEV_MCP_LANG;
+    else process.env.DATEV_MCP_LANG = before;
+  }
+});
+
+test("every preview note and approval line the upload, document and EXTF tools write has a German version", async () => {
+  const { localize, localizeApproval } = await import("../../src/i18n.js");
+  const notes = [
+    "Nothing was sent. This uploads beleg.pdf (12 bytes, application/pdf) to Belegbilderservice Rechnungswesen of Muster GmbH, consultant 455148, client 1 in DATEV sandbox. Ask the user, then call again with confirm: true and this confirm_token.",
+    "Nothing was sent. This imports 3 rows into Buchungsdatenservice of Muster GmbH, consultant 455148, client 1 in DATEV sandbox, AGAIN although it was sent before. Ask the user, then call again with confirm: true and this confirm_token.",
+    "Nothing was sent. This sends 2 file(s) to POST https://x.example/v1/files in DATEV sandbox. Ask the user, then call again with confirm: true and this confirm_token.",
+  ];
+  for (const n of notes) assert.notEqual(localize(n, "de"), n, n.slice(0, 60));
+  const lines = ["Upload beleg.pdf (12 bytes, Rechnungseingang) to Belegbilderservice Rechnungswesen of Muster GmbH, consultant 455148, client 1", "Import 3 booking rows from extf.csv into Buchungsdatenservice of Muster GmbH (sent again)", "file file: beleg.pdf (12 bytes, application/pdf)", "fields: {}"];
+  for (const l of lines) assert.notEqual(localizeApproval(l, "de"), l, l);
+  assert.match(localizeApproval(lines[0]!, "de"), /von Muster GmbH, Berater 455148, Mandant 1$/);
 });

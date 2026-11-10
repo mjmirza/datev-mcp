@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DatevEnv } from "../auth/endpoints.js";
-import { messageLang } from "../i18n.js";
+import { localizeApproval, messageLang } from "../i18n.js";
 
 type ConfirmMode = "human" | "token";
 
@@ -27,7 +27,7 @@ export async function humanApproval(server: McpServer, env: DatevEnv, summary: s
   try {
     res = await server.server.elicitInput({
       mode: "form",
-      message: de ? `Dies an DATEV ${env === "production" ? "Produktion" : "Sandbox"} senden?\n\n${summary}` : `Send this to DATEV ${env}?\n\n${summary}`,
+      message: de ? `Dies an DATEV ${env === "production" ? "Produktion" : "Sandbox"} senden?\n\n${localizeApproval(summary, "de")}` : `Send this to DATEV ${env}?\n\n${summary}`,
       requestedSchema: {
         type: "object",
         properties: { approve: { type: "boolean", title: de ? "Ja, an DATEV senden" : "Yes, send it to DATEV", default: false } },

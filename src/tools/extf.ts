@@ -220,7 +220,7 @@ export function registerExtfTools(server: McpServer, deps: (signal?: AbortSignal
         if (confirm !== true) {
           return ok({
             preview: true,
-            note: `Nothing was sent. This imports ${summary.rows} rows into Buchungsdatenservice of ${who} in DATEV ${d.env}${earlier ? ", AGAIN although it was sent before" : ""}. Ask the user, then call again with confirm: true and this confirm_token.`,
+            note: localize(`Nothing was sent. This imports ${summary.rows} rows into Buchungsdatenservice of ${who} in DATEV ${d.env}${earlier ? ", AGAIN although it was sent before" : ""}. Ask the user, then call again with confirm: true and this confirm_token.`),
             client: { name: client.name, consultant_number: client.consultant_number, client_number: client.client_number },
             destination: buildUrl(op, d.env, { pathParams: { "client-id": client_id } }).toString(),
             file: file.path,
