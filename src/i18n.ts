@@ -362,6 +362,51 @@ export function localizeApproval(summary: string, lang: MessageLang = messageLan
     .join("\n");
 }
 
+export type CallbackOutcome = "done" | "failed" | "no-code" | "mismatch";
+
+interface CallbackPageText {
+  title: string;
+  lead: string;
+  answerLabel: string;
+  next: string;
+}
+
+interface CallbackWords {
+  answerLabel: string;
+  retry: string;
+  pages: Record<CallbackOutcome, { title: string; lead: string; next?: string }>;
+}
+
+const CALLBACK_TEXT: Record<MessageLang, CallbackWords> = {
+  en: {
+    answerLabel: "DATEV answered with",
+    retry: "Close this tab and run datev-mcp login again.",
+    pages: {
+      done: { title: "DATEV login complete", lead: "You are signed in to DATEV.", next: "You can close this tab and return to your terminal." },
+      failed: { title: "DATEV login failed", lead: "DATEV did not complete the login." },
+      "no-code": { title: "DATEV login failed", lead: "DATEV sent back no login code." },
+      mismatch: { title: "Login not accepted", lead: "The answer that reached this page does not belong to this login attempt, so it was not used." },
+    },
+  },
+  de: {
+    answerLabel: "DATEV antwortete mit",
+    retry: "Schließen Sie diesen Tab und führen Sie datev-mcp login erneut aus.",
+    pages: {
+      done: { title: "DATEV-Anmeldung abgeschlossen", lead: "Sie sind bei DATEV angemeldet.", next: "Sie können diesen Tab schließen und zum Terminal zurückkehren." },
+      failed: { title: "DATEV-Anmeldung fehlgeschlagen", lead: "DATEV hat die Anmeldung nicht abgeschlossen." },
+      "no-code": { title: "DATEV-Anmeldung fehlgeschlagen", lead: "DATEV hat keinen Anmeldecode zurückgegeben." },
+      mismatch: { title: "Anmeldung nicht angenommen", lead: "Die Antwort auf dieser Seite gehört nicht zu diesem Anmeldeversuch und wurde daher nicht verwendet." },
+    },
+  },
+};
+
+/** The words on the browser page the login redirect lands on. */
+export function callbackPageText(outcome: CallbackOutcome, lang: MessageLang = messageLang()): CallbackPageText {
+  const t = CALLBACK_TEXT[lang];
+  const o = t.pages[outcome];
+  return { title: o.title, lead: o.lead, answerLabel: t.answerLabel, next: o.next ?? t.retry };
+}
+
 /** One doctor line, in the chosen language. */
 export function doctorLine(c: { ok: boolean; name: string; detail: string }, lang: MessageLang = messageLang()): string {
   const name = lang === "de" ? (CHECK_NAMES[c.name] ?? c.name) : c.name;
