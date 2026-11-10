@@ -93,7 +93,7 @@ test("doctor never calls accounting-clients when the login chose no accounting s
 test("the setup and README login examples grant the service their first questions need", () => {
   const root = join(import.meta.dirname, "..", "..");
   for (const doc of ["docs/SETUP.md", "README.md"]) {
-    const login = readFileSync(join(root, doc), "utf8").split("\n").find((l) => l.includes("login --services"));
+    const login = readFileSync(join(root, doc), "utf8").split("\n").find((l) => l.includes("index.js login --services"));
     assert.ok(login?.includes("accounting-dataexchange"), `${doc}: fiscal years, balances and the chart of accounts come from accounting-dataexchange`);
   }
 });
