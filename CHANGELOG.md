@@ -5,6 +5,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 ## [Unreleased]
 
 ### Added
+- Architecture and production-approval docs. Previously the layers, the request flow and the path from DATEV's sandbox to production were spread over several files or missing. Now [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) shows how the server is built, and [docs/PRODUCTION-APPROVAL.md](docs/PRODUCTION-APPROVAL.md) lists every step, meeting, agreement and cost, in order. The README links both and says how to get help with approval and implementation.
 - DATEV review readiness. Previously the server asked for every scope it knew, stored tokens in a plain owner-only file, had no status or disconnect, and kept no request log. Now the person chooses data services at login and only their scopes are requested, DATEV's ID token is verified, the session is encrypted with the key in the OS credential store, a new login revokes the old refresh token, `status` and `disconnect` exist, and every DATEV call is logged for 30 days without secrets. [docs/DATEV-REVIEW.md](docs/DATEV-REVIEW.md) maps each DATEV interface requirement to its proof.
 - Human approval of production writes. Previously the assistant's confirm code was enough. Now production asks the person in the client before sending, writes are never retried, and DATEV's help link is shown on every error.
 
@@ -38,6 +39,7 @@ All notable changes to this project are recorded here, in the Keep a Changelog s
 - The chart of accounts cache is tied to the login. Previously a different login could be served the previous user's cached chart.
 
 ### Fixed
+- Review round R15. Previously a refused token could stay live after a refresh, a client id could show behind a stray percent escape, an answer that filled the read limit and then broke off lost its bytes, and the may-already-be-applied warning was missing on uploads. Now each is fixed with a test that fails without the fix (F124 to F127 in the review ledger).
 - Adversarial review findings. Previously the server had open defects found in review rounds R7 to R14 by Codex, Grok and Claude reviewers. Now every finding in [docs/REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) is fixed with a test that fails without the fix, or carries the reason it stays. Highlights follow.
 - Revokes. Previously a disconnect or a refused permission could leave an older login's access token live at DATEV, a late refusal could end a newer login, and an expired token was reported as a confirmed revoke. Now every token is revoked or kept on record and retried, a refusal only ends the login it belongs to, even across a token refresh, and the status says plainly whether DATEV confirmed or the token expired. `disconnect` exits with an error when tokens of another app registration stay live.
 - Error answers past the read limit. Previously a large, slow or broken error answer could lose DATEV's refusal, its title, help link and request id, or wait for the whole request deadline. Now a streaming reader keeps the top-level fields wherever they appear, stops after at most 5 seconds, keeps the real status, and the break is still written to the HTTP log.

@@ -7,7 +7,7 @@ Ask your AI assistant about your DATEV bookkeeping, payroll and documents in pla
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
 ![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C582%20passing-green)
-![Tests](https://img.shields.io/badge/unit%20tests-346%20passing-green)
+![Tests](https://img.shields.io/badge/unit%20tests-365%20passing-green)
 
 ## What this is, in plain words
 
@@ -170,9 +170,9 @@ Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check
 |---|---|
 | Offline scenarios across all 209 operations | 28,582 of 28,582 passing |
 | Planted bugs the scenarios had to catch | 5 of 5 caught |
-| Unit and integration tests | 346 of 346 passing |
+| Unit and integration tests | 365 of 365 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
-| Adversarial review by two other AI models (Codex and Grok), 14 rounds | 118 of 123 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
+| Adversarial review by two other AI models (Codex and Grok), 15 rounds | 122 of 127 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
 
 Per operation results are in [docs/ENDPOINT-AUDIT.md](docs/ENDPOINT-AUDIT.md).
 
@@ -224,13 +224,15 @@ docs/                setup, security, validation, compliance and more
 
 ## Before you use real client data
 
-The sandbox may only hold test data. Using this with real clients needs DATEV's paid technical review (Technische Prüfung) for production access. Read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) before that step.
+The sandbox may only hold test data. Using this with real clients needs DATEV's paid technical review (Technische Prüfung) for production access. Read [docs/COMPLIANCE.md](docs/COMPLIANCE.md) before that step. The full path from sandbox to production, with costs, meetings and agreements, is in [docs/PRODUCTION-APPROVAL.md](docs/PRODUCTION-APPROVAL.md).
 
 `datev-mcp compliance` shows, for your own installation, whether the app type, the technical log, the error rate and the refresh tokens are as DATEV requires, and how every DATEV interface requirement stands. Your AI client can show the same through the `datev_compliance` tool. Every requirement with its status and evidence is in [docs/COMPLIANCE-CHECKLIST.md](docs/COMPLIANCE-CHECKLIST.md), and every review finding with its fix and guarding test in [docs/REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md).
 
 ## More documentation
 
 - [Setup](docs/SETUP.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [From sandbox to production approval](docs/PRODUCTION-APPROVAL.md)
 - [Putting a DATEV data service into operation](docs/DATA-SERVICES.md)
 - [Security](docs/SECURITY.md)
 - [Validation](docs/VALIDATION.md)
@@ -244,6 +246,17 @@ The sandbox may only hold test data. Using this with real clients needs DATEV's 
 - [Over 2,000 answered questions](docs/qa/README.md)
 - [Credits](docs/CREDITS.md)
 - [Changelog](CHANGELOG.md)
+
+## Want this in production, or built for your firm?
+
+This server is the open, inspectable part. Getting it approved by DATEV and fitted to how a firm actually works is where most of the effort goes. That work is offered as a paid service.
+
+- **DATEV approval, end to end.** Preparing both review meetings, the file-format review and the agreements, so the first appointment passes.
+- **Implementation for your workflow.** Mapping your bookings, documents and client processes onto DATEV's data services, with writes that a person approves.
+- **Custom integrations.** New tools, other DATEV products, or connecting DATEV to your CRM, ERP, n8n or Mastra automations.
+- **A commercial license** for business or client use of this server.
+
+Book a call or ask a question through **[next8n.com](https://next8n.com)**.
 
 ## License
 

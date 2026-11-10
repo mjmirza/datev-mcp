@@ -140,6 +140,10 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F121 | LOW | The login page broke the datev-mcp login command across two lines | R14 | fixed | d6d1c26 | the login command on the page never splits across lines |
 | F122 | LOW | The login page read as a generic template, with a raw OAuth error code and no product identity | R14 | fixed | bfdd0d6 | known OAuth errors become one plain sentence, the raw code stays secondary |
 | F123 | LOW | Two scan speed tests failed when the machine was busy, not when the scan was slow | R14 | fixed | 3ea3d8c | the error scan costs the same per byte however small the pieces are |
+| F124 | MEDIUM | A refusal after a refresh left the refused access token live at DATEV, and a session saved without a login id never got one, so F115 still held for older sessions | Grok R14 | fixed | e66c31a | a 403 on a pre-login-id session after a refresh ends that login and revokes both tokens and the refused one |
+| F125 | MEDIUM | A client id whose first digits read as a percent escape, or that followed an escaped slash in the host, was shown unhidden | Grok R14 | fixed | 9becfae | an id whose first two digits read as a percent escape is still hidden |
+| F126 | MEDIUM | An answer that filled the read limit and then broke off lost the bytes already read, and a write became an uncertain-send error | Grok R14 | fixed | ad3d346 | a 5xx write that fills the cap and then breaks off returns its status instead of throwing |
+| F127 | MEDIUM | The may-already-be-applied warning was overwritten on binary answers and missing on file uploads, EXTF uploads and broken-off writes, so F118 still held there | Grok R14 | fixed | ad3d346 | datev_upload_file warns on a 5xx or 408 that the files may already be stored |
 
 ## Evidence for rejected and disputed findings
 
