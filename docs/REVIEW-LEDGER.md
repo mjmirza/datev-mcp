@@ -39,9 +39,9 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F20 | MEDIUM | Log keeps job and status bodies and full query strings (business data), while R2-10 asks for more body logging | R1-15, R2-10 | rejected | - | DATEV minimum log scope (GEN-18, GEN-19) requires the full URL with query and the bodies of status answers, so they stay. Request bodies are added, see F33 |
 | F21 | HIGH | A failed log write is reported once, then DATEV traffic continues unlogged | R1-16, R2-8 | fixed | 6a099df | no call goes out while the technical HTTP log cannot be written |
 | F22 | MEDIUM | `datev_call` treats 3xx as success | R1-17 | fixed | b3996d8 | datev_call reports a DATEV redirect as an error and never saves its body |
-| F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28, R7, R8, R9, R10 | fixed | 3e0f865 | a datev_call to an operation the client gate does not check hides the id in its path and query |
+| F23 | MEDIUM | DATEV's technical client id shown to people in tool text and approval dialogs | R1-18, R2-28, R7, R8, R9, R10, R11 | fixed | 881f64b | only a declared client path parameter is hidden, also as a consultant and client number pair and when percent-encoded |
 | F24 | MEDIUM | Shipped `dist/data/operations.json` carries DATEV description text | R1-19 | rejected | | Nothing ships: the package is private and dist plus the built index are git-ignored, so each developer builds the index from their own downloaded specs. The guard pins those facts, which already held. |
-| F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20, R7, R8, R9 | fixed | 958645b | a permission refusal keeps DATEV's title and link even when the detail before them is larger than the read limit |
+| F25 | MEDIUM | Requirement tests miss several MUSTs | R1-20, R7, R8, R9, R11 | fixed | 881f64b | a permission refusal far larger than the permission check's read limit keeps the title and link at its end |
 | F26 | LOW | Connection tool says true or false instead of AKTIV or INAKTIV, disconnect without a session lacks the tokrevui link | R1-21 | fixed | 0324e85 | the connection status tool answers with AKTIV or INAKTIV text the person can read |
 | F27 | BLOCKER | JWKS (signing key) requests not in the HTTP log | R2-2 | fixed | 3edd7c4 | the ID token check rejects a foreign authorized party |
 | F28 | BLOCKER | Quick start keeps the client secret in a plaintext file while docs claim it is stored encrypted | R2-3 | fixed | 134c625 | docs, Q&A sources and code never repeat a claim a reviewer proved false |
@@ -90,7 +90,7 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F71 | HIGH | The send, permission, client gate and document refusals stayed English in German mode | R6-6, R7, R8, R9 | fixed | 958645b | an EXTF note whose bracket holds several sentences reads fully in German |
 | F72 | MEDIUM | A changed note minted a new document id, and stapled uploads could repeat unnoticed | R6-7, R7, R8 | fixed | 6ce813c | a stapled upload answered 429 counts as possibly stored, not as refused |
 | F73 | MEDIUM | An empty document type answer was cached for the rest of the Berlin day | R6-8 | fixed | c575391 | an empty document type answer is not kept for the rest of the day |
-| F74 | HIGH | After a partly failed end, a later disconnect skipped the unrevoked access token | R7-1, R8, R9 | fixed | 958645b | an access token DATEV did not confirm as revoked stays on record, after a disconnect and after ending for a missing permission |
+| F74 | HIGH | After a partly failed end, a later disconnect skipped the unrevoked access token | R7-1, R8, R9, R11 | fixed | 881f64b | a second disconnect still revokes an access token DATEV did not confirm the first time |
 | F75 | HIGH | A redirect answer to a write claimed that nothing changed | R7-2 | fixed | 6f29796 | a write answered with a redirect never claims that nothing changed |
 | F76 | LOW | The income tax health check was refused although its service was chosen | R7-3 | fixed | 6f29796 | the income tax health check stays reachable when its service was chosen |
 | F77 | LOW | German approvals rewrote client and consultant inside company names | R7-4, R8, R9, R10 | fixed | 3e0f865 | German keeps a client name that starts with unnamed client, and translates every sentence after an open bracket |
@@ -98,16 +98,23 @@ R1 is the Grok review of 2026-11-09. R2 is the Codex review of 2026-11-10, which
 | F79 | HIGH | The eval run wrote stapled send records into the person's real config folder | own check, R7 | fixed | 6f29796 | tests and evals always keep their records in temporary folders, never the person's own |
 | F80 | MEDIUM | The approval redaction replaced any body value equal to the client id, hiding real payroll data | R8-1, R9 | fixed | 958645b | a write's approval dialog shows the body exactly as it is sent, even a value equal to the client id |
 | F81 | LOW | A partial expert scope set lost the health check of the service it touched | R8-2 | fixed | 6ce813c | a partial expert scope set keeps the health check of the service it touches |
-| F82 | LOW | A damaged earlier entry in the send record was accepted as an accepted send | R8-3, R9 | fixed | 958645b | a send record whose status is not a plain text counts as damaged, and a long history from an older version is still read |
+| F82 | LOW | A damaged earlier entry in the send record was accepted as an accepted send | R8-3, R9, R11 | fixed | 881f64b | a damaged entry deep in a send record's history counts as damaged |
 | F83 | MEDIUM | The send-record check rejected a valid long history written by an earlier version, blocking every send | R9-1 | fixed | 958645b | a send record whose status is not a plain text counts as damaged, and a long history from an older version is still read |
 | F84 | LOW | openid, shared by every service, connected unrelated services when deriving them from scopes | R9-2 | fixed | 958645b | a scope every service shares, like openid, never connects a service on its own |
-| F85 | HIGH | A cut error answer sent in tiny pieces stalled the reader for tens of seconds | R10-1 | fixed | 3e0f865 | an error answer sent in tiny pieces past the read limit is scanned quickly and keeps DATEV's title |
+| F85 | HIGH | A cut error answer sent in tiny pieces stalled the reader for tens of seconds | R10-1, R11 | fixed | 881f64b | the error scan costs the same per byte however small the pieces are |
 | F86 | MEDIUM | A non-JSON error answer was read up to 50 MB past the read limit | R10-2 | fixed | 3e0f865 | a non-JSON error answer is not read past the read limit |
-| F87 | MEDIUM | A title between the read limit and the kept tail of an error answer was lost | R10-3 | fixed | 3e0f865 | a title just after the read limit and far from the end of the answer is still kept |
-| F88 | MEDIUM | A new login dropped an ended login's unconfirmed access token, and a refused call never retried it | R10-4 | fixed | 3e0f865 | a new login keeps an ended login's access token on record when DATEV does not confirm its revoke |
-| F89 | MEDIUM | The client id stayed in query strings of result, location and paging addresses | R10-5 | fixed | 3e0f865 | a datev_call to an operation the client gate does not check hides the id in its path and query |
+| F87 | MEDIUM | A title between the read limit and the kept tail of an error answer was lost | R10-3, R11 | fixed | 881f64b | a permission refusal far larger than the permission check's read limit keeps the title and link at its end |
+| F88 | MEDIUM | A new login dropped an ended login's unconfirmed access token, and a refused call never retried it | R10-4, R11 | fixed | 881f64b | many refused calls on an ended connection send one revoke, not one each |
+| F89 | MEDIUM | The client id stayed in query strings of result, location and paging addresses | R10-5, R11 | fixed | 881f64b | only a declared client path parameter is hidden, also as a consultant and client number pair and when percent-encoded |
 | F90 | LOW | An empty stored service list ignored the scopes DATEV granted | R10-6 | fixed | 3e0f865 | an empty stored service list falls back to the scopes DATEV granted |
 | F91 | LOW | An unclosed bracket stopped every later sentence from being translated | R10-7 | fixed | 3e0f865 | German keeps a client name that starts with unnamed client, and translates every sentence after an open bracket |
+| F92 | HIGH | Ending a connection left older unconfirmed access tokens from earlier logins unrevoked | R11 | fixed | 881f64b | ending a connection also revokes an earlier login's access token, and keeps it when DATEV does not confirm |
+| F93 | MEDIUM | Each refused call on an ended connection started its own revoke retry | R11 | fixed | 881f64b | many refused calls on an ended connection send one revoke, not one each |
+| F94 | MEDIUM | The error scan stopped at the title and dropped DATEV's help link and request id | R11 | fixed | 881f64b | the error scan keeps a help link and request id that come after the title |
+| F95 | LOW | A character cut at the read limit was decoded broken | R11 | fixed | 881f64b | a character cut at the read limit is read whole |
+| F96 | MEDIUM | An error answer that went quiet past the read limit was waited for indefinitely | R11 | fixed | 881f64b | an error answer that goes quiet past the read limit is not waited for |
+| F97 | LOW | An undeclared client path parameter was hidden as if it were the client id | R11 | fixed | 881f64b | only a declared client path parameter is hidden, also as a consultant and client number pair and when percent-encoded |
+| F98 | LOW | An expired access token waiting for its revoke was never dropped from the record | R11 | fixed | 881f64b | an expired access token waiting for its revoke is dropped from the record |
 
 ## Evidence for rejected and disputed findings
 
