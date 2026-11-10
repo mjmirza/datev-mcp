@@ -47,12 +47,17 @@ export async function fetchUserInfo(
     const help = problemOf(parsed).help_url;
     throw new Error(`DATEV's userinfo answered HTTP ${res.status}${help ? `. Help: ${help}` : ""}`);
   }
-  let body: Record<string, unknown> = {};
+  let parsed: unknown;
   try {
-    body = JSON.parse(text) as Record<string, unknown>;
+    parsed = JSON.parse(text);
   } catch {
-    /* no JSON: no name */
+    parsed = undefined;
   }
+  // An answer that is not a userinfo object (an HTML error page, an empty body) proves nothing about the connection.
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !str((parsed as Record<string, unknown>).sub))
+    throw new Error("DATEV's userinfo gave no valid answer (no user id)");
+  const body = parsed as Record<string, unknown>;
+  // DATEV asks apps to show the full name. A login name is not a full name, so it is not used as one.
   const parts = [str(body.given_name), str(body.family_name)].filter(Boolean).join(" ");
-  return { sub: str(body.sub), name: str(body.name) ?? (parts || undefined) ?? str(body.preferred_username) };
+  return { sub: str(body.sub), name: str(body.name) ?? (parts || undefined) };
 }

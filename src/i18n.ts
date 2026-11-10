@@ -45,6 +45,8 @@ const FIXED: Record<string, string> = {
   "There is no saved DATEV connection. Connected apps are listed at https://apps.datev.de/tokrevui.": "Es gibt keine gespeicherte DATEV-Verbindung. Verbundene Anwendungen sehen Sie unter https://apps.datev.de/tokrevui.",
   "DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.":
     "DATEV hat für diese Anmeldung kein ID-Token geliefert, daher kann sie nicht geprüft werden. Es wurde nichts gespeichert.",
+  "DATEV's userinfo gives no full name for this user, and DATEV requires apps to show it. Nothing was saved.":
+    "Die Benutzerinformationen von DATEV enthalten keinen vollständigen Namen, den DATEV in der App verlangt. Es wurde nichts gespeichert.",
   "DATEV's userinfo names a different user than the ID token. Nothing was saved.":
     "Die Benutzerinformationen von DATEV nennen einen anderen Benutzer als das ID-Token. Es wurde nichts gespeichert.",
 };

@@ -387,6 +387,54 @@ test("login checks the ID token, saves the name and chosen services, and revokes
   assert.ok(out.some((l) => l.includes("Max Muster")));
 });
 
+test("a login without the full user name saves nothing and revokes the tokens DATEV just issued", async () => {
+  const store = new TokenStore("sandbox", tmp(), envKeyStore());
+  const revoked: string[] = [];
+  let nonce = "";
+  const fake: FetchLike = async (u, init) => {
+    const url = String(u);
+    if (url === ep.jwks) return jwksFetch(u, init);
+    if (url === ep.token)
+      return new Response(JSON.stringify({ access_token: "NEW", refresh_token: "NEW-RT", expires_in: 900, id_token: idToken({ ...good, nonce }) }), { headers: { "content-type": "application/json" } });
+    if (url === ep.userinfo) return new Response(JSON.stringify({ sub: "user-1", preferred_username: "mmuster" }), { headers: { "content-type": "application/json" } });
+    if (url === ep.revoke) return (revoked.push(new URLSearchParams(String(init?.body)).get("token")!), new Response(null, { status: 200 }));
+    throw new Error(`unexpected ${url}`);
+  };
+  await assert.rejects(
+    login(cfg, {
+      services: "accounting-extf-files",
+      store,
+      fetch: fake,
+      httpLog: () => {},
+      log: () => {},
+      open: (authUrl) => {
+        const u = new URL(authUrl);
+        nonce = u.searchParams.get("nonce")!;
+        void fetch(`${u.searchParams.get("redirect_uri")}?code=C&state=${u.searchParams.get("state")}`);
+      },
+    }),
+    /no full name/,
+  );
+  assert.equal(store.read(), undefined, "nothing saved");
+  assert.deepEqual(revoked.sort(), ["NEW", "NEW-RT"], "both new tokens revoked");
+});
+
+test("the status is ACTIVE only for a valid userinfo answer about the same person, with the real validity", async () => {
+  const store = new TokenStore("sandbox", tmp(), envKeyStore());
+  const save = (refreshToken?: string) =>
+    store.write({ env: "sandbox", clientId: "cid", tokens: { accessToken: "AT", ...(refreshToken ? { refreshToken } : {}), expiresAt: Date.UTC(2026, 10, 9, 20, 15), obtainedAt: Date.now() }, identity: { sub: "u1", name: "Erika" }, refreshExpiresAt: Date.UTC(2026, 10, 10, 6, 0) });
+  const reply = (body: string, type = "application/json"): FetchLike => async () => new Response(body, { headers: { "content-type": type } });
+  const at = () => Date.UTC(2026, 10, 9, 20, 0);
+  save("RT");
+  assert.equal((await connectionStatus(cfg, { store, fetch: reply("<html>login</html>", "text/html"), httpLog: () => {}, now: at })).connected, false, "an HTML page is no answer");
+  const other = await connectionStatus(cfg, { store, fetch: reply(JSON.stringify({ sub: "someone-else", name: "Mallory" })), httpLog: () => {}, now: at });
+  assert.equal(other.connected, false);
+  assert.notEqual(other.user, "Mallory", "never shows another person's name");
+  save();
+  const short = await connectionStatus(cfg, { store, fetch: reply(JSON.stringify({ sub: "u1", name: "Erika" })), httpLog: () => {}, now: at });
+  assert.equal(short.refresh_valid_until, "09.11.2026 21:15", "without a refresh token the access token's end is the connection's end");
+});
+
 test("every DATEV error answer keeps its help link, title, detail and request id, as DATEV requires for 4xx", async () => {
   const { problemOf, problemText } = await import("../../src/api/client.js");
   const datev403 = { type: "http://www.datev.de/hilfe/1008829", title: "Missing required scope", detail: "Missing scope(s) are: datev:accounting:clients", request_id: "f11381c7", status: 403 };

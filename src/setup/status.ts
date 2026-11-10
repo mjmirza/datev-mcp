@@ -63,7 +63,9 @@ export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; 
       /* the count stays as read */
     }
   }
-  const until = s.refreshExpiresAt ?? s.tokens.obtainedAt + 11 * 60 * 60_000;
+  // Without a refresh token the connection ends with the access token. With one, the login's stored deadline counts;
+  // older sessions without it fall back to DATEV's documented 11 hours from the login.
+  const until = !s.tokens.refreshToken ? s.tokens.expiresAt : (s.refreshExpiresAt ?? s.tokens.obtainedAt + 11 * 60 * 60_000);
   const out: ConnectionStatus = {
     ...base,
     user: s.identity?.name ?? s.identity?.sub,
@@ -79,6 +81,8 @@ export async function connectionStatus(cfg: Config, opts: { store?: TokenStore; 
   try {
     const token = await new Session(store, cfg.endpoints, cfg.creds, { fetch: opts.fetch, log: opts.httpLog }).accessToken();
     const u = await fetchUserInfo(cfg.endpoints.userinfo, token, cfg.creds.clientId, { fetch: opts.fetch, log: opts.httpLog });
+    // The live answer must name the same person who signed in, or another person's name would be shown.
+    if (s.identity?.sub && u.sub !== s.identity.sub) return { ...out, reason: "DATEV's userinfo names a different user than the saved connection" };
     return { ...out, connected: true, user: u.name ?? out.user };
   } catch (e) {
     return { ...out, reason: (e as Error).message };
@@ -124,6 +128,7 @@ const REASON_DE: Record<string, string> = {
   "not connected": "keine Verbindung eingerichtet",
   "the connection has expired": "die Verbindung ist abgelaufen",
   "the saved connection belongs to a different DATEV app": "die gespeicherte Verbindung gehört zu einer anderen DATEV-App",
+  "DATEV's userinfo names a different user than the saved connection": "die Benutzerinformationen von DATEV nennen einen anderen Benutzer als die gespeicherte Verbindung",
 };
 
 const WARN_DE: Record<string, string> = {

@@ -5,7 +5,7 @@ import { startCallbackServer } from "../auth/callback-server.js";
 import { verifyIdToken } from "../auth/id-token.js";
 import { newPkce, randomToken } from "../auth/pkce.js";
 import { selectServices, serviceLabel, serviceList, ServiceSelectionError } from "../auth/services.js";
-import { exchangeCode, type FetchLike } from "../auth/token-client.js";
+import { exchangeCode, revokeToken, type FetchLike } from "../auth/token-client.js";
 import { revokePending } from "../auth/pending-revoke.js";
 import { TokenStore } from "../auth/token-store.js";
 import { fetchUserInfo } from "../auth/userinfo.js";
@@ -60,16 +60,23 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
   const { code } = await cb.result;
   const tokenOpts = { fetch: opts.fetch, log: tokenLog(httpLog) };
   const tokens = await exchangeCode(cfg.endpoints.token, { code, redirectUri: cb.redirectUri, codeVerifier: pkce.verifier }, cfg.creds, tokenOpts);
-  if (!tokens.idToken) throw new Error("DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.");
-  const claims = await verifyIdToken(tokens.idToken, { issuer: cfg.endpoints.issuer, clientId: cfg.creds.clientId, nonce, jwksUrl: cfg.endpoints.jwks, fetch: opts.fetch, accessToken: tokens.accessToken, log: httpLog });
-  let name: string | undefined;
+  // Every check after the token exchange is final. If one fails, the tokens DATEV just issued are revoked,
+  // so a failed login never leaves a valid refresh token behind that nothing knows about.
+  let claims: Awaited<ReturnType<typeof verifyIdToken>>;
+  let name: string;
   try {
+    if (!tokens.idToken) throw new Error("DATEV returned no ID token for this login, so it cannot be checked. Nothing was saved.");
+    claims = await verifyIdToken(tokens.idToken, { issuer: cfg.endpoints.issuer, clientId: cfg.creds.clientId, nonce, jwksUrl: cfg.endpoints.jwks, fetch: opts.fetch, accessToken: tokens.accessToken, log: httpLog });
     const u = await fetchUserInfo(cfg.endpoints.userinfo, tokens.accessToken, cfg.creds.clientId, { fetch: opts.fetch, log: httpLog });
-    if (u.sub && u.sub !== claims.sub) throw new Error("DATEV's userinfo names a different user than the ID token. Nothing was saved.");
+    if (u.sub !== claims.sub) throw new Error("DATEV's userinfo names a different user than the ID token. Nothing was saved.");
+    if (!u.name) throw new Error("DATEV's userinfo gives no full name for this user, and DATEV requires apps to show it. Nothing was saved.");
     name = u.name;
   } catch (e) {
-    if ((e as Error).message.includes("different user")) throw e;
-    log(`Note: DATEV's userinfo could not be read (${(e as Error).message}). The connection works, the status shows the user id instead of the name.`);
+    await Promise.allSettled([
+      ...(tokens.refreshToken ? [revokeToken(cfg.endpoints.revoke, tokens.refreshToken, "refresh_token", cfg.creds, tokenOpts)] : []),
+      revokeToken(cfg.endpoints.revoke, tokens.accessToken, "access_token", cfg.creds, tokenOpts),
+    ]);
+    throw e;
   }
   const refreshExpiresAt = tokens.refreshExpiresAt ?? tokens.obtainedAt + REFRESH_LIFETIME_MS;
   const store = opts.store ?? new TokenStore(cfg.env);
@@ -84,6 +91,6 @@ export async function login(cfg: Config, opts: LoginOptions = {}): Promise<void>
   const r = await revokePending(store, cfg.endpoints, cfg.creds, tokenOpts);
   if (r.revoked) log("The refresh token of the previous login was revoked at DATEV.");
   if (r.left) log(`WARNING: ${r.left} earlier refresh token(s) could not be revoked yet. Every "datev-mcp status" and server start retries. To end it now, remove the old connection at ${REVOKE_UI}.`);
-  log(`Connected to DATEV ${cfg.env} as ${name ?? claims.sub}. The connection is valid until ${formatDe(refreshExpiresAt)}.`);
+  log(`Connected to DATEV ${cfg.env} as ${name}. The connection is valid until ${formatDe(refreshExpiresAt)}.`);
   log(`Session saved encrypted to ${store.file}. "datev-mcp status" shows the connection, "datev-mcp disconnect" ends it.`);
 }
