@@ -124,6 +124,7 @@ test("every message added for the DATEV review comes out fully German", async ()
     "DATEV refused to revoke the access token (HTTP 400)",
     "The DATEV session is encrypted, but its key is missing from the macOS Keychain. Log in again.",
     'DATEV returned HTTP 400 for the chart of accounts: Bad request. Help: https://help.datev.de/x (request id r-1)',
+    '"455148-1" does not match the client id DATEV expects for my-tax-income-tax-documents. Nothing was sent.',
     thrown(() => selectServices("")),
     thrown(() => selectServices("nope")),
   ];

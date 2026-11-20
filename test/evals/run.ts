@@ -54,13 +54,14 @@ function expectOk(category: string, op: string, fn: () => unknown, check?: (v: u
 const pathNames = (op: Operation) => [...op.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]);
 const sampleHeader = (name: string) => (/filename/i.test(name) ? "EXTF_eval.csv" : "eval-1");
 
-const SAMPLE_CANDIDATES = ["455148-1", "abc123", "1", "20230101", "A1", "3f2504e0-4f89-41d3-9a0c-0305e82c3301", "1234567890123", "EXTF_eval.csv"];
+const SAMPLE_CANDIDATES = ["455148-1", "abc123", "1", "20230101", "A1", "3f2504e0-4f89-41d3-9a0c-0305e82c3301", "1234567890123", "EXTF_eval.csv", "548615-2005-2005"];
 const paramSchema = (op: Operation, name: string) => op.params.find((p) => p.in === "path" && p.name === name)?.schema as
-  | { type?: string; minimum?: number; pattern?: string; format?: string; maxLength?: number }
+  | { type?: string; minimum?: number; pattern?: string; format?: string; minLength?: number }
   | undefined;
 const isConstrained = (op: Operation, name: string) => {
   const s = paramSchema(op, name);
-  return !!s && (s.type === "integer" || !!s.pattern || s.format === "uuid" || s.maxLength !== undefined || (s as { minLength?: number }).minLength !== undefined);
+  // A maximum length alone does not refuse a short value. A pattern, a minimum length, an integer or a UUID does.
+  return !!s && (s.type === "integer" || !!s.pattern || s.format === "uuid" || s.minLength !== undefined);
 };
 const sharesSegment = (op: Operation, name: string) => (op.path.split("/").find((s) => s.includes(`{${name}}`))?.match(/\{/g) ?? []).length > 1;
 
