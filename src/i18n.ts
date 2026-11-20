@@ -280,6 +280,8 @@ const SENTENCES: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Please check it, or ask your administrator whether the data service is switched on, see (\S+?)\.$/, (m) => `Bitte prüfen Sie ihn oder fragen Sie Ihre Administration, ob der Datenservice freigeschaltet ist, siehe ${m[1]}.`],
   [/^(\S+) names its client as (.+), which this server cannot check against DATEV's permission\.$/, (m) => `${m[1]} nennt den Mandanten als ${m[2]}, was dieser Server nicht gegen die Freigabe bei DATEV prüfen kann.`],
   [/^"(.+)" is not a consultant-client number such as 455148-1\.$/, (m) => `"${m[1]}" ist keine Berater-Mandanten-Nummer wie 455148-1.`],
+  [/^"(.+)" does not match the client id DATEV expects for (\S+)\.$/, (m) => `"${m[1]}" passt nicht zur Mandantenkennung, die DATEV für ${m[2]} erwartet.`],
+  [/^Nothing was sent\.$/, () => "Es wurde nichts gesendet."],
   [/^DATEV names a different GUID for client (\S+) than (\S+)\.$/, (m) => `DATEV nennt für den Mandanten ${m[1]} eine andere GUID als ${m[2]}.`],
   [/^This client does not grant the report types (.+)\.$/, (m) => `Dieser Mandant gibt die Auswertungsarten ${m[1]} nicht frei.`],
   [/^Granted: (.+)\.$/, (m) => `Freigegeben: ${m[1] === "none" ? "keine" : m[1]}.`],
