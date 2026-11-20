@@ -945,8 +945,9 @@ test("a character cut between two scan batches is read whole", async () => {
   const bytes = enc.encode(`${pre}üü"}`);
   assert.equal(bytes[65_535], 0xc3);
   function* body() {
-    yield bytes.subarray(0, 4005);
-    for (let i = 4005; i < bytes.length; i++) yield bytes.subarray(i, i + 1);
+    // Same 5 second scan limit as the request-id case: the batch ends on the first byte of ü, and only the rest arrives one byte at a time.
+    yield bytes.subarray(0, 65_536);
+    for (let i = 65_536; i < bytes.length; i++) yield bytes.subarray(i, i + 1);
   }
   assert.equal((await errorFields(body())).title, "üü");
 });

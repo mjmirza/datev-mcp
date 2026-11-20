@@ -93,9 +93,12 @@ test("the error scan keeps a numeric request id, also one cut at a scan batch ed
   const pre = `{"detail":"${"x".repeat(65_496)}","title":"T","request_id":12`;
   const cut = enc.encode(`${pre}345}`);
   assert.equal(enc.encode(pre).length, 65_536);
+  // The scan past the read limit stops after 5 seconds. Dripping the whole answer one byte at a
+  // time can miss that, and a number cut off by the stop is not kept. The batch still ends inside
+  // the number; only the bytes after that edge arrive one at a time.
   function* chunks() {
-    yield cut.subarray(0, 4005);
-    for (let i = 4005; i < cut.length; i++) yield cut.subarray(i, i + 1);
+    yield cut.subarray(0, 65_536);
+    for (let i = 65_536; i < cut.length; i++) yield cut.subarray(i, i + 1);
   }
   const s = new Response(new ReadableStream<Uint8Array>({ start(c) { for (const x of chunks()) c.enqueue(x); c.close(); } }), { status: 403, headers: { "content-type": "application/json" } });
   const r2 = await callOperation(getOperation("accounting-clients.getclients")!, {}, deps(async () => s));
