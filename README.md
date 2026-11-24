@@ -7,7 +7,7 @@ Ask your AI assistant about your DATEV bookkeeping, payroll and documents in pla
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-green)
 ![Operations](https://img.shields.io/badge/DATEV%20operations-209-green)
 ![Eval](https://img.shields.io/badge/eval%20scenarios-28%2C582%20passing-green)
-![Tests](https://img.shields.io/badge/unit%20tests-405%20passing-green)
+![Tests](https://img.shields.io/badge/unit%20tests-407%20passing-green)
 
 ## What this is, in plain words
 
@@ -50,7 +50,7 @@ For production, inject the client id and secret from a password manager when the
 
 ```bash
 cp .env/.env.example .env/.env.local
-# edit .env/.env.local: DATEV_CLIENT_ID and DATEV_CLIENT_SECRET (sandbox only)
+# edit .env/.env.local: set DATEV_CLIENT_ID. Add DATEV_CLIENT_SECRET only for a Confidential sandbox app
 ```
 
 Git ignores `.env/.env.local`, but the file is plain text, so do not keep a production secret in it. Every setting is explained in [.env/README.md](.env/README.md). Never paste the secret into a chat.
@@ -170,7 +170,7 @@ Type check, tests and scenarios were re-run on 2026-11-10. The planted bug check
 |---|---|
 | Offline scenarios across all 209 operations | 28,582 of 28,582 passing |
 | Planted bugs the scenarios had to catch | 5 of 5 caught |
-| Unit and integration tests | 405 of 405 passing |
+| Unit and integration tests | 407 of 407 passing |
 | Live DATEV sandbox, read operations reached | 71, with 38 returning data |
 | Adversarial review by two other AI models (Codex and Grok), 19 rounds | 136 of 141 findings fixed, each with a test that fails without the fix. The rest are decisions with their reason, all in [REVIEW-LEDGER.md](docs/REVIEW-LEDGER.md) |
 

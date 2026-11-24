@@ -1,5 +1,5 @@
 import { loginKey } from "./login-key.js";
-import { callOperation, CallError, problemText, type CallDeps } from "./client.js";
+import { callOperation, CallError, checkAgainstSchema, problemText, type CallDeps } from "./client.js";
 import { getOperation } from "../tools/catalog.js";
 import type { Operation } from "../spec/types.js";
 
@@ -115,7 +115,26 @@ export interface CheckedClient {
 }
 
 const ID_NAMES = ["client-id", "clientId", "consultantnumber-clientnumber"];
+const TWO_PART = /^\d{4,7}-\d{1,5}$/;
 const placeholders = (op: Operation) => [...op.path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]!);
+
+// A product whose spec names the client id shape (income tax uses consultant-client-base) is checked
+// against that shape. Every other client id stays the consultant-client number, such as 455148-1.
+function clientIdShapeError(op: Operation, clientId: string): string | undefined {
+  const name = placeholders(op).find((n) => ID_NAMES.includes(n));
+  const schema = name ? op.params.find((p) => p.in === "path" && p.name === name)?.schema : undefined;
+  const pattern = schema && typeof schema === "object" ? (schema as { pattern?: unknown }).pattern : undefined;
+  if (typeof pattern === "string" && name) {
+    try {
+      checkAgainstSchema(name, clientId, schema);
+      return undefined;
+    } catch {
+      return `"${clientId}" does not match the client id DATEV expects for ${op.product}. Nothing was sent.`;
+    }
+  }
+  if (!TWO_PART.test(clientId)) return `"${clientId}" is not a consultant-client number such as 455148-1. Nothing was sent.`;
+  return undefined;
+}
 
 /** Who the URL actually targets: only the operation's own path placeholders count, never surplus parameters. */
 function targetOf(op: Operation, pathParams: Record<string, unknown> | undefined): { clientId?: string; guid?: string; unknown?: string } {
@@ -209,7 +228,8 @@ export async function gateCall(op: Operation, pathParams: Record<string, unknown
   if (target.unknown !== undefined) throw new CallError(`${op.id} names its client as ${target.unknown}, which this server cannot check against DATEV's permission. Nothing was sent.`);
   const clientId = target.guid !== undefined ? await clientIdForGuid(op.product, target.guid, deps) : target.clientId;
   if (clientId === undefined) return undefined;
-  if (!/^\d{4,7}-\d{1,5}$/.test(clientId)) throw new CallError(`"${clientId}" is not a consultant-client number such as 455148-1. Nothing was sent.`);
+  const shape = clientIdShapeError(op, clientId);
+  if (shape) throw new CallError(shape);
   const client = await checkClient(op.product, clientId, deps);
   if (target.guid !== undefined && client.guid !== undefined && client.guid !== target.guid)
     throw new CallError(`DATEV names a different GUID for client ${clientId} than ${target.guid}. Nothing was sent.`);

@@ -82,6 +82,32 @@ test("payroll reports are only requested for report types the client grants", as
   assert.equal(h.seen.length, 1, "the report itself was not requested");
 });
 
+const TAX = "548615-2005-2005";
+
+test("income tax uses DATEV's consultant-client-base id for the permission check", async () => {
+  const h = await harness((path) => json(200, path.endsWith(`/clients/${TAX}`) ? { name: "Steuer GmbH", consultant_number: 548615, client_number: 2005 } : []));
+  const r = await h.call("datev_call", { operation_id: "my-tax-income-tax-documents.getincometaxyears", path_params: { "client-id": TAX } });
+  assert.equal(r.error, false, r.text);
+  assert.deepEqual(
+    h.seen.map((s) => s.path),
+    [`/platform-sandbox/v1/clients/${TAX}`, `/platform-sandbox/v1/clients/${TAX}/tax-years`],
+  );
+});
+
+test("a consultant-client number is refused for income tax, and a shapeless id is still refused elsewhere", async () => {
+  const tax = await harness(() => json(200, {}));
+  const badTax = await tax.call("datev_call", { operation_id: "my-tax-income-tax-documents.getincometaxyears", path_params: { "client-id": "455148-1" } });
+  assert.equal(badTax.error, true);
+  assert.match(badTax.text, /does not match the client id DATEV expects for my-tax-income-tax-documents/);
+  assert.match(badTax.text, /Nothing was sent/);
+  assert.equal(tax.seen.length, 0);
+  const hr = await harness(() => json(200, {}));
+  const badHr = await hr.call("datev_call", { operation_id: "hr-exports.gettaxpaymentsbyemployeeid", path_params: { "client-id": "nope", "employee-id": "1" } });
+  assert.equal(badHr.error, true);
+  assert.match(badHr.text, /not a consultant-client number such as 455148-1/);
+  assert.equal(hr.seen.length, 0);
+});
+
 test("eAU reads the client through its own consultant and client number path", async () => {
   const h = await harness(() => json(200, company));
   await h.call("datev_call", { operation_id: "eau-api.getfeedbacks", path_params: { consultantNumber: "455148", clientNumber: "1", personnelNumber: "00001", eauRequest: "R1" } });

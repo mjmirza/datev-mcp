@@ -56,11 +56,12 @@ const sampleHeader = (name: string) => (/filename/i.test(name) ? "EXTF_eval.csv"
 
 const SAMPLE_CANDIDATES = ["455148-1", "abc123", "1", "20230101", "A1", "3f2504e0-4f89-41d3-9a0c-0305e82c3301", "1234567890123", "EXTF_eval.csv"];
 const paramSchema = (op: Operation, name: string) => op.params.find((p) => p.in === "path" && p.name === name)?.schema as
-  | { type?: string; minimum?: number; pattern?: string; format?: string; maxLength?: number }
+  | { type?: string; minimum?: number; pattern?: string; format?: string; minLength?: number; example?: string }
   | undefined;
 const isConstrained = (op: Operation, name: string) => {
   const s = paramSchema(op, name);
-  return !!s && (s.type === "integer" || !!s.pattern || s.format === "uuid" || s.maxLength !== undefined || (s as { minLength?: number }).minLength !== undefined);
+  // A maximum length alone does not refuse a short value. A pattern, a minimum length, an integer or a UUID does.
+  return !!s && (s.type === "integer" || !!s.pattern || s.format === "uuid" || s.minLength !== undefined);
 };
 const sharesSegment = (op: Operation, name: string) => (op.path.split("/").find((s) => s.includes(`{${name}}`))?.match(/\{/g) ?? []).length > 1;
 
@@ -71,15 +72,19 @@ function sampleFor(op: Operation, name: string): string {
   if (name === "clientNumber") return "1";
   const s = paramSchema(op, name);
   if (s?.type === "integer") return String(s.minimum ?? 1);
-  const pick = SAMPLE_CANDIDATES.find((c) => {
+  const fits = (c: string) => {
     try {
       checkAgainstSchema(name, c, s);
       return !sharesSegment(op, name) || !c.includes("-");
     } catch {
       return false;
     }
-  });
-  return pick ?? "abc123";
+  };
+  const pick = SAMPLE_CANDIDATES.find(fits);
+  if (pick) return pick;
+  // DATEV publishes the value, for example the three-part income-tax client id, when the usual samples do not fit.
+  if (typeof s?.example === "string" && fits(s.example)) return s.example;
+  return "abc123";
 }
 
 const isServerHeader = (name: string) => name.toLowerCase() === "x-api-key";

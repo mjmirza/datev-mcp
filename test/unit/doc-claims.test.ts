@@ -24,7 +24,8 @@ function files(dir: string): string[] {
 }
 
 test("docs, Q&A sources and code never repeat a claim a reviewer proved false", () => {
-  const scan = [join(root, "README.md"), ...files(join(root, "docs")), ...files(join(root, "scripts")), ...files(join(root, "src"))].filter(
+  const envDocs = [join(root, ".env", "README.md"), join(root, ".env", ".env.example")];
+  const scan = [join(root, "README.md"), ...envDocs, ...files(join(root, "docs")), ...files(join(root, "scripts")), ...files(join(root, "src"))].filter(
     (p) => !p.endsWith("REVIEW-LEDGER.md"),
   );
   const hits: string[] = [];
@@ -33,4 +34,15 @@ test("docs, Q&A sources and code never repeat a claim a reviewer proved false", 
     for (const [re, why] of BANNED) if (re.test(text)) hits.push(`${p.slice(root.length + 1)}: ${why}`);
   }
   assert.deepEqual(hits, []);
+
+  // The settings file is what a copied .env is edited from. It has to say how login actually chooses scopes.
+  const readme = readFileSync(envDocs[0]!, "utf8");
+  const example = readFileSync(envDocs[1]!, "utf8");
+  for (const text of [readme, example]) {
+    assert.match(text, /DATEV_MCP_SERVICES/);
+    assert.match(text, /used only when no data service is chosen/);
+  }
+  const secret = readme.split("\n").find((l) => l.includes("| DATEV_CLIENT_SECRET |"));
+  assert.ok(secret?.includes("| No |"), secret);
+  assert.match(secret ?? "", /Public client/);
 });
