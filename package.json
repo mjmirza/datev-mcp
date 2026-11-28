@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "fast-check": "^4.10.2",
+    "fast-check": "^4.11.0",
     "knip": "6.44.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
